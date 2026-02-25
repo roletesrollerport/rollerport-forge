@@ -1,25 +1,19 @@
 import { useState, useEffect } from 'react';
 import { store } from '@/lib/store';
-import type { Produto, TipoRolete } from '@/lib/types';
+import type { Produto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
-const tipos: { value: TipoRolete | 'GENERICO'; label: string }[] = [
-  { value: 'RC', label: 'RC - Rolete de Carga' },
-  { value: 'RR', label: 'RR - Rolete de Retorno' },
-  { value: 'RG', label: 'RG - Rolete Guia' },
-  { value: 'RI', label: 'RI - Rolete de Impacto' },
-  { value: 'RRA', label: 'RRA - Rolete de Retorno Auto-limpante' },
-  { value: 'GENERICO', label: 'Genérico' },
-];
-
 const emptyProduto = (): Produto => ({
-  id: '', nome: '', tipo: 'RC', descricao: '',
+  id: '', codigo: '', nome: '', tipo: 'GENERICO', medidas: '', descricao: '', valor: 0,
   createdAt: new Date().toISOString().split('T')[0],
 });
+
+const fmt = (v: number) => `R$ ${v.toFixed(2)}`;
 
 export default function ProdutosPage() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -27,8 +21,7 @@ export default function ProdutosPage() {
   const [editing, setEditing] = useState<Produto>(emptyProduto());
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('rp_produtos') || '[]');
-    setProdutos(saved);
+    setProdutos(store.getProdutos());
   }, []);
 
   const handleSave = () => {
@@ -38,7 +31,7 @@ export default function ProdutosPage() {
     } else {
       updated = [...produtos, { ...editing, id: store.nextId('prod') }];
     }
-    localStorage.setItem('rp_produtos', JSON.stringify(updated));
+    store.saveProdutos(updated);
     setProdutos(updated);
     setOpen(false);
     toast.success('Produto salvo!');
@@ -46,7 +39,7 @@ export default function ProdutosPage() {
 
   const handleDelete = (id: string) => {
     const updated = produtos.filter(p => p.id !== id);
-    localStorage.setItem('rp_produtos', JSON.stringify(updated));
+    store.saveProdutos(updated);
     setProdutos(updated);
     toast.success('Produto removido!');
   };
@@ -65,14 +58,11 @@ export default function ProdutosPage() {
           <DialogContent>
             <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo'} Produto</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
-              <div>
-                <label className="text-xs text-muted-foreground">Tipo</label>
-                <select value={editing.tipo} onChange={e => setEditing({ ...editing, tipo: e.target.value as any })} className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm">
-                  {tipos.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-              <div><label className="text-xs text-muted-foreground">Descrição</label><Input value={editing.descricao} onChange={e => setEditing({ ...editing, descricao: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Código do Produto</label><Input value={editing.codigo} onChange={e => setEditing({ ...editing, codigo: e.target.value })} placeholder="Ex: RC-001" /></div>
+              <div><label className="text-xs text-muted-foreground">Nome do Produto</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Medidas do Produto</label><Input value={editing.medidas} onChange={e => setEditing({ ...editing, medidas: e.target.value })} placeholder="Ex: ø102x3x500mm" /></div>
+              <div><label className="text-xs text-muted-foreground">Descrição do Produto</label><Textarea value={editing.descricao} onChange={e => setEditing({ ...editing, descricao: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Valor do Produto (R$)</label><Input type="number" step="0.01" value={editing.valor} onChange={e => setEditing({ ...editing, valor: +e.target.value })} /></div>
             </div>
             <div className="flex justify-end mt-4"><Button onClick={handleSave}>Salvar</Button></div>
           </DialogContent>
@@ -83,25 +73,27 @@ export default function ProdutosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
+              <th className="text-left p-3 font-medium">Código</th>
               <th className="text-left p-3 font-medium">Nome</th>
-              <th className="text-left p-3 font-medium">Tipo</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Descrição</th>
+              <th className="text-left p-3 font-medium hidden md:table-cell">Medidas</th>
+              <th className="text-right p-3 font-medium">Valor</th>
               <th className="p-3 w-20"></th>
             </tr>
           </thead>
           <tbody>
             {produtos.map(p => (
               <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                <td className="p-3 font-mono text-xs">{p.codigo}</td>
                 <td className="p-3 font-medium">{p.nome}</td>
-                <td className="p-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">{p.tipo}</span></td>
-                <td className="p-3 hidden md:table-cell text-muted-foreground">{p.descricao || '-'}</td>
+                <td className="p-3 hidden md:table-cell text-muted-foreground">{p.medidas || '-'}</td>
+                <td className="p-3 text-right font-mono">{fmt(p.valor)}</td>
                 <td className="p-3 flex gap-1">
-                  <button onClick={() => { setEditing(p); setOpen(true); }} className="text-primary hover:text-primary/80">✏️</button>
+                  <button onClick={() => { setEditing(p); setOpen(true); }} className="text-primary hover:text-primary/80"><Edit className="h-4 w-4" /></button>
                   <button onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
                 </td>
               </tr>
             ))}
-            {produtos.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Nenhum produto cadastrado.</td></tr>}
+            {produtos.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nenhum produto cadastrado.</td></tr>}
           </tbody>
         </table>
       </div>

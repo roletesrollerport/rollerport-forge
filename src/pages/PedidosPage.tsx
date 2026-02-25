@@ -57,7 +57,7 @@ export default function PedidosPage() {
       entradaProducao: '',
       diasPropostos: 12,
       status: 'ABERTA' as const,
-      itens: orc.itens.map((item, i) => ({
+      itens: (orc.itensRolete || []).map((item, i) => ({
         item: i + 1, quantidade: item.quantidade, tipo: item.tipoRolete,
         diametroTubo: item.diametroTubo, paredeTubo: item.paredeTubo,
         comprimentoTubo: item.comprimentoTubo, comprimentoEixo: item.comprimentoEixo,
