@@ -37,7 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex items-center gap-3 px-3 py-4 border-b border-sidebar-border">
-          <img src={logo} alt="Rollerport" className="h-10 w-10 object-contain flex-shrink-0" />
+          <img src={logo} alt="Rollerport" className="h-14 w-14 object-contain flex-shrink-0" />
           {!collapsed && <span className="text-lg font-bold tracking-tight text-sidebar-foreground">ROLLERPORT</span>}
         </div>
 

@@ -1,38 +1,48 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
-import type { Pedido, StatusPedido } from '@/lib/types';
+import type { Pedido, StatusPedido, Orcamento } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Factory } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Plus, Factory, Eye, Edit, Trash2, Search, ArrowLeft, ShoppingCart, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
 export default function PedidosPage() {
+  const navigate = useNavigate();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [showGenerate, setShowGenerate] = useState(false);
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
+  const [search, setSearch] = useState('');
 
-  const orcamentosAprovados = store.getOrcamentos().filter(o => o.status === 'APROVADO');
-  const pedidoOrcIds = new Set(pedidos.map(p => p.orcamentoId));
-  const disponveis = orcamentosAprovados.filter(o => !pedidoOrcIds.has(o.id));
+  useEffect(() => {
+    setPedidos(store.getPedidos());
+    setOrcamentos(store.getOrcamentos());
+  }, []);
 
-  useEffect(() => { setPedidos(store.getPedidos()); }, []);
-
-  const gerarPedido = (orcId: string) => {
-    const orc = orcamentosAprovados.find(o => o.id === orcId);
-    if (!orc) return;
+  const gerarPedido = (orc: Orcamento) => {
+    // Check if already has a pedido
+    if (pedidos.find(p => p.orcamentoId === orc.id)) {
+      toast.error('Este orçamento já tem um pedido gerado!');
+      return;
+    }
     const pedido: Pedido = {
       id: store.nextId('ped'),
       numero: store.nextNumero('ped'),
       orcamentoId: orc.id,
       clienteNome: orc.clienteNome,
-      dataEntrega: orc.dataEntrega,
+      dataEntrega: orc.previsaoEntrega || orc.dataEntrega,
       status: 'PENDENTE',
       valorTotal: orc.valorTotal,
       createdAt: new Date().toISOString().split('T')[0],
     };
-    const updated = [...pedidos, pedido];
-    store.savePedidos(updated);
-    setPedidos(updated);
-    setShowGenerate(false);
+    const updatedPedidos = [...pedidos, pedido];
+    store.savePedidos(updatedPedidos);
+    setPedidos(updatedPedidos);
+    // Mark orc as APROVADO
+    const updatedOrcs = orcamentos.map(o => o.id === orc.id ? { ...o, status: 'APROVADO' as const } : o);
+    store.saveOrcamentos(updatedOrcs);
+    setOrcamentos(updatedOrcs);
     toast.success(`Pedido ${pedido.numero} gerado!`);
   };
 
@@ -43,8 +53,27 @@ export default function PedidosPage() {
     toast.success('Status atualizado!');
   };
 
+  const cancelarPedido = (pedido: Pedido) => {
+    // Remove pedido and set orc back to RASCUNHO
+    const updatedPedidos = pedidos.filter(p => p.id !== pedido.id);
+    store.savePedidos(updatedPedidos);
+    setPedidos(updatedPedidos);
+    const updatedOrcs = orcamentos.map(o => o.id === pedido.orcamentoId ? { ...o, status: 'RASCUNHO' as const } : o);
+    store.saveOrcamentos(updatedOrcs);
+    setOrcamentos(updatedOrcs);
+    toast.success('Pedido cancelado. Orçamento voltou para edição.');
+    navigate('/orcamentos');
+  };
+
+  const deletePedido = (id: string) => {
+    const updated = pedidos.filter(p => p.id !== id);
+    store.savePedidos(updated);
+    setPedidos(updated);
+    toast.success('Pedido excluído!');
+  };
+
   const gerarOS = (pedido: Pedido) => {
-    const orc = store.getOrcamentos().find(o => o.id === pedido.orcamentoId);
+    const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
     if (!orc) return;
     const os = {
       id: store.nextId('os'),
@@ -74,74 +103,135 @@ export default function PedidosPage() {
     toast.success(`O.S. ${os.numero} gerada!`);
   };
 
-  const fmt = (v: number) => `R$ ${v.toFixed(2)}`;
+  // All orçamentos that don't have pedidos yet
+  const orcSemPedido = orcamentos.filter(o => !pedidos.find(p => p.orcamentoId === o.id));
+
+  const filteredOrcs = orcSemPedido.filter(o =>
+    o.clienteNome.toLowerCase().includes(search.toLowerCase()) ||
+    o.numero.includes(search)
+  );
+
+  const filteredPedidos = pedidos.filter(p =>
+    p.clienteNome.toLowerCase().includes(search.toLowerCase()) ||
+    p.numero.includes(search)
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="page-header">Pedidos</h1>
-          <p className="page-subtitle">Pedidos gerados a partir de orçamentos aprovados</p>
+          <p className="page-subtitle">Gerencie pedidos e orçamentos pendentes</p>
         </div>
-        <Button onClick={() => setShowGenerate(true)} className="gap-2" disabled={disponveis.length === 0}>
-          <Plus className="h-4 w-4" /> Gerar Pedido
-        </Button>
       </div>
 
-      <div className="bg-card rounded-lg border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Nº</th>
-              <th className="text-left p-3 font-medium">Cliente</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Entrega</th>
-              <th className="text-right p-3 font-medium">Valor</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="p-3 w-28"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pedidos.map(p => (
-              <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="p-3 font-mono font-medium">{p.numero}</td>
-                <td className="p-3">{p.clienteNome}</td>
-                <td className="p-3 hidden md:table-cell">{p.dataEntrega}</td>
-                <td className="p-3 text-right font-mono">{fmt(p.valorTotal)}</td>
-                <td className="p-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    p.status === 'CONCLUIDO' || p.status === 'ENTREGUE' ? 'bg-success/10 text-success' :
-                    p.status === 'EM_PRODUCAO' ? 'bg-warning/10 text-warning' :
-                    'bg-muted text-muted-foreground'
-                  }`}>{p.status.replace('_', ' ')}</span>
-                </td>
-                <td className="p-3 flex gap-1">
-                  {p.status === 'PENDENTE' && <Button size="sm" variant="outline" onClick={() => gerarOS(p)} className="gap-1 text-xs"><Factory className="h-3.5 w-3.5" /> Gerar O.S.</Button>}
-                  {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-xs">Concluir</Button>}
-                  {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-xs">Entregar</Button>}
-                </td>
-              </tr>
-            ))}
-            {pedidos.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
-          </tbody>
-        </table>
+      <div className="border rounded-lg p-4 bg-card">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por cliente ou número..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        </div>
       </div>
 
-      <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Gerar Pedido</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground mb-3">Selecione um orçamento aprovado:</p>
-          <div className="space-y-2">
-            {disponveis.map(o => (
-              <button key={o.id} onClick={() => gerarPedido(o.id)} className="w-full flex justify-between items-center p-3 rounded-lg border hover:bg-muted/50 transition-colors text-sm">
-                <span className="font-mono font-medium">{o.numero}</span>
-                <span>{o.clienteNome}</span>
-                <span className="font-mono">{fmt(o.valorTotal)}</span>
-              </button>
-            ))}
-            {disponveis.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum orçamento aprovado disponível.</p>}
+      {/* Orçamentos pendentes (sem pedido) */}
+      {filteredOrcs.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Orçamentos (pendentes de pedido)</h2>
+          <div className="bg-card rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left p-3 font-medium">Nº</th>
+                  <th className="text-left p-3 font-medium">Cliente</th>
+                  <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
+                  <th className="text-left p-3 font-medium">Status</th>
+                  <th className="text-right p-3 font-medium">Valor</th>
+                  <th className="p-3 w-40"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrcs.map(o => (
+                  <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="p-3 font-mono font-medium">{o.numero}</td>
+                    <td className="p-3">{o.clienteNome}</td>
+                    <td className="p-3 hidden md:table-cell">{o.dataOrcamento || o.createdAt}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground uppercase">{o.status}</span>
+                    </td>
+                    <td className="p-3 text-right font-mono">{fmt(o.valorTotal)}</td>
+                    <td className="p-3">
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
+                        <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => gerarPedido(o)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar Pedido"><ShoppingCart className="h-4 w-4" /></button>
+                        <button onClick={() => {
+                          const updated = orcamentos.filter(x => x.id !== o.id);
+                          store.saveOrcamentos(updated);
+                          setOrcamentos(updated);
+                          toast.success('Orçamento excluído!');
+                        }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {/* Pedidos */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Pedidos</h2>
+        <div className="bg-card rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left p-3 font-medium">Nº</th>
+                <th className="text-left p-3 font-medium">Cliente</th>
+                <th className="text-left p-3 font-medium hidden md:table-cell">Entrega</th>
+                <th className="text-right p-3 font-medium">Valor</th>
+                <th className="text-left p-3 font-medium">Status</th>
+                <th className="p-3 w-48"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPedidos.map(p => (
+                <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                  <td className="p-3 font-mono font-medium">{p.numero}</td>
+                  <td className="p-3">{p.clienteNome}</td>
+                  <td className="p-3 hidden md:table-cell">{p.dataEntrega}</td>
+                  <td className="p-3 text-right font-mono">{fmt(p.valorTotal)}</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      p.status === 'CONCLUIDO' || p.status === 'ENTREGUE' ? 'bg-success/10 text-success' :
+                      p.status === 'EM_PRODUCAO' ? 'bg-warning/10 text-warning' :
+                      'bg-muted text-muted-foreground'
+                    }`}>{p.status.replace('_', ' ')}</span>
+                  </td>
+                  <td className="p-3">
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
+                      <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
+                      {p.status === 'PENDENTE' && (
+                        <button onClick={() => gerarOS(p)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-4 w-4" /></button>
+                      )}
+                      {p.status === 'EM_PRODUCAO' && (
+                        <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-xs h-7">Concluir</Button>
+                      )}
+                      {p.status === 'CONCLUIDO' && (
+                        <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-xs h-7">Entregar</Button>
+                      )}
+                      <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar Pedido"><XCircle className="h-4 w-4" /></button>
+                      <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredPedidos.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
