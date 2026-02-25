@@ -629,12 +629,18 @@ export default function OrcamentosPage() {
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Revestimento</label>
-                <select value={roleteItem.especificacaoRevestimento} onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value })}
+                <select value={roleteItem.especificacaoRevestimento} onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, quantidadeAneis: e.target.value ? roleteItem.quantidadeAneis || 1 : 0 })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Sem revestimento</option>
                   {revestimentos.map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
                 </select>
               </div>
+              {roleteItem.especificacaoRevestimento && (
+                <div>
+                  <label className="text-xs text-primary font-medium">Qtd. Anéis</label>
+                  <Input type="number" min={1} value={roleteItem.quantidadeAneis} onChange={e => updateRoleteField({ quantidadeAneis: +e.target.value })} />
+                </div>
+              )}
               <div>
                 <label className="text-xs text-primary font-medium">Adicional</label>
                 <Input value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} placeholder="Informações adicionais" />
