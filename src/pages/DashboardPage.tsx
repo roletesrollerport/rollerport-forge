@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { store } from '@/lib/store';
-import { FileText, ShoppingCart, Users, Factory, DollarSign, TrendingUp, Package, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { FileText, ShoppingCart, Users, Factory, TrendingUp, Save } from 'lucide-react';
+import { toast } from 'sonner';
 
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
@@ -20,13 +23,23 @@ export default function DashboardPage() {
   const [data, setData] = useState({
     orcamentos: 0, pedidos: 0, clientes: 0, os: 0,
     orcRecentes: [] as any[], pedRecentes: [] as any[],
+    taxaConversao: 0,
   });
+
+  const [taxaConversao, setTaxaConversao] = useState(0);
 
   useEffect(() => {
     const orc = store.getOrcamentos();
     const ped = store.getPedidos();
     const cli = store.getClientes();
     const os = store.getOrdensServico();
+    const taxa = store.getTaxaConversao();
+    setTaxaConversao(taxa);
+
+    // Calcular taxa real
+    const aprovados = orc.filter(o => o.status === 'APROVADO').length;
+    const taxaReal = orc.length > 0 ? ((aprovados / orc.length) * 100) : 0;
+
     setData({
       orcamentos: orc.length,
       pedidos: ped.length,
@@ -34,13 +47,19 @@ export default function DashboardPage() {
       os: os.length,
       orcRecentes: orc.slice(-5).reverse(),
       pedRecentes: ped.slice(-5).reverse(),
+      taxaConversao: +taxaReal.toFixed(1),
     });
   }, []);
+
+  const saveTaxa = () => {
+    store.saveTaxaConversao(taxaConversao);
+    toast.success('Taxa de conversão salva!');
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-header">Dashboard</h1>
+        <h1 className="page-header">Início</h1>
         <p className="page-subtitle">Visão geral do sistema ROLLERPORT</p>
       </div>
 
@@ -51,8 +70,35 @@ export default function DashboardPage() {
         <StatCard icon={Factory} label="Ordens de Serviço" value={data.os} color="bg-accent/10 text-accent" />
       </div>
 
+      {/* Taxa de Conversão */}
+      <div className="bg-card rounded-lg border p-5">
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-primary" /> Taxa de Conversão (Orçamento → Pedido)
+        </h2>
+        <div className="flex items-center gap-4">
+          <div className="flex-1 max-w-xs">
+            <label className="text-xs text-muted-foreground">Taxa Meta (%)</label>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                step="0.1"
+                value={taxaConversao}
+                onChange={e => setTaxaConversao(+e.target.value)}
+                className="max-w-[120px]"
+              />
+              <Button size="sm" onClick={saveTaxa} className="gap-1">
+                <Save className="h-3.5 w-3.5" /> Salvar
+              </Button>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Taxa Real</p>
+            <p className="text-3xl font-bold text-primary">{data.taxaConversao}%</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Últimos Orçamentos */}
         <div className="bg-card rounded-lg border p-5">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" /> Últimos Orçamentos
@@ -77,7 +123,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Últimos Pedidos */}
         <div className="bg-card rounded-lg border p-5">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-secondary" /> Últimos Pedidos

@@ -3,14 +3,12 @@ export interface Tubo {
   id: string;
   diametro: number;
   parede: number;
-  valorKg: number;
   valorMetro: number;
 }
 
 export interface Eixo {
   id: string;
   diametro: string;
-  valorKg: number;
   valorMetro: number;
 }
 
@@ -33,16 +31,25 @@ export interface Encaixe {
 }
 
 // ======= CLIENTES =======
+export interface Comprador {
+  nome: string;
+  telefone: string;
+  email: string;
+  whatsapp: string;
+}
+
 export interface Cliente {
   id: string;
   nome: string;
   cnpj: string;
   email: string;
   telefone: string;
+  whatsapp: string;
   endereco: string;
   cidade: string;
   estado: string;
   contato: string;
+  compradores: Comprador[];
   createdAt: string;
 }
 
@@ -51,14 +58,19 @@ export type TipoRolete = 'RC' | 'RR' | 'RG' | 'RI' | 'RRA';
 
 export interface Produto {
   id: string;
+  codigo: string;
   nome: string;
   tipo: TipoRolete | 'GENERICO';
+  medidas: string;
   descricao: string;
+  valor: number;
   createdAt: string;
 }
 
 // ======= ORÇAMENTOS =======
 export type StatusOrcamento = 'RASCUNHO' | 'ENVIADO' | 'APROVADO' | 'REPROVADO';
+
+export type TipoFrete = 'CIF' | 'FOB';
 
 export interface ItemOrcamento {
   id: string;
@@ -82,13 +94,29 @@ export interface ItemOrcamento {
   valorTotal: number;
 }
 
+export interface ItemProdutoOrcamento {
+  id: string;
+  produtoId: string;
+  produtoNome: string;
+  quantidade: number;
+  valorUnitario: number;
+  valorTotal: number;
+}
+
 export interface Orcamento {
   id: string;
   numero: string;
   clienteId: string;
   clienteNome: string;
+  tipoFrete: TipoFrete;
+  condicaoPagamento: string;
+  vendedor: string;
+  dataOrcamento: string;
+  previsaoEntrega: string;
+  observacao: string;
   dataEntrega: string;
-  itens: ItemOrcamento[];
+  itensRolete: ItemOrcamento[];
+  itensProduto: ItemProdutoOrcamento[];
   status: StatusOrcamento;
   valorTotal: number;
   createdAt: string;
