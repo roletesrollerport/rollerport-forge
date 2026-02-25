@@ -1,22 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { store } from '@/lib/store';
-import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete } from '@/lib/types';
+import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Trash2, Eye, Send, Check, X as XIcon, Edit, Search, Settings2, Package } from 'lucide-react';
+import {
+  Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
+  ShoppingCart, ArrowLeft, UserPlus, X as XIcon
+} from 'lucide-react';
 import { toast } from 'sonner';
+import logo from '@/assets/logo.png';
 
 const emptyItem = (): ItemOrcamento => ({
-  id: '', tipoRolete: 'RC', quantidade: 1, diametroTubo: 102, paredeTubo: 3, comprimentoTubo: 0,
-  comprimentoEixo: 0, diametroEixo: 20, tipoEncaixe: 'LPW', medidaFresado: '', conjunto: '',
+  id: '', tipoRolete: 'RC', quantidade: 1, diametroTubo: 0, paredeTubo: 0, comprimentoTubo: 0,
+  comprimentoEixo: 0, diametroEixo: 0, tipoEncaixe: '', medidaFresado: '', conjunto: '',
   tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: 0, custo: 0,
-  multiplicador: 1.8, desconto: 0, valorPorPeca: 0, valorTotal: 0,
-});
-
-const emptyProdutoItem = (): ItemProdutoOrcamento => ({
-  id: '', produtoId: '', produtoNome: '', quantidade: 1, valorUnitario: 0, valorTotal: 0,
+  multiplicador: 1.9, desconto: 0, valorPorPeca: 0, valorTotal: 0,
 });
 
 function calcItem(item: ItemOrcamento): ItemOrcamento {
@@ -45,29 +44,63 @@ function calcItem(item: ItemOrcamento): ItemOrcamento {
   return { ...item, custo: +custo.toFixed(2), valorPorPeca: +valorPorPeca.toFixed(2), valorTotal: +valorTotal.toFixed(2) };
 }
 
+const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+type View = 'list' | 'form' | 'view' | 'print';
+
 export default function OrcamentosPage() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
-  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<View>('list');
   const [viewOrc, setViewOrc] = useState<Orcamento | null>(null);
   const [editingOrc, setEditingOrc] = useState<Orcamento | null>(null);
+  const [searchList, setSearchList] = useState('');
 
   // Form state
   const [clienteId, setClienteId] = useState('');
   const [clienteSearch, setClienteSearch] = useState('');
-  const [tipoFrete, setTipoFrete] = useState<TipoFrete>('CIF');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [tipoFrete, setTipoFrete] = useState<TipoFrete>('FOB');
   const [condicaoPagamento, setCondicaoPagamento] = useState('');
   const [vendedor, setVendedor] = useState('');
   const [dataOrcamento, setDataOrcamento] = useState(new Date().toLocaleDateString('pt-BR'));
   const [previsaoEntrega, setPrevisaoEntrega] = useState('');
   const [observacao, setObservacao] = useState('');
+  const [compradorSelecionado, setCompradorSelecionado] = useState('');
   const [itensRolete, setItensRolete] = useState<ItemOrcamento[]>([]);
   const [itensProduto, setItensProduto] = useState<ItemProdutoOrcamento[]>([]);
 
+  // Sub-panels
+  const [showProdutoSearch, setShowProdutoSearch] = useState(false);
+  const [produtoSearch, setProdutoSearch] = useState('');
+  const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
+  const [produtoQtd, setProdutoQtd] = useState(1);
+  const [produtoDesconto, setProdutoDesconto] = useState(0);
+
+  const [showRoleteForm, setShowRoleteForm] = useState(false);
+  const [roleteItem, setRoleteItem] = useState<ItemOrcamento>(emptyItem());
+  const [codigoRolete, setCodigoRolete] = useState('');
+
+  // Cadastro rápido cliente
+  const [showCadCliente, setShowCadCliente] = useState(false);
+  const [cadCliente, setCadCliente] = useState({ nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '' });
+
+  // Cadastro rápido comprador
+  const [showCadComprador, setShowCadComprador] = useState(false);
+  const [cadComprador, setCadComprador] = useState({ nome: '', telefone: '', email: '', whatsapp: '' });
+
+  // Cadastro rápido produto
+  const [showCadProduto, setShowCadProduto] = useState(false);
+  const [cadProduto, setCadProduto] = useState({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0 });
+
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
+  const tubos = store.getTubos();
+  const eixos = store.getEixos();
   const encaixes = store.getEncaixes();
   const conjuntos = store.getConjuntos();
   const revestimentos = store.getRevestimentos();
+
+  const clienteSelecionado = clientes.find(c => c.id === clienteId);
 
   const filteredClientes = clientes.filter(c =>
     c.nome.toLowerCase().includes(clienteSearch.toLowerCase()) ||
@@ -76,32 +109,35 @@ export default function OrcamentosPage() {
     c.email.toLowerCase().includes(clienteSearch.toLowerCase())
   );
 
+  const filteredProdutos = produtos.filter(p =>
+    p.tipo === 'GENERICO' && (
+      p.nome.toLowerCase().includes(produtoSearch.toLowerCase()) ||
+      p.codigo.toLowerCase().includes(produtoSearch.toLowerCase())
+    )
+  );
+
+  const diametrosTubo = [...new Set(tubos.map(t => t.diametro))].sort((a, b) => a - b);
+  const paredesTubo = (diam: number) => [...new Set(tubos.filter(t => t.diametro === diam).map(t => t.parede))].sort((a, b) => a - b);
+  const diametrosEixo = eixos.map(e => e.diametro);
+
   useEffect(() => { setOrcamentos(store.getOrcamentos()); }, []);
 
   const resetForm = () => {
-    setClienteId('');
-    setClienteSearch('');
-    setTipoFrete('CIF');
-    setCondicaoPagamento('');
-    setVendedor('');
+    setClienteId(''); setClienteSearch(''); setTipoFrete('FOB');
+    setCondicaoPagamento(''); setVendedor('');
     setDataOrcamento(new Date().toLocaleDateString('pt-BR'));
-    setPrevisaoEntrega('');
-    setObservacao('');
-    setItensRolete([]);
-    setItensProduto([]);
-    setEditingOrc(null);
+    setPrevisaoEntrega(''); setObservacao(''); setCompradorSelecionado('');
+    setItensRolete([]); setItensProduto([]);
+    setEditingOrc(null); setShowProdutoSearch(false);
+    setShowRoleteForm(false); setSelectedProduto(null);
   };
 
-  const openNew = () => {
-    resetForm();
-    setOpen(true);
-  };
+  const openNew = () => { resetForm(); setView('form'); };
 
   const openEdit = (orc: Orcamento) => {
     setEditingOrc(orc);
-    setClienteId(orc.clienteId);
-    setClienteSearch(orc.clienteNome);
-    setTipoFrete(orc.tipoFrete || 'CIF');
+    setClienteId(orc.clienteId); setClienteSearch(orc.clienteNome);
+    setTipoFrete(orc.tipoFrete || 'FOB');
     setCondicaoPagamento(orc.condicaoPagamento || '');
     setVendedor(orc.vendedor || '');
     setDataOrcamento(orc.dataOrcamento || orc.createdAt);
@@ -109,56 +145,28 @@ export default function OrcamentosPage() {
     setObservacao(orc.observacao || '');
     setItensRolete(orc.itensRolete || []);
     setItensProduto(orc.itensProduto || []);
-    setOpen(true);
-  };
-
-  const updateItem = (idx: number, partial: Partial<ItemOrcamento>) => {
-    const n = [...itensRolete];
-    n[idx] = calcItem({ ...n[idx], ...partial });
-    setItensRolete(n);
-  };
-
-  const updateProdutoItem = (idx: number, partial: Partial<ItemProdutoOrcamento>) => {
-    const n = [...itensProduto];
-    n[idx] = { ...n[idx], ...partial };
-    if (partial.produtoId) {
-      const prod = produtos.find(p => p.id === partial.produtoId);
-      if (prod) {
-        n[idx].produtoNome = prod.nome;
-        n[idx].valorUnitario = prod.valor;
-      }
-    }
-    n[idx].valorTotal = n[idx].valorUnitario * n[idx].quantidade;
-    setItensProduto(n);
+    setView('form');
   };
 
   const totalRoletes = itensRolete.reduce((s, i) => s + i.valorTotal, 0);
   const totalProdutos = itensProduto.reduce((s, i) => s + i.valorTotal, 0);
   const totalGeral = totalRoletes + totalProdutos;
+  const totalItens = itensRolete.length + itensProduto.length;
 
-  const handleSave = (status: StatusOrcamento = 'RASCUNHO') => {
-    const cliente = clientes.find(c => c.id === clienteId);
-    if (!cliente) { toast.error('Selecione um cliente'); return; }
-
+  const handleSave = () => {
     const orc: Orcamento = {
       id: editingOrc?.id || store.nextId('orc'),
       numero: editingOrc?.numero || store.nextNumero('orc'),
       clienteId,
-      clienteNome: cliente.nome,
-      tipoFrete,
-      condicaoPagamento,
-      vendedor,
-      dataOrcamento,
-      previsaoEntrega,
-      observacao,
+      clienteNome: clienteSelecionado?.nome || 'Sem cliente',
+      tipoFrete, condicaoPagamento, vendedor, dataOrcamento,
+      previsaoEntrega, observacao,
       dataEntrega: previsaoEntrega,
-      itensRolete,
-      itensProduto,
-      status,
+      itensRolete, itensProduto,
+      status: editingOrc?.status || 'RASCUNHO',
       valorTotal: +totalGeral.toFixed(2),
       createdAt: editingOrc?.createdAt || new Date().toISOString().split('T')[0],
     };
-
     let updated: Orcamento[];
     if (editingOrc) {
       updated = orcamentos.map(o => o.id === editingOrc.id ? orc : o);
@@ -167,291 +175,658 @@ export default function OrcamentosPage() {
     }
     store.saveOrcamentos(updated);
     setOrcamentos(updated);
-    setOpen(false);
+    setView('list');
     resetForm();
-    toast.success(`Orçamento ${orc.numero} ${status === 'ENVIADO' ? 'enviado' : 'salvo'}!`);
-  };
-
-  const updateStatus = (id: string, status: StatusOrcamento) => {
-    const updated = orcamentos.map(o => o.id === id ? { ...o, status } : o);
-    store.saveOrcamentos(updated);
-    setOrcamentos(updated);
-    toast.success('Status atualizado!');
+    toast.success(`Orçamento ${orc.numero} salvo!`);
   };
 
   const deleteOrcamento = (id: string) => {
     const updated = orcamentos.filter(o => o.id !== id);
-    store.saveOrcamentos(updated);
-    setOrcamentos(updated);
+    store.saveOrcamentos(updated); setOrcamentos(updated);
     toast.success('Orçamento removido!');
   };
 
-  const fmt = (v: number) => `R$ ${v.toFixed(2)}`;
+  const convertToPedido = (orc: Orcamento) => {
+    const pedidos = store.getPedidos();
+    const pedido = {
+      id: store.nextId('ped'),
+      numero: store.nextNumero('ped'),
+      orcamentoId: orc.id,
+      clienteNome: orc.clienteNome,
+      dataEntrega: orc.previsaoEntrega || orc.dataEntrega,
+      status: 'PENDENTE' as const,
+      valorTotal: orc.valorTotal,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    store.savePedidos([...pedidos, pedido]);
+    const updated = orcamentos.map(o => o.id === orc.id ? { ...o, status: 'APROVADO' as const } : o);
+    store.saveOrcamentos(updated); setOrcamentos(updated);
+    toast.success(`Pedido ${pedido.numero} criado!`);
+  };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="page-header">Orçamentos</h1>
-          <p className="page-subtitle">Acompanhamento de orçamentos</p>
+  // Insert produto into orçamento
+  const insertProduto = () => {
+    if (!selectedProduto) return;
+    const valorComDesc = selectedProduto.valor * (1 - produtoDesconto / 100);
+    const item: ItemProdutoOrcamento = {
+      id: store.nextId('item'),
+      produtoId: selectedProduto.id,
+      produtoNome: selectedProduto.nome,
+      quantidade: produtoQtd,
+      valorUnitario: +valorComDesc.toFixed(2),
+      valorTotal: +(valorComDesc * produtoQtd).toFixed(2),
+    };
+    setItensProduto([...itensProduto, item]);
+    setShowProdutoSearch(false);
+    setSelectedProduto(null);
+    setProdutoSearch('');
+    setProdutoQtd(1);
+    setProdutoDesconto(0);
+  };
+
+  // Insert rolete into orçamento
+  const insertRolete = () => {
+    const calculated = calcItem({ ...roleteItem, id: store.nextId('item') });
+    setItensRolete([...itensRolete, calculated]);
+    setShowRoleteForm(false);
+    setRoleteItem(emptyItem());
+    setCodigoRolete('');
+  };
+
+  const updateRoleteField = (partial: Partial<ItemOrcamento>) => {
+    setRoleteItem(prev => calcItem({ ...prev, ...partial }));
+  };
+
+  // Cadastrar cliente rápido
+  const salvarCliente = () => {
+    const id = store.nextId('cli');
+    const novo: Cliente = {
+      ...cadCliente, id, contato: cadCliente.nome,
+      compradores: [], createdAt: new Date().toISOString().split('T')[0],
+    };
+    const all = [...clientes, novo];
+    store.saveClientes(all);
+    setClienteId(id); setClienteSearch(cadCliente.nome);
+    setShowCadCliente(false);
+    setCadCliente({ nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '' });
+    toast.success('Cliente cadastrado!');
+  };
+
+  // Cadastrar comprador rápido
+  const salvarComprador = () => {
+    if (!clienteSelecionado) return;
+    const updated = clientes.map(c =>
+      c.id === clienteId
+        ? { ...c, compradores: [...c.compradores, cadComprador] }
+        : c
+    );
+    store.saveClientes(updated);
+    setShowCadComprador(false);
+    setCadComprador({ nome: '', telefone: '', email: '', whatsapp: '' });
+    toast.success('Comprador cadastrado!');
+  };
+
+  // Cadastrar produto rápido
+  const salvarProduto = () => {
+    const id = store.nextId('prod');
+    const novo: Produto = {
+      id, ...cadProduto, tipo: 'GENERICO',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    store.saveProdutos([...produtos, novo]);
+    setShowCadProduto(false);
+    setCadProduto({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0 });
+    toast.success('Produto cadastrado!');
+  };
+
+  const filteredOrcamentos = orcamentos.filter(o =>
+    o.clienteNome.toLowerCase().includes(searchList.toLowerCase()) ||
+    o.numero.includes(searchList)
+  );
+
+  // ========== PRINT VIEW ==========
+  if (view === 'print' && viewOrc) {
+    const cli = clientes.find(c => c.id === viewOrc.clienteId);
+    return (
+      <div>
+        <div className="flex gap-2 mb-4 print:hidden">
+          <Button variant="outline" onClick={() => setView('list')} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Voltar
+          </Button>
+          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+            <Printer className="h-4 w-4" /> Imprimir / PDF
+          </Button>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Novo Orçamento</Button>
-      </div>
+        <div className="bg-card border rounded-lg p-8 max-w-4xl mx-auto print:border-0 print:shadow-none print:max-w-none">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-8">
+            <div className="flex items-start gap-4">
+              <img src={logo} alt="Rollerport" className="h-16 w-16 object-contain" />
+              <div>
+                <h2 className="text-xl font-bold">ROLLERPORT</h2>
+                <p className="text-xs text-muted-foreground">Roletes para Correia Transportadora</p>
+                <p className="text-xs text-muted-foreground">Rua Exemplo, 123 – Cidade/UF – CEP 00000-000</p>
+                <p className="text-xs text-muted-foreground">Tel: (00) 0000-0000 • contato@rollerport.com.br</p>
+              </div>
+            </div>
+            {cli && (
+              <div className="text-right text-sm">
+                <p className="font-semibold">{cli.nome}</p>
+                <p className="text-xs text-muted-foreground">CNPJ: {cli.cnpj}</p>
+                <p className="text-xs text-muted-foreground">{cli.endereco}</p>
+                <p className="text-xs text-muted-foreground">Tel: {cli.telefone}</p>
+                <p className="text-xs text-muted-foreground">{cli.email}</p>
+              </div>
+            )}
+          </div>
 
-      {/* List */}
-      <div className="bg-card rounded-lg border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Nº</th>
-              <th className="text-left p-3 font-medium">Cliente</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Entrega</th>
-              <th className="text-right p-3 font-medium">Valor Total</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="p-3 w-36"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {orcamentos.slice().reverse().map(o => (
-              <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="p-3 font-mono font-medium">{o.numero}</td>
-                <td className="p-3">{o.clienteNome}</td>
-                <td className="p-3 hidden md:table-cell">{o.previsaoEntrega || o.dataEntrega}</td>
-                <td className="p-3 text-right font-mono">{fmt(o.valorTotal)}</td>
-                <td className="p-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    o.status === 'APROVADO' ? 'bg-success/10 text-success' :
-                    o.status === 'ENVIADO' ? 'bg-info/10 text-info' :
-                    o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
-                    'bg-muted text-muted-foreground'
-                  }`}>{o.status}</span>
-                </td>
-                <td className="p-3 flex gap-1">
-                  <button onClick={() => setViewOrc(o)} className="text-primary hover:text-primary/80"><Eye className="h-4 w-4" /></button>
-                  <button onClick={() => openEdit(o)} className="text-info hover:text-info/80"><Edit className="h-4 w-4" /></button>
-                  <button onClick={() => deleteOrcamento(o.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
-                  {o.status === 'RASCUNHO' && <button onClick={() => updateStatus(o.id, 'ENVIADO')} className="text-info hover:text-info/80"><Send className="h-4 w-4" /></button>}
-                  {o.status === 'ENVIADO' && <>
-                    <button onClick={() => updateStatus(o.id, 'APROVADO')} className="text-success hover:text-success/80"><Check className="h-4 w-4" /></button>
-                    <button onClick={() => updateStatus(o.id, 'REPROVADO')} className="text-destructive hover:text-destructive/80"><XIcon className="h-4 w-4" /></button>
-                  </>}
-                </td>
+          <div className="mb-6 text-sm">
+            <span>Orçamento: <strong>{viewOrc.numero}</strong></span>
+            <span className="ml-6">Data: <strong>{viewOrc.dataOrcamento}</strong></span>
+            <span className="ml-6">Vendedor: <strong>{viewOrc.vendedor || '-'}</strong></span>
+          </div>
+
+          {/* Items table */}
+          <table className="w-full text-sm border-collapse mb-6">
+            <thead>
+              <tr className="border-b-2 border-foreground/20">
+                <th className="text-left p-2 font-semibold">Item</th>
+                <th className="text-left p-2 font-semibold">Código</th>
+                <th className="text-left p-2 font-semibold">Descrição do Produto</th>
+                <th className="text-center p-2 font-semibold">Qtd</th>
+                <th className="text-right p-2 font-semibold">Valor Unit.</th>
+                <th className="text-right p-2 font-semibold">Valor Total</th>
               </tr>
-            ))}
-            {orcamentos.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Nenhum orçamento criado.</td></tr>}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(viewOrc.itensProduto || []).map((item, i) => {
+                const prod = produtos.find(p => p.id === item.produtoId);
+                return (
+                  <tr key={`p-${i}`} className="border-b">
+                    <td className="p-2 text-center">{String(i + 1).padStart(2, '0')}</td>
+                    <td className="p-2">{prod?.codigo || '-'}</td>
+                    <td className="p-2">{item.produtoNome}</td>
+                    <td className="p-2 text-center">{item.quantidade}</td>
+                    <td className="p-2 text-right">{fmt(item.valorUnitario)}</td>
+                    <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
+                  </tr>
+                );
+              })}
+              {(viewOrc.itensRolete || []).map((item, i) => {
+                const idx = (viewOrc.itensProduto || []).length + i;
+                return (
+                  <tr key={`r-${i}`} className="border-b">
+                    <td className="p-2 text-center">{String(idx + 1).padStart(2, '0')}</td>
+                    <td className="p-2">{item.tipoRolete}</td>
+                    <td className="p-2">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo} Tubo:{item.comprimentoTubo}mm</td>
+                    <td className="p-2 text-center">{item.quantidade}</td>
+                    <td className="p-2 text-right">{fmt(item.valorPorPeca)}</td>
+                    <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-foreground/20 font-bold">
+                <td colSpan={5} className="p-2 text-right">TOTAL GERAL</td>
+                <td className="p-2 text-right">{fmt(viewOrc.valorTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Footer info */}
+          <div className="border-t pt-4 grid grid-cols-3 gap-4 text-sm mb-4">
+            <div><span className="text-muted-foreground text-xs">Previsão de Entrega:</span><br /><strong>{viewOrc.previsaoEntrega || '-'}</strong></div>
+            <div><span className="text-muted-foreground text-xs">Condição de Pagamento:</span><br /><strong>{viewOrc.condicaoPagamento || '-'}</strong></div>
+            <div><span className="text-muted-foreground text-xs">Tipo de Frete:</span><br /><strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></div>
+          </div>
+          {viewOrc.observacao && (
+            <div className="text-sm mb-6">
+              <span className="text-muted-foreground text-xs">Observação:</span><br />
+              <strong>{viewOrc.observacao}</strong>
+            </div>
+          )}
+          <div className="text-center text-sm text-primary mt-8">
+            <p className="font-semibold">ROLLERPORT – Roletes para Correia Transportadora</p>
+            <p className="text-muted-foreground text-xs">Orçamento válido por 10 dias.</p>
+          </div>
+        </div>
+        <style>{`@media print { @page { size: landscape; margin: 1cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
       </div>
+    );
+  }
 
-      {/* New/Edit Orcamento Dialog */}
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingOrc ? 'Editar' : 'Novo'} Orçamento</DialogTitle></DialogHeader>
+  // ========== FORM VIEW ==========
+  if (view === 'form') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">{editingOrc ? 'Editar' : 'Novo'} Orçamento</h1>
+          <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+        </div>
 
-          <div className="space-y-4">
-            {/* Cliente search */}
-            <div className="border rounded-lg p-4 bg-muted/10">
-              <label className="text-xs text-muted-foreground font-medium">Cliente</label>
-              <div className="flex gap-2 mt-1">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome, CNPJ, telefone, e-mail..."
-                    value={clienteSearch}
-                    onChange={e => { setClienteSearch(e.target.value); setClienteId(''); }}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              {clienteSearch && !clienteId && (
-                <div className="border rounded mt-1 max-h-32 overflow-y-auto bg-card">
-                  {filteredClientes.map(c => (
-                    <button key={c.id} onClick={() => { setClienteId(c.id); setClienteSearch(c.nome); }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between">
-                      <span className="font-medium">{c.nome}</span>
-                      <span className="text-muted-foreground text-xs">{c.cnpj}</span>
-                    </button>
-                  ))}
-                  {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</p>}
-                </div>
-              )}
-            </div>
-
-            {/* Frete, Pagamento, Vendedor */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground">Tipo de Frete</label>
-                <select value={tipoFrete} onChange={e => setTipoFrete(e.target.value as TipoFrete)}
-                  className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm">
-                  <option value="CIF">CIF (frete por conta do vendedor)</option>
-                  <option value="FOB">FOB (frete por conta do comprador)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Condição de Pagamento</label>
-                <Input placeholder="Ex: 30/60/90" value={condicaoPagamento} onChange={e => setCondicaoPagamento(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Vendedor</label>
-                <Input placeholder="Nome do vendedor" value={vendedor} onChange={e => setVendedor(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Data, Previsão */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground">Data</label>
-                <Input value={dataOrcamento} readOnly className="bg-muted/30" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Previsão de Entrega</label>
-                <Input placeholder="Ex: 15 dias úteis" value={previsaoEntrega} onChange={e => setPrevisaoEntrega(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Observação */}
-            <div>
-              <label className="text-xs text-muted-foreground">Observação</label>
-              <Textarea placeholder="Observações gerais do orçamento..." value={observacao} onChange={e => setObservacao(e.target.value)} />
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setItensProduto([...itensProduto, { ...emptyProdutoItem(), id: store.nextId('item') }])} className="gap-2">
-                <Package className="h-4 w-4" /> Inserir Produto
-              </Button>
-              <Button variant="outline" onClick={() => setItensRolete([...itensRolete, { ...emptyItem(), id: store.nextId('item') }])} className="gap-2">
-                <Settings2 className="h-4 w-4" /> Inserir Rolete
-              </Button>
-            </div>
-
-            {/* Produto items */}
-            {itensProduto.map((item, idx) => (
-              <div key={item.id} className="border rounded-lg p-3 bg-muted/20">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Package className="h-3 w-3" /> Produto {idx + 1}</span>
-                  <button onClick={() => setItensProduto(itensProduto.filter((_, i) => i !== idx))} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <div className="col-span-2">
-                    <label className="text-muted-foreground">Produto</label>
-                    <select value={item.produtoId} onChange={e => updateProdutoItem(idx, { produtoId: e.target.value })}
-                      className="flex h-8 w-full rounded border bg-transparent px-2 text-sm">
-                      <option value="">Selecione...</option>
-                      {produtos.map(p => <option key={p.id} value={p.id}>{p.codigo} - {p.nome}</option>)}
-                    </select>
+        <div className="border rounded-lg p-5 bg-card space-y-4">
+          {/* Cliente */}
+          <div>
+            <label className="text-xs text-primary font-medium">Cliente</label>
+            <div className="flex gap-2 mt-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, CNPJ, telefone, e-mail..."
+                  value={clienteSearch}
+                  onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
+                  onFocus={() => setShowClienteDropdown(true)}
+                  className="pl-10"
+                />
+                {showClienteDropdown && clienteSearch && !clienteId && (
+                  <div className="absolute z-10 w-full border rounded mt-1 max-h-40 overflow-y-auto bg-card shadow-lg">
+                    {filteredClientes.map(c => (
+                      <button key={c.id} onClick={() => { setClienteId(c.id); setClienteSearch(c.nome); setShowClienteDropdown(false); }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between">
+                        <span className="font-medium">{c.nome}</span>
+                        <span className="text-muted-foreground text-xs">{c.cnpj}</span>
+                      </button>
+                    ))}
+                    {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</p>}
                   </div>
-                  <div><label className="text-muted-foreground">Qtd</label><Input type="number" className="h-8" value={item.quantidade} onChange={e => updateProdutoItem(idx, { quantidade: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">Valor Unit.</label><Input type="number" step="0.01" className="h-8" value={item.valorUnitario} onChange={e => updateProdutoItem(idx, { valorUnitario: +e.target.value })} /></div>
-                </div>
-                <div className="mt-2 text-xs font-mono">
-                  <span>Total: <strong className="text-primary">{fmt(item.valorTotal)}</strong></span>
-                </div>
+                )}
               </div>
-            ))}
-
-            {/* Rolete items */}
-            {itensRolete.map((item, idx) => (
-              <div key={item.id} className="border rounded-lg p-3 bg-muted/20">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Settings2 className="h-3 w-3" /> Rolete {idx + 1}</span>
-                  <button onClick={() => setItensRolete(itensRolete.filter((_, i) => i !== idx))} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <div>
-                    <label className="text-muted-foreground">Tipo</label>
-                    <select value={item.tipoRolete} onChange={e => updateItem(idx, { tipoRolete: e.target.value as any })} className="flex h-8 w-full rounded border bg-transparent px-2 text-sm">
-                      {['RC', 'RR', 'RG', 'RI', 'RRA'].map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="text-muted-foreground">Qtd</label><Input type="number" className="h-8" value={item.quantidade} onChange={e => updateItem(idx, { quantidade: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">ø Tubo</label><Input type="number" className="h-8" value={item.diametroTubo} onChange={e => updateItem(idx, { diametroTubo: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">Parede</label><Input type="number" className="h-8" value={item.paredeTubo} onChange={e => updateItem(idx, { paredeTubo: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">Comp. Tubo (mm)</label><Input type="number" className="h-8" value={item.comprimentoTubo} onChange={e => updateItem(idx, { comprimentoTubo: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">Comp. Eixo (mm)</label><Input type="number" className="h-8" value={item.comprimentoEixo} onChange={e => updateItem(idx, { comprimentoEixo: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">ø Eixo</label><Input type="number" className="h-8" value={item.diametroEixo} onChange={e => updateItem(idx, { diametroEixo: +e.target.value })} /></div>
-                  <div>
-                    <label className="text-muted-foreground">Encaixe</label>
-                    <select value={item.tipoEncaixe} onChange={e => updateItem(idx, { tipoEncaixe: e.target.value })} className="flex h-8 w-full rounded border bg-transparent px-2 text-sm">
-                      {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="text-muted-foreground">Fresado</label><Input className="h-8" value={item.medidaFresado} onChange={e => updateItem(idx, { medidaFresado: e.target.value })} /></div>
-                  <div>
-                    <label className="text-muted-foreground">Conjunto</label>
-                    <select value={item.conjunto} onChange={e => updateItem(idx, { conjunto: e.target.value })} className="flex h-8 w-full rounded border bg-transparent px-2 text-sm">
-                      <option value="">-</option>
-                      {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground">Revestimento</label>
-                    <select value={item.especificacaoRevestimento} onChange={e => updateItem(idx, { especificacaoRevestimento: e.target.value })} className="flex h-8 w-full rounded border bg-transparent px-2 text-sm">
-                      <option value="">-</option>
-                      {revestimentos.map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
-                    </select>
-                  </div>
-                  <div><label className="text-muted-foreground">Anéis</label><Input type="number" className="h-8" value={item.quantidadeAneis} onChange={e => updateItem(idx, { quantidadeAneis: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">Multiplicador</label><Input type="number" step="0.1" className="h-8" value={item.multiplicador} onChange={e => updateItem(idx, { multiplicador: +e.target.value })} /></div>
-                  <div><label className="text-muted-foreground">Desconto %</label><Input type="number" className="h-8" value={item.desconto} onChange={e => updateItem(idx, { desconto: +e.target.value })} /></div>
-                </div>
-                <div className="flex gap-4 mt-2 text-xs font-mono">
-                  <span>Custo: <strong className="text-foreground">{fmt(item.custo)}</strong></span>
-                  <span>Valor/pç: <strong className="text-foreground">{fmt(item.valorPorPeca)}</strong></span>
-                  <span>Total: <strong className="text-primary">{fmt(item.valorTotal)}</strong></span>
-                </div>
-              </div>
-            ))}
-
-            {/* Footer */}
-            <div className="flex justify-between items-center pt-4 border-t">
-              <span className="font-semibold">Total: {fmt(totalGeral)}</span>
-              <Button onClick={() => handleSave('RASCUNHO')} className="gap-2">
-                Salvar Orçamento
+              <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title="Cadastrar cliente">
+                <UserPlus className="h-4 w-4" />
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* View Dialog */}
-      <Dialog open={!!viewOrc} onOpenChange={() => setViewOrc(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Orçamento {viewOrc?.numero}</DialogTitle></DialogHeader>
-          {viewOrc && (
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-muted-foreground">Cliente:</span> {viewOrc.clienteNome}</div>
-                <div><span className="text-muted-foreground">Frete:</span> {viewOrc.tipoFrete || '-'}</div>
-                <div><span className="text-muted-foreground">Pagamento:</span> {viewOrc.condicaoPagamento || '-'}</div>
-                <div><span className="text-muted-foreground">Vendedor:</span> {viewOrc.vendedor || '-'}</div>
-                <div><span className="text-muted-foreground">Entrega:</span> {viewOrc.previsaoEntrega || viewOrc.dataEntrega}</div>
-                <div><span className="text-muted-foreground">Status:</span> {viewOrc.status}</div>
-                <div><span className="text-muted-foreground">Total:</span> <strong>{fmt(viewOrc.valorTotal)}</strong></div>
-              </div>
-              {viewOrc.observacao && <div><span className="text-muted-foreground">Obs:</span> {viewOrc.observacao}</div>}
-
-              {(viewOrc.itensProduto || []).length > 0 && <>
-                <h4 className="font-semibold mt-3">Produtos ({viewOrc.itensProduto.length})</h4>
-                {viewOrc.itensProduto.map((item, i) => (
-                  <div key={i} className="bg-muted/30 rounded p-2 text-xs font-mono">
-                    {item.produtoNome} | Qtd:{item.quantidade} | {fmt(item.valorTotal)}
-                  </div>
-                ))}
-              </>}
-
-              {(viewOrc.itensRolete || []).length > 0 && <>
-                <h4 className="font-semibold mt-3">Roletes ({viewOrc.itensRolete.length})</h4>
-                {viewOrc.itensRolete.map((item, i) => (
-                  <div key={i} className="bg-muted/30 rounded p-2 text-xs font-mono">
-                    {item.tipoRolete} | ø{item.diametroTubo}x{item.paredeTubo} | Tubo:{item.comprimentoTubo}mm | Eixo:{item.comprimentoEixo}mm ø{item.diametroEixo} | {item.tipoEncaixe} | Qtd:{item.quantidade} | {fmt(item.valorTotal)}
-                  </div>
-                ))}
-              </>}
+          {/* Frete, Pagamento, Vendedor */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-primary font-medium">Tipo de Frete</label>
+              <select value={tipoFrete} onChange={e => setTipoFrete(e.target.value as TipoFrete)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="FOB">FOB (frete por conta do comprador)</option>
+                <option value="CIF">CIF (frete por conta do vendedor)</option>
+              </select>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            <div>
+              <label className="text-xs text-primary font-medium">Condição de Pagamento</label>
+              <Input placeholder="Ex: 30/60/90" value={condicaoPagamento} onChange={e => setCondicaoPagamento(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Vendedor</label>
+              <Input placeholder="Nome do vendedor" value={vendedor} onChange={e => setVendedor(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Data, Previsão, Comprador */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-primary font-medium">Data</label>
+              <Input value={dataOrcamento} readOnly className="bg-muted/30" />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Previsão de Entrega</label>
+              <Input placeholder="Ex: 15 dias úteis" value={previsaoEntrega} onChange={e => setPrevisaoEntrega(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Comprador</label>
+              <div className="flex gap-2">
+                <select value={compradorSelecionado} onChange={e => setCompradorSelecionado(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  {clienteSelecionado?.compradores.map((comp, i) => (
+                    <option key={i} value={comp.nome}>{comp.nome}</option>
+                  ))}
+                </select>
+                <Button variant="outline" size="icon" onClick={() => setShowCadComprador(true)} title="Cadastrar comprador" disabled={!clienteId}>
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Observação */}
+          <div>
+            <label className="text-xs text-primary font-medium">Observação</label>
+            <Textarea placeholder="Observações gerais do orçamento..." value={observacao} onChange={e => setObservacao(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setShowProdutoSearch(true); setShowRoleteForm(false); }} className="gap-2">
+            <Package className="h-4 w-4" /> Inserir Produto
+          </Button>
+          <Button variant="outline" onClick={() => { setShowRoleteForm(true); setShowProdutoSearch(false); }} className="gap-2 text-primary border-primary">
+            <Settings2 className="h-4 w-4" /> Inserir Rolete
+          </Button>
+        </div>
+
+        {/* ===== Buscar Produto panel ===== */}
+        {showProdutoSearch && !selectedProduto && (
+          <div className="border rounded-lg p-4 bg-card">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">Buscar Produto</h3>
+              <button onClick={() => setShowProdutoSearch(false)} className="text-primary text-sm">Cancelar</button>
+            </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar produto..." value={produtoSearch} onChange={e => setProdutoSearch(e.target.value)} className="pl-10" />
+              </div>
+              <Button variant="outline" onClick={() => setShowCadProduto(true)}>+ Cadastrar</Button>
+            </div>
+            {produtoSearch && (
+              <div className="mt-2 border rounded max-h-40 overflow-y-auto">
+                {filteredProdutos.map(p => (
+                  <button key={p.id} onClick={() => { setSelectedProduto(p); setProdutoQtd(1); setProdutoDesconto(0); }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50">
+                    {p.codigo} – {p.nome} <span className="text-muted-foreground ml-2">{fmt(p.valor)}</span>
+                  </button>
+                ))}
+                {filteredProdutos.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum produto encontrado</p>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== Novo Item - Produto ===== */}
+        {selectedProduto && (
+          <div className="border rounded-lg p-4 bg-card">
+            <h3 className="font-semibold flex items-center gap-2 mb-3">
+              <Package className="h-4 w-4" /> Novo Item – Produto
+            </h3>
+            <div className="bg-muted/30 rounded p-3 mb-3">
+              <p className="font-medium">{selectedProduto.nome}</p>
+              <p className="text-xs text-muted-foreground">Valor unitário: {fmt(selectedProduto.valor)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-primary font-medium">Quantidade</label>
+                <Input type="number" value={produtoQtd} onChange={e => setProdutoQtd(+e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Desconto (%)</label>
+                <Input type="number" value={produtoDesconto} onChange={e => setProdutoDesconto(+e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Descrição da Peça</label>
+              <Input value={selectedProduto.nome} readOnly className="bg-muted/30" />
+            </div>
+            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-3 gap-3 text-sm">
+              <div><span className="text-xs text-primary">Valor Unit.</span><br /><strong>{fmt(selectedProduto.valor)}</strong></div>
+              <div><span className="text-xs text-primary">Valor c/ Desc.</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100))}</strong></div>
+              <div><span className="text-xs text-primary">Total</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd)}</strong></div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={insertProduto} className="gap-2">✓ Inserir no Orçamento</Button>
+              <Button variant="outline" onClick={() => { setSelectedProduto(null); setShowProdutoSearch(false); }}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Novo Item - Rolete ===== */}
+        {showRoleteForm && (
+          <div className="border rounded-lg p-4 bg-card">
+            <h3 className="font-semibold flex items-center gap-2 mb-3">
+              <Settings2 className="h-4 w-4" /> Novo Item – Rolete
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <label className="text-xs text-primary font-medium">Tipo de Rolete</label>
+                <select value={roleteItem.tipoRolete} onChange={e => updateRoleteField({ tipoRolete: e.target.value as any })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  {['RC', 'RR', 'RG', 'RI', 'RRA'].map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Diâmetro do Tubo</label>
+                <select value={roleteItem.diametroTubo} onChange={e => updateRoleteField({ diametroTubo: +e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="0">Selecione...</option>
+                  {diametrosTubo.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Parede do Tubo</label>
+                <select value={roleteItem.paredeTubo} onChange={e => updateRoleteField({ paredeTubo: +e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="0">Selecione...</option>
+                  {paredesTubo(roleteItem.diametroTubo).map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Comp. Tubo (mm)</label>
+                <Input type="number" value={roleteItem.comprimentoTubo} onChange={e => updateRoleteField({ comprimentoTubo: +e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Diâmetro do Eixo</label>
+                <select value={roleteItem.diametroEixo} onChange={e => updateRoleteField({ diametroEixo: +e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="0">Selecione...</option>
+                  {diametrosEixo.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Comp. Eixo (mm)</label>
+                <Input type="number" value={roleteItem.comprimentoEixo} onChange={e => updateRoleteField({ comprimentoEixo: +e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Encaixe</label>
+                <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Conjunto/Kit</label>
+                <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Revestimento</label>
+                <select value={roleteItem.especificacaoRevestimento} onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Sem revestimento</option>
+                  {revestimentos.map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Adicional</label>
+                <Input value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} placeholder="Informações adicionais" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-sm">
+              <div>
+                <label className="text-xs text-primary font-medium">Código do Produto</label>
+                <Input placeholder="Ex: RC-102-250" value={codigoRolete} onChange={e => setCodigoRolete(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Quantidade</label>
+                <Input type="number" value={roleteItem.quantidade} onChange={e => updateRoleteField({ quantidade: +e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Multiplicador</label>
+                <Input type="number" step="0.1" value={roleteItem.multiplicador} onChange={e => updateRoleteField({ multiplicador: +e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Desconto (%)</label>
+                <Input type="number" value={roleteItem.desconto} onChange={e => updateRoleteField({ desconto: +e.target.value })} />
+              </div>
+            </div>
+            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-3 gap-3 text-sm">
+              <div><span className="text-xs text-primary">Custo Unit.</span><br /><strong>{fmt(roleteItem.custo)}</strong></div>
+              <div><span className="text-xs text-primary">Valor/Peça</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
+              <div><span className="text-xs text-primary">Total</span><br /><strong>{fmt(roleteItem.valorTotal)}</strong></div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={insertRolete} className="gap-2">✓ Inserir no Orçamento</Button>
+              <Button variant="outline" onClick={() => setShowRoleteForm(false)}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Itens do Orçamento ===== */}
+        {(itensProduto.length > 0 || itensRolete.length > 0) && (
+          <div className="border rounded-lg p-4 bg-card">
+            <h3 className="font-semibold mb-3">Itens do Orçamento ({totalItens})</h3>
+            <div className="space-y-2">
+              {itensProduto.map((item, i) => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
+                  <div className="flex items-center gap-3">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">{produtos.find(p => p.id === item.produtoId)?.codigo || ''} – {item.produtoNome}</p>
+                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorUnitario)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-primary">{fmt(item.valorTotal)}</span>
+                    <button onClick={() => setItensProduto(itensProduto.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {itensRolete.map((item, i) => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
+                  <div className="flex items-center gap-3">
+                    <Settings2 className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo}</p>
+                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorPorPeca)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-primary">{fmt(item.valorTotal)}</span>
+                    <button onClick={() => setItensRolete(itensRolete.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Total + Save */}
+        <div className="border-2 border-primary rounded-lg p-4 flex justify-between items-center">
+          <span className="font-bold text-lg">Total do Orçamento</span>
+          <span className="font-bold text-lg text-primary">{fmt(totalGeral)}</span>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleSave} className="gap-2">Salvar Orçamento</Button>
+          <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+        </div>
+
+        {/* ===== Quick register modals ===== */}
+        {showCadCliente && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
+            <div className="bg-card rounded-lg border p-6 w-full max-w-md space-y-3">
+              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar Cliente</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
+              <Input placeholder="Nome" value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} />
+              <Input placeholder="CNPJ" value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: e.target.value })} />
+              <Input placeholder="E-mail" value={cadCliente.email} onChange={e => setCadCliente({ ...cadCliente, email: e.target.value })} />
+              <Input placeholder="Telefone" value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: e.target.value })} />
+              <Input placeholder="WhatsApp" value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: e.target.value })} />
+              <Input placeholder="Endereço" value={cadCliente.endereco} onChange={e => setCadCliente({ ...cadCliente, endereco: e.target.value })} />
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Cidade" value={cadCliente.cidade} onChange={e => setCadCliente({ ...cadCliente, cidade: e.target.value })} />
+                <Input placeholder="Estado" value={cadCliente.estado} onChange={e => setCadCliente({ ...cadCliente, estado: e.target.value })} />
+              </div>
+              <Button onClick={salvarCliente} className="w-full">Salvar</Button>
+            </div>
+          </div>
+        )}
+
+        {showCadComprador && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
+            <div className="bg-card rounded-lg border p-6 w-full max-w-md space-y-3">
+              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar Comprador</h3><button onClick={() => setShowCadComprador(false)}><XIcon className="h-4 w-4" /></button></div>
+              <Input placeholder="Nome" value={cadComprador.nome} onChange={e => setCadComprador({ ...cadComprador, nome: e.target.value })} />
+              <Input placeholder="Telefone" value={cadComprador.telefone} onChange={e => setCadComprador({ ...cadComprador, telefone: e.target.value })} />
+              <Input placeholder="E-mail" value={cadComprador.email} onChange={e => setCadComprador({ ...cadComprador, email: e.target.value })} />
+              <Input placeholder="WhatsApp" value={cadComprador.whatsapp} onChange={e => setCadComprador({ ...cadComprador, whatsapp: e.target.value })} />
+              <Button onClick={salvarComprador} className="w-full">Salvar</Button>
+            </div>
+          </div>
+        )}
+
+        {showCadProduto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
+            <div className="bg-card rounded-lg border p-6 w-full max-w-md space-y-3">
+              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar Produto</h3><button onClick={() => setShowCadProduto(false)}><XIcon className="h-4 w-4" /></button></div>
+              <Input placeholder="Código" value={cadProduto.codigo} onChange={e => setCadProduto({ ...cadProduto, codigo: e.target.value })} />
+              <Input placeholder="Nome" value={cadProduto.nome} onChange={e => setCadProduto({ ...cadProduto, nome: e.target.value })} />
+              <Input placeholder="Medidas" value={cadProduto.medidas} onChange={e => setCadProduto({ ...cadProduto, medidas: e.target.value })} />
+              <Input placeholder="Descrição" value={cadProduto.descricao} onChange={e => setCadProduto({ ...cadProduto, descricao: e.target.value })} />
+              <Input type="number" step="0.01" placeholder="Valor (R$)" value={cadProduto.valor || ''} onChange={e => setCadProduto({ ...cadProduto, valor: +e.target.value })} />
+              <Button onClick={salvarProduto} className="w-full">Salvar</Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ========== LIST VIEW ==========
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h1 className="text-xl font-bold">Orçamentos</h1>
+        <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Novo Orçamento</Button>
+      </div>
+
+      <div className="border rounded-lg p-4 bg-card">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por cliente ou número..." value={searchList} onChange={e => setSearchList(e.target.value)} className="pl-10" />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {filteredOrcamentos.slice().reverse().map(o => (
+          <div key={o.id} className="border rounded-lg p-4 bg-card flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono font-bold">ORC. {o.numero}</span>
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground uppercase">{o.status === 'RASCUNHO' ? 'ORÇAMENTO' : o.status}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{o.clienteNome || 'Sem cliente'} • {o.dataOrcamento || o.createdAt}</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="font-bold text-primary">{fmt(o.valorTotal)}</p>
+                <p className="text-xs text-muted-foreground">{(o.itensRolete?.length || 0) + (o.itensProduto?.length || 0)} item(s)</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1.5 rounded hover:bg-muted" title="Visualizar">
+                  <Eye className="h-4 w-4" />
+                </button>
+                <button onClick={() => openEdit(o)} className="p-1.5 rounded hover:bg-muted" title="Editar">
+                  <Edit className="h-4 w-4" />
+                </button>
+                <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1.5 rounded hover:bg-muted" title="Imprimir">
+                  <Printer className="h-4 w-4" />
+                </button>
+                <button onClick={() => convertToPedido(o)} className="p-1.5 rounded hover:bg-muted" title="Transformar em Pedido">
+                  <ShoppingCart className="h-4 w-4" />
+                </button>
+                <button onClick={() => deleteOrcamento(o.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filteredOrcamentos.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">Nenhum orçamento encontrado.</div>
+        )}
+      </div>
     </div>
   );
 }
