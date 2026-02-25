@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { store } from '@/lib/store';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { FileText, ShoppingCart, Users, Factory, TrendingUp, Save } from 'lucide-react';
-import { toast } from 'sonner';
+import { FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
@@ -23,22 +20,20 @@ export default function DashboardPage() {
   const [data, setData] = useState({
     orcamentos: 0, pedidos: 0, clientes: 0, os: 0,
     orcRecentes: [] as any[], pedRecentes: [] as any[],
-    taxaConversao: 0,
+    taxaOrcPedido: 0,
+    pedidosEntregues: 0,
+    totalPedidos: 0,
   });
-
-  const [taxaConversao, setTaxaConversao] = useState(0);
 
   useEffect(() => {
     const orc = store.getOrcamentos();
     const ped = store.getPedidos();
     const cli = store.getClientes();
     const os = store.getOrdensServico();
-    const taxa = store.getTaxaConversao();
-    setTaxaConversao(taxa);
 
-    // Calcular taxa real
     const aprovados = orc.filter(o => o.status === 'APROVADO').length;
-    const taxaReal = orc.length > 0 ? ((aprovados / orc.length) * 100) : 0;
+    const taxaOrcPedido = orc.length > 0 ? ((aprovados / orc.length) * 100) : 0;
+    const pedidosEntregues = ped.filter(p => p.status === 'ENTREGUE').length;
 
     setData({
       orcamentos: orc.length,
@@ -47,14 +42,11 @@ export default function DashboardPage() {
       os: os.length,
       orcRecentes: orc.slice(-5).reverse(),
       pedRecentes: ped.slice(-5).reverse(),
-      taxaConversao: +taxaReal.toFixed(1),
+      taxaOrcPedido: +taxaOrcPedido.toFixed(1),
+      pedidosEntregues,
+      totalPedidos: ped.length,
     });
   }, []);
-
-  const saveTaxa = () => {
-    store.saveTaxaConversao(taxaConversao);
-    toast.success('Taxa de conversão salva!');
-  };
 
   return (
     <div className="space-y-6">
@@ -70,30 +62,43 @@ export default function DashboardPage() {
         <StatCard icon={Factory} label="Ordens de Serviço" value={data.os} color="bg-accent/10 text-accent" />
       </div>
 
-      {/* Taxa de Conversão */}
+      {/* Taxa de Conversão Automática */}
       <div className="bg-card rounded-lg border p-5">
         <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-primary" /> Taxa de Conversão (Orçamento → Pedido)
+          <TrendingUp className="h-4 w-4 text-primary" /> Taxa de Conversão
         </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 max-w-xs">
-            <label className="text-xs text-muted-foreground">Taxa Meta (%)</label>
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                step="0.1"
-                value={taxaConversao}
-                onChange={e => setTaxaConversao(+e.target.value)}
-                className="max-w-[120px]"
-              />
-              <Button size="sm" onClick={saveTaxa} className="gap-1">
-                <Save className="h-3.5 w-3.5" /> Salvar
-              </Button>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="text-center p-4 rounded-lg bg-muted/30">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="text-sm text-muted-foreground">Orçamento → Pedido</span>
             </div>
+            <p className="text-3xl font-bold text-primary">{data.taxaOrcPedido}%</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data.orcamentos > 0
+                ? `${Math.round(data.orcamentos * data.taxaOrcPedido / 100)} aprovados de ${data.orcamentos} orçamentos`
+                : 'Nenhum orçamento'}
+            </p>
           </div>
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">Taxa Real</p>
-            <p className="text-3xl font-bold text-primary">{data.taxaConversao}%</p>
+          <div className="text-center p-4 rounded-lg bg-muted/30">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Truck className="h-5 w-5 text-primary" />
+              <span className="text-sm text-muted-foreground">Pedidos Entregues</span>
+            </div>
+            <p className="text-3xl font-bold text-primary">
+              {data.totalPedidos > 0 ? ((data.pedidosEntregues / data.totalPedidos) * 100).toFixed(1) : 0}%
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data.pedidosEntregues} de {data.totalPedidos} pedidos entregues
+            </p>
+          </div>
+          <div className="text-center p-4 rounded-lg bg-muted/30">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Factory className="h-5 w-5 text-primary" />
+              <span className="text-sm text-muted-foreground">O.S. Ativas</span>
+            </div>
+            <p className="text-3xl font-bold text-primary">{data.os}</p>
+            <p className="text-xs text-muted-foreground mt-1">Ordens de serviço em andamento</p>
           </div>
         </div>
       </div>
