@@ -301,7 +301,7 @@ export default function OrcamentosPage() {
           {/* Header */}
           <div className="flex justify-between items-start mb-8">
             <div className="flex items-start gap-4">
-              <img src={logo} alt="Rollerport" className="h-16 w-16 object-contain" />
+              <img src={logo} alt="Rollerport" className="h-24 w-24 object-contain" />
               <div>
                 <h2 className="text-xl font-bold">ROLLERPORT</h2>
                 <p className="text-xs text-muted-foreground">Roletes para Correia Transportadora</p>

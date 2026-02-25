@@ -4,7 +4,7 @@ import type { ItemEstoque } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, Eye, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 const emptyItem = (): ItemEstoque => ({
@@ -12,12 +12,34 @@ const emptyItem = (): ItemEstoque => ({
   createdAt: new Date().toISOString().split('T')[0],
 });
 
+function buildDefaultEstoque(): ItemEstoque[] {
+  const items: ItemEstoque[] = [];
+  let idx = 1;
+  const add = (nome: string, categoria: string, unidade = 'metro') => {
+    items.push({ id: String(idx++), nome, categoria, quantidade: 100, unidade, nivelCritico: 10, createdAt: new Date().toISOString().split('T')[0] });
+  };
+  store.getTubos().forEach(t => add(`Tubo ø${t.diametro} parede ${t.parede}`, 'Tubos'));
+  store.getEixos().forEach(e => add(`Eixo ø${e.diametro}`, 'Eixos'));
+  store.getConjuntos().forEach(c => add(`Conjunto ${c.codigo}`, 'Conjuntos', 'un'));
+  store.getRevestimentos().forEach(r => add(`Revestimento ${r.tipo}`, 'Revestimentos'));
+  store.getEncaixes().forEach(e => add(`Encaixe ${e.tipo}`, 'Encaixes', 'un'));
+  return items;
+}
+
 export default function EstoquePage() {
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ItemEstoque>(emptyItem());
+  const [viewItem, setViewItem] = useState<ItemEstoque | null>(null);
 
-  useEffect(() => { setItens(store.getEstoque()); }, []);
+  useEffect(() => {
+    let data = store.getEstoque();
+    if (data.length === 0) {
+      data = buildDefaultEstoque();
+      store.saveEstoque(data);
+    }
+    setItens(data);
+  }, []);
 
   const handleSave = () => {
     let updated: ItemEstoque[];
@@ -64,6 +86,22 @@ export default function EstoquePage() {
         </Dialog>
       </div>
 
+      {/* View item dialog */}
+      <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Detalhes do Item</DialogTitle></DialogHeader>
+          {viewItem && (
+            <div className="space-y-2 text-sm">
+              <div><span className="text-muted-foreground">Nome:</span> <strong>{viewItem.nome}</strong></div>
+              <div><span className="text-muted-foreground">Categoria:</span> <strong>{viewItem.categoria}</strong></div>
+              <div><span className="text-muted-foreground">Quantidade:</span> <strong>{viewItem.quantidade} {viewItem.unidade}</strong></div>
+              <div><span className="text-muted-foreground">Nível Crítico:</span> <strong>{viewItem.nivelCritico}</strong></div>
+              <div><span className="text-muted-foreground">Cadastrado em:</span> <strong>{viewItem.createdAt}</strong></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="bg-card rounded-lg border overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -73,7 +111,7 @@ export default function EstoquePage() {
               <th className="text-right p-3 font-medium">Quantidade</th>
               <th className="text-left p-3 font-medium">Unidade</th>
               <th className="text-right p-3 font-medium">Nível Crítico</th>
-              <th className="p-3 w-20"></th>
+              <th className="p-3 w-28"></th>
             </tr>
           </thead>
           <tbody>
@@ -87,9 +125,12 @@ export default function EstoquePage() {
                 <td className="p-3 text-right font-mono">{item.quantidade}</td>
                 <td className="p-3">{item.unidade}</td>
                 <td className="p-3 text-right font-mono">{item.nivelCritico}</td>
-                <td className="p-3 flex gap-1">
-                  <button onClick={() => { setEditing(item); setOpen(true); }} className="text-primary hover:text-primary/80">✏️</button>
-                  <button onClick={() => handleDelete(item.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
+                <td className="p-3">
+                  <div className="flex gap-1 justify-end">
+                    <button onClick={() => setViewItem(item)} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
+                    <button onClick={() => { setEditing(item); setOpen(true); }} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </td>
               </tr>
             ))}
