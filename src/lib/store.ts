@@ -1,6 +1,7 @@
 import type {
   Tubo, Eixo, Conjunto, Revestimento, Encaixe,
-  Cliente, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto
+  Cliente, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
+  Notificacao, MetaVendedor
 } from './types';
 
 function load<T>(key: string, fallback: T): T {
@@ -85,11 +86,11 @@ const SEED_CLIENTES: Cliente[] = [
 ];
 
 const SEED_PRODUTOS: Produto[] = [
-  { id: '1', codigo: 'RC-001', nome: 'Rolete de Carga', tipo: 'RC', medidas: '', descricao: 'Rolete de carga padrão', valor: 0, createdAt: '2025-01-01' },
-  { id: '2', codigo: 'RR-001', nome: 'Rolete de Retorno', tipo: 'RR', medidas: '', descricao: 'Rolete de retorno padrão', valor: 0, createdAt: '2025-01-01' },
-  { id: '3', codigo: 'RG-001', nome: 'Rolete Guia', tipo: 'RG', medidas: '', descricao: 'Rolete guia padrão', valor: 0, createdAt: '2025-01-01' },
-  { id: '4', codigo: 'RI-001', nome: 'Rolete de Impacto', tipo: 'RI', medidas: '', descricao: 'Rolete de impacto padrão', valor: 0, createdAt: '2025-01-01' },
-  { id: '5', codigo: 'RRA-001', nome: 'Rolete de Retorno com Anéis', tipo: 'RRA', medidas: '', descricao: 'Rolete de retorno auto-limpante com anéis', valor: 0, createdAt: '2025-01-01' },
+  { id: '1', codigo: 'RC-001', nome: 'Rolete de Carga', tipo: 'RC', medidas: '', descricao: 'Rolete de carga padrão', miniDescricao: 'Rolete para correia transportadora', valor: 0, createdAt: '2025-01-01' },
+  { id: '2', codigo: 'RR-001', nome: 'Rolete de Retorno', tipo: 'RR', medidas: '', descricao: 'Rolete de retorno padrão', miniDescricao: 'Rolete de retorno', valor: 0, createdAt: '2025-01-01' },
+  { id: '3', codigo: 'RG-001', nome: 'Rolete Guia', tipo: 'RG', medidas: '', descricao: 'Rolete guia padrão', miniDescricao: 'Rolete guia lateral', valor: 0, createdAt: '2025-01-01' },
+  { id: '4', codigo: 'RI-001', nome: 'Rolete de Impacto', tipo: 'RI', medidas: '', descricao: 'Rolete de impacto padrão', miniDescricao: 'Rolete de impacto para carga', valor: 0, createdAt: '2025-01-01' },
+  { id: '5', codigo: 'RRA-001', nome: 'Rolete de Retorno com Anéis', tipo: 'RRA', medidas: '', descricao: 'Rolete de retorno auto-limpante com anéis', miniDescricao: 'Rolete auto-limpante', valor: 0, createdAt: '2025-01-01' },
 ];
 
 const SEED_USUARIOS: Usuario[] = [
@@ -134,6 +135,12 @@ export const store = {
 
   getUsuarios: (): Usuario[] => load('rp_usuarios', SEED_USUARIOS),
   saveUsuarios: (d: Usuario[]) => save('rp_usuarios', d),
+
+  getNotificacoes: (): Notificacao[] => load('rp_notificacoes', []),
+  saveNotificacoes: (d: Notificacao[]) => save('rp_notificacoes', d),
+
+  getMetas: (): MetaVendedor[] => load('rp_metas', []),
+  saveMetas: (d: MetaVendedor[]) => save('rp_metas', d),
 
   // Settings
   getTaxaConversao: (): number => load('rp_taxa_conversao', 0),

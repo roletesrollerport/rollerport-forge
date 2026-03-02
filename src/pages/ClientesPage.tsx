@@ -4,14 +4,15 @@ import type { Cliente, Comprador } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
-const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '' });
+const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
 
 const emptyCliente = (): Cliente => ({
   id: '', nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
   compradores: [emptyComprador()],
+  aniversarioEmpresa: '', redesSociais: '',
   createdAt: new Date().toISOString().split('T')[0],
 });
 
@@ -20,8 +21,12 @@ export default function ClientesPage() {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Cliente>(emptyCliente());
+  const [viewCliente, setViewCliente] = useState<Cliente | null>(null);
 
   useEffect(() => { setClientes(store.getClientes()); }, []);
+
+  const orcamentos = store.getOrcamentos();
+  const pedidos = store.getPedidos();
 
   const filtered = clientes.filter(c =>
     c.nome.toLowerCase().includes(search.toLowerCase()) ||
@@ -64,6 +69,16 @@ export default function ClientesPage() {
     setEditing({ ...editing, compradores: editing.compradores.filter((_, i) => i !== idx) });
   };
 
+  const getUltimoOrcamento = (clienteId: string) => {
+    const orcs = orcamentos.filter(o => o.clienteId === clienteId);
+    return orcs.length > 0 ? orcs[orcs.length - 1].dataOrcamento || orcs[orcs.length - 1].createdAt : '-';
+  };
+
+  const getUltimaCompra = (clienteNome: string) => {
+    const peds = pedidos.filter(p => p.clienteNome === clienteNome && p.status === 'ENTREGUE');
+    return peds.length > 0 ? peds[peds.length - 1].createdAt : '-';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -86,6 +101,8 @@ export default function ClientesPage() {
               <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={editing.endereco} onChange={e => setEditing({ ...editing, endereco: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={editing.cidade} onChange={e => setEditing({ ...editing, cidade: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Estado</label><Input value={editing.estado} onChange={e => setEditing({ ...editing, estado: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Aniversário da Empresa</label><Input type="date" value={editing.aniversarioEmpresa || ''} onChange={e => setEditing({ ...editing, aniversarioEmpresa: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={editing.redesSociais || ''} onChange={e => setEditing({ ...editing, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
             </div>
 
             {/* Compradores */}
@@ -107,6 +124,8 @@ export default function ClientesPage() {
                     <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={comp.telefone} onChange={e => updateComprador(idx, { telefone: e.target.value })} /></div>
                     <div><label className="text-xs text-muted-foreground">Email</label><Input value={comp.email} onChange={e => updateComprador(idx, { email: e.target.value })} /></div>
                     <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={comp.whatsapp} onChange={e => updateComprador(idx, { whatsapp: e.target.value })} /></div>
+                    <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={comp.aniversario || ''} onChange={e => updateComprador(idx, { aniversario: e.target.value })} /></div>
+                    <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={comp.redesSociais || ''} onChange={e => updateComprador(idx, { redesSociais: e.target.value })} placeholder="Instagram..." /></div>
                   </div>
                 </div>
               ))}
@@ -124,15 +143,45 @@ export default function ClientesPage() {
         <Input placeholder="Buscar por nome ou CNPJ..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
       </div>
 
+      {/* View Dialog */}
+      <Dialog open={!!viewCliente} onOpenChange={() => setViewCliente(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{viewCliente?.nome}</DialogTitle></DialogHeader>
+          {viewCliente && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-muted-foreground">CNPJ:</span> <strong>{viewCliente.cnpj}</strong></div>
+                <div><span className="text-muted-foreground">Cidade:</span> <strong>{viewCliente.cidade}/{viewCliente.estado}</strong></div>
+                <div><span className="text-muted-foreground">Telefone:</span> <strong>{viewCliente.telefone}</strong></div>
+                <div><span className="text-muted-foreground">WhatsApp:</span> <strong>{viewCliente.whatsapp}</strong></div>
+                <div><span className="text-muted-foreground">Email:</span> <strong>{viewCliente.email}</strong></div>
+                <div><span className="text-muted-foreground">Aniversário:</span> <strong>{viewCliente.aniversarioEmpresa || '-'}</strong></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Redes Sociais:</span> <strong>{viewCliente.redesSociais || '-'}</strong></div>
+              </div>
+              <div className="border-t pt-3">
+                <h4 className="font-semibold text-xs mb-2">Compradores</h4>
+                {(viewCliente.compradores || []).map((c, i) => (
+                  <div key={i} className="bg-muted/20 rounded p-2 mb-1 text-xs">
+                    <strong>{c.nome}</strong> • {c.telefone} • {c.email} {c.aniversario && `• Aniv: ${c.aniversario}`}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="bg-card rounded-lg border overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Nome</th>
+              <th className="text-left p-3 font-medium">Empresa</th>
               <th className="text-left p-3 font-medium">CNPJ</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">WhatsApp</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Compradores</th>
-              <th className="p-3 w-20"></th>
+              <th className="text-left p-3 font-medium hidden md:table-cell">Cidade</th>
+              <th className="text-left p-3 font-medium hidden lg:table-cell">Último Orçamento</th>
+              <th className="text-left p-3 font-medium hidden lg:table-cell">Última Compra</th>
+              <th className="text-left p-3 font-medium hidden xl:table-cell">Aniv. Empresa</th>
+              <th className="p-3 w-24">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -140,17 +189,20 @@ export default function ClientesPage() {
               <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30">
                 <td className="p-3 font-medium">{c.nome}</td>
                 <td className="p-3 font-mono text-xs">{c.cnpj}</td>
-                <td className="p-3 hidden md:table-cell">{c.whatsapp || c.telefone}</td>
-                <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">
-                  {(c.compradores || []).map(comp => comp.nome).filter(Boolean).join(', ') || '-'}
-                </td>
-                <td className="p-3 flex gap-1">
-                  <button onClick={() => { setEditing({ ...c, compradores: c.compradores?.length ? c.compradores : [emptyComprador()] }); setOpen(true); }} className="text-primary hover:text-primary/80"><Edit className="h-4 w-4" /></button>
-                  <button onClick={() => handleDelete(c.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
+                <td className="p-3 hidden md:table-cell">{c.cidade}/{c.estado}</td>
+                <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">{getUltimoOrcamento(c.id)}</td>
+                <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">{getUltimaCompra(c.nome)}</td>
+                <td className="p-3 hidden xl:table-cell text-muted-foreground text-xs">{c.aniversarioEmpresa || '-'}</td>
+                <td className="p-3">
+                  <div className="flex gap-1">
+                    <button onClick={() => setViewCliente(c)} className="p-1 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
+                    <button onClick={() => { setEditing({ ...c, compradores: c.compradores?.length ? c.compradores : [emptyComprador()] }); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => handleDelete(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>}
           </tbody>
         </table>
       </div>
