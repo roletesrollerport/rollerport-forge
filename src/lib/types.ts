@@ -129,6 +129,7 @@ export interface Orcamento {
   dataOrcamento: string;
   previsaoEntrega: string;
   observacao: string;
+  prazoPagamento?: string;
   dataEntrega: string;
   itensRolete: ItemOrcamento[];
   itensProduto: ItemProdutoOrcamento[];

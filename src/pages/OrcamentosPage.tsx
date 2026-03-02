@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
+import qrcode from '@/assets/qrcode-rollerport.jpeg';
 
 const emptyItem = (): ItemOrcamento => ({
   id: '', tipoRolete: '' as any, quantidade: '' as any, diametroTubo: '' as any, paredeTubo: '' as any, comprimentoTubo: '' as any,
@@ -151,7 +152,7 @@ export default function OrcamentosPage() {
           clienteId,
           clienteNome: clientes.find(c => c.id === clienteId)?.nome || 'Sem cliente',
           compradorNome: compradorSelecionado,
-          tipoFrete, condicaoPagamento, vendedor, dataOrcamento,
+          tipoFrete, condicaoPagamento, vendedor, dataOrcamento, prazoPagamento,
           previsaoEntrega, observacao,
           dataEntrega: previsaoEntrega,
           itensRolete, itensProduto,
@@ -196,6 +197,7 @@ export default function OrcamentosPage() {
     setObservacao(orc.observacao || '');
     setItensRolete(orc.itensRolete || []);
     setItensProduto(orc.itensProduto || []);
+    setPrazoPagamento((orc as any).prazoPagamento || '');
     setView('form');
   };
 
@@ -210,7 +212,7 @@ export default function OrcamentosPage() {
       numero: editingOrc?.numero || store.nextNumero('orc'),
       clienteId,
       clienteNome: clienteSelecionado?.nome || 'Sem cliente',
-      tipoFrete, condicaoPagamento, vendedor, dataOrcamento,
+      tipoFrete, condicaoPagamento, vendedor, dataOrcamento, prazoPagamento,
       previsaoEntrega, observacao,
       dataEntrega: previsaoEntrega,
       itensRolete, itensProduto,
@@ -401,10 +403,7 @@ export default function OrcamentosPage() {
       });
     });
 
-    const hasCodigoExterno = allPrintItems.some(i => i.codExterno);
-
     const totals = allPrintItems.reduce((acc, i) => ({
-      qtd: acc.qtd + i.qtd,
       valorLiquido: acc.valorLiquido + i.valorLiquido * i.qtd,
       pis: acc.pis + i.pis * i.qtd,
       cofins: acc.cofins + i.cofins * i.qtd,
@@ -412,7 +411,7 @@ export default function OrcamentosPage() {
       icmsDestino: acc.icmsDestino + i.icmsDestino * i.qtd,
       valorTotal: acc.valorTotal + i.valorTotal,
       valorIPI: acc.valorIPI + i.valorIPI,
-    }), { qtd: 0, valorLiquido: 0, pis: 0, cofins: 0, icmsOrigem: 0, icmsDestino: 0, valorTotal: 0, valorIPI: 0 });
+    }), { valorLiquido: 0, pis: 0, cofins: 0, icmsOrigem: 0, icmsDestino: 0, valorTotal: 0, valorIPI: 0 });
 
     // Find vendedor info
     const usuarios = store.getUsuarios();
@@ -430,17 +429,21 @@ export default function OrcamentosPage() {
         </div>
 
         <div className="bg-white text-black border rounded-lg p-6 mx-auto print:border-0 print:shadow-none print:p-4" style={{ maxWidth: '1200px' }}>
-          {/* ===== HEADER: Logo+Rollerport left, Cliente right ===== */}
+          {/* ===== HEADER: Logo+Rollerport left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
-            <div className="flex items-start gap-3">
-              <img src={logo} alt="Rollerport" className="h-20 w-20 object-contain" />
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Rollerport" className="h-16 object-contain" />
               <div>
-                <h2 className="text-lg font-bold">ROLLERPORT</h2>
-                <p className="text-[10px]">Roletes para Correia Transportadora</p>
+                <h2 className="text-base font-bold leading-tight">ROLLERPORT</h2>
+                <p className="text-[10px] font-semibold">Fábrica de Roletes</p>
                 <p className="text-[10px]">Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial</p>
                 <p className="text-[10px]">Franco da Rocha/SP – CEP: 07832-460</p>
                 <p className="text-[10px]">CNPJ: 58.234.180/0001-56</p>
                 <p className="text-[10px]">Tel: (11) 4441-3572 • contato@rollerport.com.br</p>
+              </div>
+              <div className="flex flex-col items-center ml-2">
+                <img src={qrcode} alt="QR Code Rollerport" className="h-14 w-14 object-contain" />
+                <p className="text-[7px] text-gray-500 mt-0.5 text-center leading-tight">Aponte a câmera<br/>para nossas redes</p>
               </div>
             </div>
             {cli && (
@@ -463,7 +466,7 @@ export default function OrcamentosPage() {
           <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs border-y py-2">
             <span>Orçamento Nº: <strong>{viewOrc.numero}</strong></span>
             <span>Data: <strong>{viewOrc.dataOrcamento}</strong></span>
-            <span>{vendedorUser?.genero === 'F' ? 'Vendedora' : 'Vendedor'}: <strong>{viewOrc.vendedor || '-'}</strong></span>
+            <span>{vendedorUser?.genero === 'F' ? 'Vendedora' : (vendedorUser ? 'Vendedor' : 'Vendedor')}: <strong>{viewOrc.vendedor || '-'}</strong></span>
             {vendedorUser?.telefone && <span>Tel: <strong>{vendedorUser.telefone}</strong></span>}
             {vendedorUser?.whatsapp && <span>WhatsApp: <strong>{vendedorUser.whatsapp}</strong></span>}
             {vendedorUser?.email && <span>E-mail: <strong>{vendedorUser.email}</strong></span>}
@@ -481,15 +484,15 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center">Item</th>
                 <th className="border p-1 text-center">Qtd</th>
                 <th className="border p-1 text-center">Código</th>
-                {hasCodigoExterno && <th className="border p-1 text-center">Cód. Externo</th>}
-                <th className="border p-1 text-left" style={{minWidth: '280px'}}>Descrição do Produto</th>
+                <th className="border p-1 text-center">Cód. Externo</th>
+                <th className="border p-1 text-left" style={{minWidth: '220px'}}>Descrição do Produto</th>
+                <th className="border p-1 text-right">Vlr Unitário</th>
                 <th className="border p-1 text-center">NCM</th>
                 <th className="border p-1 text-right">Vlr Líquido</th>
                 <th className="border p-1 text-right">PIS</th>
                 <th className="border p-1 text-right">Cofins</th>
                 <th className="border p-1 text-right">ICMS Origem</th>
                 <th className="border p-1 text-right">ICMS Destino</th>
-                <th className="border p-1 text-right">Vlr Unitário</th>
                 <th className="border p-1 text-right">Vlr Total</th>
                 <th className="border p-1 text-right">Vlr c/ IPI</th>
               </tr>
@@ -500,30 +503,29 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center">{String(row.item).padStart(2, '0')}</td>
                   <td className="border p-1 text-center">{row.qtd}</td>
                   <td className="border p-1 text-center">{row.codigo}</td>
-                  {hasCodigoExterno && <td className="border p-1 text-center">{row.codExterno || '-'}</td>}
+                  <td className="border p-1 text-center">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
+                  <td className="border p-1 text-right">{fmt(row.valorUnitario)}</td>
                   <td className="border p-1 text-center">{row.ncm || '-'}</td>
                   <td className="border p-1 text-right">{fmt(row.valorLiquido)}</td>
                   <td className="border p-1 text-right">{fmt(row.pis)}</td>
                   <td className="border p-1 text-right">{fmt(row.cofins)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsOrigem)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsDestino)}</td>
-                  <td className="border p-1 text-right">{fmt(row.valorUnitario)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorTotal)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorIPI)}</td>
                 </tr>
               ))}
               {/* TOTALS ROW */}
               <tr className="bg-gray-100 font-bold">
-                <td className="border p-1 text-center" colSpan={1}>TOTAL</td>
-                <td className="border p-1 text-center">{totals.qtd}</td>
-                <td className="border p-1" colSpan={hasCodigoExterno ? 4 : 3}></td>
+                <td className="border p-1 text-center" colSpan={2}>TOTAL</td>
+                <td className="border p-1" colSpan={4}></td>
+                <td className="border p-1 text-center"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorLiquido)}</td>
                 <td className="border p-1 text-right">{fmt(totals.pis)}</td>
                 <td className="border p-1 text-right">{fmt(totals.cofins)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsDestino)}</td>
-                <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
               </tr>
@@ -532,7 +534,7 @@ export default function OrcamentosPage() {
 
           {/* ===== Footer ===== */}
           <div className="mt-4 grid grid-cols-3 gap-4 text-[10px] border-t pt-3">
-            <div>Previsão de Entrega: <strong>{viewOrc.previsaoEntrega || '-'}</strong></div>
+            <div>Previsão de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></div>
             <div>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></div>
             <div>Tipo de Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></div>
           </div>
@@ -549,11 +551,27 @@ export default function OrcamentosPage() {
             </div>
           )}
 
+          {/* Boleto conditions */}
+          {viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento && (
+            <div className="mt-3 border rounded p-3 text-[10px]">
+              <p className="font-bold mb-1">Condições do Boleto:</p>
+              <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
+            </div>
+          )}
+
+          {/* Cheque conditions */}
+          {viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento && (
+            <div className="mt-3 border rounded p-3 text-[10px]">
+              <p className="font-bold mb-1">Condições do Cheque:</p>
+              <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
+            </div>
+          )}
+
           {viewOrc.observacao && (
             <div className="text-[10px] mt-2">Observação: <strong>{viewOrc.observacao}</strong></div>
           )}
           <div className="text-center text-[10px] mt-6">
-            <p className="font-semibold">ROLLERPORT – Roletes para Correia Transportadora</p>
+            <p className="font-semibold">ROLLERPORT – Fábrica de Roletes</p>
             <p className="text-gray-500">Orçamento válido por 5 dias úteis.</p>
           </div>
         </div>
