@@ -513,6 +513,48 @@ export default function OrcamentosPage() {
             </div>
           </div>
 
+          {/* Detalhes da forma de pagamento */}
+          {(condicaoPagamento === 'Boleto' || condicaoPagamento === 'Cheque') && (
+            <div className="bg-muted/20 rounded-lg p-3 border">
+              <label className="text-xs text-primary font-medium">
+                {condicaoPagamento === 'Boleto' ? 'Prazo do Boleto' : 'Prazo do Cheque'}
+              </label>
+              <Input
+                placeholder={condicaoPagamento === 'Boleto' ? 'Ex: 30/60/90 dias' : 'Ex: 30/60/90 dias'}
+                value={observacao.includes(`[${condicaoPagamento}:`) ? '' : ''}
+                onChange={e => {
+                  // Store payment detail in a separate state field within observacao
+                  const regex = new RegExp(`\\[${condicaoPagamento}:.*?\\]`, 'g');
+                  const cleanObs = observacao.replace(regex, '').trim();
+                  setObservacao(e.target.value ? `${cleanObs} [${condicaoPagamento}: ${e.target.value}]`.trim() : cleanObs);
+                }}
+                className="mt-1"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {condicaoPagamento === 'Boleto' ? 'Informe os dias para vencimento. Ex: 30/60/90 dias' : 'Informe para quantos dias será o cheque. Ex: 30/60/90 dias'}
+              </p>
+            </div>
+          )}
+          {condicaoPagamento === 'PIX' && (
+            <div className="bg-muted/20 rounded-lg p-3 border text-xs">
+              <p className="font-semibold text-primary mb-1">Dados para PIX / Transferência:</p>
+              <p>BANCO SANTANDER</p>
+              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
+              <p>CNPJ: 10.311.350/0001-22</p>
+              <p>Agência: 3744 | Conta Corrente: 130094436</p>
+              <p>PIX: 10.311.350/0001-22</p>
+            </div>
+          )}
+          {condicaoPagamento === 'Transferência Bancária' && (
+            <div className="bg-muted/20 rounded-lg p-3 border text-xs">
+              <p className="font-semibold text-primary mb-1">Dados para Transferência Bancária:</p>
+              <p>BANCO SANTANDER</p>
+              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
+              <p>CNPJ: 10.311.350/0001-22</p>
+              <p>Agência: 3744 | Conta Corrente: 130094436</p>
+            </div>
+          )}
+
           {/* Data, Previsão, Comprador */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -669,13 +711,19 @@ export default function OrcamentosPage() {
                 <Input type="number" value={roleteItem.comprimentoEixo} onChange={e => updateRoleteField({ comprimentoEixo: +e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-primary font-medium">Encaixe</label>
+                <label className="text-xs text-primary font-medium">Tipo do Encaixe</label>
                 <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
+                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo} {e.preco > 0 ? `(R$ ${e.preco.toFixed(2).replace('.', ',')})` : '(grátis)'}</option>)}
                 </select>
               </div>
+              {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
+                <div>
+                  <label className="text-xs text-primary font-medium">Medida do Encaixe</label>
+                  <Input placeholder="Medida manual" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
+                </div>
+              )}
               <div>
                 <label className="text-xs text-primary font-medium">Conjunto/Kit</label>
                 <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
@@ -713,22 +761,26 @@ export default function OrcamentosPage() {
                 <Input value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} placeholder="Informações adicionais" />
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-3 text-sm">
               <div>
                 <label className="text-xs text-primary font-medium">Código do Produto</label>
                 <Input placeholder="Ex: RC-102-250" value={codigoRolete} onChange={e => setCodigoRolete(e.target.value)} />
               </div>
               <div>
-                <label className="text-xs text-primary font-medium">Quantidade</label>
-                <Input type="number" value={roleteItem.quantidade} onChange={e => updateRoleteField({ quantidade: +e.target.value })} />
+                <label className="text-xs text-primary font-medium">Código Externo</label>
+                <Input placeholder="Código do cliente" value={(roleteItem as any).codigoExterno || ''} onChange={e => updateRoleteField({ codigoCliente: e.target.value } as any)} />
               </div>
               <div>
-                <label className="text-xs text-primary font-medium">Multiplicador</label>
-                <Input type="number" step="0.1" value={roleteItem.multiplicador} onChange={e => updateRoleteField({ multiplicador: +e.target.value })} />
+                <label className="text-xs text-primary font-medium">Quantidade</label>
+                <Input type="number" value={roleteItem.quantidade || ''} onChange={e => updateRoleteField({ quantidade: e.target.value ? +e.target.value : '' as any })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">Multiplicador {roleteItem.multiplicador}%</label>
+                <Input type="number" step="0.1" value={roleteItem.multiplicador || ''} onChange={e => updateRoleteField({ multiplicador: e.target.value ? +e.target.value : '' as any })} />
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Desconto (%)</label>
-                <Input type="number" value={roleteItem.desconto} onChange={e => updateRoleteField({ desconto: +e.target.value })} />
+                <Input type="number" value={roleteItem.desconto || ''} onChange={e => updateRoleteField({ desconto: e.target.value ? +e.target.value : '' as any })} />
               </div>
             </div>
             <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-3 gap-3 text-sm">

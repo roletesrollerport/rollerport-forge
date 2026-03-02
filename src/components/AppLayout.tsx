@@ -17,7 +17,7 @@ const navItems = [
   { to: '/pedidos', label: 'Pedidos', icon: ShoppingCart },
   { to: '/producao', label: 'Produção', icon: Factory },
   { to: '/estoque', label: 'Estoque', icon: Warehouse },
-  { to: '/chat', label: 'Chat', icon: MessageSquare },
+  { to: '/chat', label: 'Bate-Papo', icon: MessageSquare },
   { to: '/ia', label: 'IA', icon: Bot },
   { to: '/usuarios', label: 'Usuários', icon: UserCog },
 ];
