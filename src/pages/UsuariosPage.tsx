@@ -4,7 +4,7 @@ import type { Usuario, NivelAcesso } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ImagePlus, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 const niveis: { value: NivelAcesso; label: string }[] = [
@@ -47,6 +47,14 @@ export default function UsuariosPage() {
     toast.success('Usuário removido!');
   };
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setEditing({ ...editing, foto: reader.result as string } as any);
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -61,6 +69,25 @@ export default function UsuariosPage() {
           <DialogContent>
             <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo'} Usuário</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              {/* Photo */}
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-dashed border-muted-foreground/30">
+                  {(editing as any).foto ? (
+                    <img src={(editing as any).foto} alt="Foto" className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-8 w-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <label className="cursor-pointer flex items-center gap-2 text-sm text-primary hover:text-primary/80">
+                    <ImagePlus className="h-4 w-4" /> Escolher Foto
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  </label>
+                  {(editing as any).foto && (
+                    <button onClick={() => setEditing({ ...editing, foto: undefined } as any)} className="text-xs text-destructive mt-1">Remover foto</button>
+                  )}
+                </div>
+              </div>
               <div><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Email</label><Input type="email" value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></div>
               <div>
@@ -83,6 +110,7 @@ export default function UsuariosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
+              <th className="p-3 w-12"></th>
               <th className="text-left p-3 font-medium">Nome</th>
               <th className="text-left p-3 font-medium">Email</th>
               <th className="text-left p-3 font-medium">Nível</th>
@@ -93,6 +121,15 @@ export default function UsuariosPage() {
           <tbody>
             {usuarios.map(u => (
               <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
+                <td className="p-3">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                    {(u as any).foto ? (
+                      <img src={(u as any).foto} alt={u.nome} className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </td>
                 <td className="p-3 font-medium">{u.nome}</td>
                 <td className="p-3 text-muted-foreground">{u.email}</td>
                 <td className="p-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span></td>

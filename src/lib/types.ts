@@ -103,6 +103,9 @@ export interface ItemOrcamento {
   desconto: number;
   valorPorPeca: number;
   valorTotal: number;
+  ncm?: string;
+  codigoExterno?: string;
+  codigoProduto?: string;
 }
 
 export interface ItemProdutoOrcamento {
@@ -213,6 +216,7 @@ export interface Usuario {
   email: string;
   nivel: NivelAcesso;
   ativo: boolean;
+  foto?: string;
   createdAt: string;
 }
 

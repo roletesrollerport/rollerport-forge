@@ -4,7 +4,7 @@ import type { Cliente, Comprador } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
@@ -27,26 +27,18 @@ export default function ClientesPage() {
   const orcamentos = store.getOrcamentos();
   const pedidos = store.getPedidos();
 
-  // Comprehensive search across all fields
   const filtered = clientes.filter(c => {
     const s = search.toLowerCase();
     if (!s) return true;
     const compradorMatch = (c.compradores || []).some(comp =>
-      comp.nome?.toLowerCase().includes(s) ||
-      comp.telefone?.includes(s) ||
-      comp.email?.toLowerCase().includes(s) ||
-      comp.whatsapp?.includes(s)
+      comp.nome?.toLowerCase().includes(s) || comp.telefone?.includes(s) ||
+      comp.email?.toLowerCase().includes(s) || comp.whatsapp?.includes(s)
     );
     return (
-      c.nome?.toLowerCase().includes(s) ||
-      c.cnpj?.includes(s) ||
-      c.email?.toLowerCase().includes(s) ||
-      c.telefone?.includes(s) ||
-      c.whatsapp?.includes(s) ||
-      c.endereco?.toLowerCase().includes(s) ||
-      c.cidade?.toLowerCase().includes(s) ||
-      c.estado?.toLowerCase().includes(s) ||
-      compradorMatch
+      c.nome?.toLowerCase().includes(s) || c.cnpj?.includes(s) ||
+      c.email?.toLowerCase().includes(s) || c.telefone?.includes(s) ||
+      c.whatsapp?.includes(s) || c.endereco?.toLowerCase().includes(s) ||
+      c.cidade?.toLowerCase().includes(s) || c.estado?.toLowerCase().includes(s) || compradorMatch
     );
   });
 
@@ -67,7 +59,6 @@ export default function ClientesPage() {
     compradores[idx] = { ...compradores[idx], ...partial };
     setEditing({ ...editing, compradores });
   };
-
   const addComprador = () => setEditing({ ...editing, compradores: [...editing.compradores, emptyComprador()] });
   const removeComprador = (idx: number) => { if (editing.compradores.length <= 1) return; setEditing({ ...editing, compradores: editing.compradores.filter((_, i) => i !== idx) }); };
 
@@ -78,11 +69,6 @@ export default function ClientesPage() {
   const getUltimaCompra = (clienteNome: string) => {
     const peds = pedidos.filter(p => p.clienteNome === clienteNome && p.status === 'ENTREGUE');
     return peds.length > 0 ? peds[peds.length - 1].createdAt : '-';
-  };
-  const getAnivComprador = (c: Cliente) => {
-    const comps = (c.compradores || []).filter(comp => comp.aniversario);
-    if (comps.length === 0) return '-';
-    return comps.map(comp => `${comp.nome}: ${comp.aniversario}`).join(', ');
   };
 
   return (
@@ -151,18 +137,16 @@ export default function ClientesPage() {
                 <div><span className="text-muted-foreground">CNPJ:</span> <strong>{viewCliente.cnpj}</strong></div>
                 <div><span className="text-muted-foreground">Cidade:</span> <strong>{viewCliente.cidade}/{viewCliente.estado}</strong></div>
                 <div><span className="text-muted-foreground">Telefone:</span> <strong>{viewCliente.telefone}</strong></div>
-                <div><span className="text-muted-foreground">WhatsApp:</span> <strong>{viewCliente.whatsapp}</strong></div>
                 <div><span className="text-muted-foreground">Email:</span> <strong>{viewCliente.email}</strong></div>
                 <div><span className="text-muted-foreground">Aniv. Empresa:</span> <strong>{viewCliente.aniversarioEmpresa || '-'}</strong></div>
+                <div><span className="text-muted-foreground">Redes (Empresa):</span> <strong>{viewCliente.redesSociais || '-'}</strong></div>
                 <div className="col-span-2"><span className="text-muted-foreground">Endereço:</span> <strong>{viewCliente.endereco}</strong></div>
-                <div className="col-span-2"><span className="text-muted-foreground">Redes Sociais (Empresa):</span> <strong>{viewCliente.redesSociais || '-'}</strong></div>
               </div>
               <div className="border-t pt-3">
                 <h4 className="font-semibold text-xs mb-2">Compradores</h4>
                 {(viewCliente.compradores || []).map((c, i) => (
                   <div key={i} className="bg-muted/20 rounded p-2 mb-1 text-xs">
                     <strong>{c.nome}</strong> • {c.telefone} • {c.email}
-                    {c.whatsapp && ` • WhatsApp: ${c.whatsapp}`}
                     {c.aniversario && ` • Aniv: ${c.aniversario}`}
                     {c.redesSociais && ` • Redes: ${c.redesSociais}`}
                   </div>
@@ -173,46 +157,83 @@ export default function ClientesPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="bg-card rounded-lg border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Empresa</th>
-              <th className="text-left p-3 font-medium">CNPJ</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Cidade</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Telefone</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Aniv. Empresa</th>
-              <th className="text-left p-3 font-medium hidden xl:table-cell">Redes (Empresa)</th>
-              <th className="text-left p-3 font-medium hidden xl:table-cell">Aniv. Comprador</th>
-              <th className="text-left p-3 font-medium hidden 2xl:table-cell">Último Orçamento</th>
-              <th className="text-left p-3 font-medium hidden 2xl:table-cell">Última Compra</th>
-              <th className="p-3 w-24">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(c => (
-              <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="p-3 font-medium">{c.nome}</td>
-                <td className="p-3 font-mono text-xs">{c.cnpj}</td>
-                <td className="p-3 hidden md:table-cell">{c.cidade}/{c.estado}</td>
-                <td className="p-3 hidden lg:table-cell text-xs">{c.telefone}</td>
-                <td className="p-3 hidden lg:table-cell text-xs">{c.aniversarioEmpresa || '-'}</td>
-                <td className="p-3 hidden xl:table-cell text-xs truncate max-w-[100px]">{c.redesSociais || '-'}</td>
-                <td className="p-3 hidden xl:table-cell text-xs truncate max-w-[150px]" title={getAnivComprador(c)}>{getAnivComprador(c)}</td>
-                <td className="p-3 hidden 2xl:table-cell text-muted-foreground text-xs">{getUltimoOrcamento(c.id)}</td>
-                <td className="p-3 hidden 2xl:table-cell text-muted-foreground text-xs">{getUltimaCompra(c.nome)}</td>
-                <td className="p-3">
-                  <div className="flex gap-1">
-                    <button onClick={() => setViewCliente(c)} className="p-1 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
-                    <button onClick={() => { setEditing({ ...c, compradores: c.compradores?.length ? c.compradores : [emptyComprador()] }); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => handleDelete(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+      {/* GRID de Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filtered.map(c => {
+          const anivCompradores = (c.compradores || []).filter(comp => comp.aniversario).map(comp => `${comp.nome}: ${comp.aniversario}`);
+          return (
+            <div key={c.id} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-sm truncate">{c.nome}</h3>
+                  <p className="text-xs text-muted-foreground font-mono">{c.cnpj}</p>
+                </div>
+                <div className="flex gap-1 ml-2 flex-shrink-0">
+                  <button onClick={() => setViewCliente(c)} className="p-1 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => { setEditing({ ...c, compradores: c.compradores?.length ? c.compradores : [emptyComprador()] }); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => handleDelete(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Phone className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{c.telefone || '-'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Mail className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{c.email || '-'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Building2 className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{c.cidade}/{c.estado}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Último Orçamento:</span>
+                  <span className="font-medium">{getUltimoOrcamento(c.id)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Última Compra:</span>
+                  <span className="font-medium">{getUltimaCompra(c.nome)}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t space-y-1 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Cake className="h-3 w-3 text-primary flex-shrink-0" />
+                  <span className="text-muted-foreground">Empresa:</span>
+                  <span className="font-medium">{c.aniversarioEmpresa || '-'}</span>
+                </div>
+                {anivCompradores.length > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <Calendar className="h-3 w-3 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-muted-foreground">Compradores:</span>
+                      {anivCompradores.map((a, i) => (
+                        <p key={i} className="font-medium">{a}</p>
+                      ))}
+                    </div>
                   </div>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>}
-          </tbody>
-        </table>
+                )}
+              </div>
+
+              {(c.compradores || []).length > 0 && (
+                <div className="mt-3 pt-3 border-t text-xs">
+                  <span className="text-muted-foreground font-medium">Compradores:</span>
+                  {(c.compradores || []).map((comp, i) => (
+                    <p key={i} className="truncate mt-0.5">{comp.nome} {comp.telefone ? `• ${comp.telefone}` : ''}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="col-span-full text-center py-12 text-muted-foreground">Nenhum cliente encontrado.</div>
+        )}
       </div>
     </div>
   );
