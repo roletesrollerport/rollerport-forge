@@ -12,10 +12,10 @@ import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
 const emptyItem = (): ItemOrcamento => ({
-  id: '', tipoRolete: 'RC', quantidade: 1, diametroTubo: 0, paredeTubo: 0, comprimentoTubo: 0,
-  comprimentoEixo: 0, diametroEixo: 0, tipoEncaixe: '', medidaFresado: '', conjunto: '',
-  tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: 0, custo: 0,
-  multiplicador: 1.8, desconto: 0, valorPorPeca: 0, valorTotal: 0,
+  id: '', tipoRolete: '' as any, quantidade: '' as any, diametroTubo: '' as any, paredeTubo: '' as any, comprimentoTubo: '' as any,
+  comprimentoEixo: '' as any, diametroEixo: '' as any, tipoEncaixe: '', medidaFresado: '', conjunto: '',
+  tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: '' as any, custo: 0,
+  multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '',
 });
 
 function calcItem(item: ItemOrcamento): ItemOrcamento {
@@ -680,52 +680,52 @@ export default function OrcamentosPage() {
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Diâmetro do Tubo</label>
-                <select value={roleteItem.diametroTubo} onChange={e => updateRoleteField({ diametroTubo: +e.target.value })}
+                <select value={roleteItem.diametroTubo || ''} onChange={e => updateRoleteField({ diametroTubo: +e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="0">Selecione...</option>
+                  <option value="">Selecione...</option>
                   {diametrosTubo.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Parede do Tubo</label>
-                <select value={roleteItem.paredeTubo} onChange={e => updateRoleteField({ paredeTubo: +e.target.value })}
+                <select value={roleteItem.paredeTubo || ''} onChange={e => updateRoleteField({ paredeTubo: +e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="0">Selecione...</option>
+                  <option value="">Selecione...</option>
                   {paredesTubo(roleteItem.diametroTubo).map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Tubo (mm)</label>
-                <Input type="number" value={roleteItem.comprimentoTubo} onChange={e => updateRoleteField({ comprimentoTubo: +e.target.value })} />
+                <Input type="number" value={roleteItem.comprimentoTubo || ''} onChange={e => updateRoleteField({ comprimentoTubo: e.target.value ? +e.target.value : '' as any })} />
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Diâmetro do Eixo</label>
-                <select value={roleteItem.diametroEixo} onChange={e => updateRoleteField({ diametroEixo: +e.target.value })}
+                <select value={roleteItem.diametroEixo || ''} onChange={e => updateRoleteField({ diametroEixo: +e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="0">Selecione...</option>
+                  <option value="">Selecione...</option>
                   {diametrosEixo.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Eixo (mm)</label>
-                <Input type="number" value={roleteItem.comprimentoEixo} onChange={e => updateRoleteField({ comprimentoEixo: +e.target.value })} />
+                <Input type="number" value={roleteItem.comprimentoEixo || ''} onChange={e => updateRoleteField({ comprimentoEixo: e.target.value ? +e.target.value : '' as any })} />
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Tipo do Encaixe</label>
                 <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo} {e.preco > 0 ? `(R$ ${e.preco.toFixed(2).replace('.', ',')})` : '(grátis)'}</option>)}
+                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
                 </select>
               </div>
               {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
                 <div>
-                  <label className="text-xs text-primary font-medium">Medida do Encaixe</label>
-                  <Input placeholder="Medida manual" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
+                  <label className="text-xs text-primary font-medium">Medidas do Fresado</label>
+                  <Input placeholder="Medida do encaixe" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
                 </div>
               )}
               <div>
-                <label className="text-xs text-primary font-medium">Conjunto/Kit</label>
+                <label className="text-xs text-primary font-medium">Conjunto/Kits</label>
                 <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
@@ -742,7 +742,7 @@ export default function OrcamentosPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-primary font-medium">Revest. Anéis</label>
+                <label className="text-xs text-primary font-medium">Revest. Borracha</label>
                 <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
                   onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'ANEIS' : '', quantidadeAneis: e.target.value ? (roleteItem.quantidadeAneis || 1) : 0 })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
@@ -758,17 +758,17 @@ export default function OrcamentosPage() {
               )}
               <div>
                 <label className="text-xs text-primary font-medium">Adicional</label>
-                <Input value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} placeholder="Informações adicionais" />
+                <Input value={(roleteItem as any).adicional || ''} onChange={e => updateRoleteField({ adicional: e.target.value } as any)} placeholder="Informações adicionais" />
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-3 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mt-3 text-sm">
               <div>
                 <label className="text-xs text-primary font-medium">Código do Produto</label>
                 <Input placeholder="Ex: RC-102-250" value={codigoRolete} onChange={e => setCodigoRolete(e.target.value)} />
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Código Externo</label>
-                <Input placeholder="Código do cliente" value={(roleteItem as any).codigoExterno || ''} onChange={e => updateRoleteField({ codigoCliente: e.target.value } as any)} />
+                <Input placeholder="Código do cliente" value={(roleteItem as any).codigoExterno || ''} onChange={e => updateRoleteField({ codigoExterno: e.target.value } as any)} />
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Quantidade</label>
@@ -777,6 +777,10 @@ export default function OrcamentosPage() {
               <div>
                 <label className="text-xs text-primary font-medium">Multiplicador {roleteItem.multiplicador}%</label>
                 <Input type="number" step="0.1" value={roleteItem.multiplicador || ''} onChange={e => updateRoleteField({ multiplicador: e.target.value ? +e.target.value : '' as any })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">NCM</label>
+                <Input placeholder="NCM" value={(roleteItem as any).ncm || ''} onChange={e => updateRoleteField({ ncm: e.target.value } as any)} />
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Desconto (%)</label>
