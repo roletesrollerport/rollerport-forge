@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, Bot, LogOut, User
+  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import type { Usuario } from '@/lib/types';
@@ -27,6 +27,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
+  const [viewNotif, setViewNotif] = useState<string | null>(null);
   const location = useLocation();
 
   const notificacoes = store.getNotificacoes();
@@ -83,6 +84,17 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const marcarLida = (id: string) => {
     const updated = notificacoes.map(n => n.id === id ? { ...n, lida: true } : n);
     store.saveNotificacoes(updated);
+  };
+
+  const excluirNotif = (id: string) => {
+    const updated = notificacoes.filter(n => n.id !== id);
+    store.saveNotificacoes(updated);
+    setViewNotif(null);
+  };
+
+  const excluirTodas = () => {
+    store.saveNotificacoes([]);
+    setViewNotif(null);
   };
 
   return (
@@ -154,20 +166,52 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
             </button>
             {showNotif && (
               <div className="absolute right-0 top-full mt-2 w-80 bg-card border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                <div className="p-3 border-b font-semibold text-sm">Notificações</div>
-                {notificacoes.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground text-center">Nenhuma notificação</div>
-                ) : (
-                  notificacoes.slice(-10).reverse().map(n => (
-                    <div
-                      key={n.id}
-                      className={`p-3 border-b last:border-0 text-sm cursor-pointer hover:bg-muted/30 ${!n.lida ? 'bg-primary/5' : ''}`}
-                      onClick={() => marcarLida(n.id)}
-                    >
-                      <p className="font-medium text-xs">{n.titulo}</p>
+                <div className="p-3 border-b font-semibold text-sm flex items-center justify-between">
+                  <span>Notificações</span>
+                  {notificacoes.length > 0 && (
+                    <button onClick={excluirTodas} className="text-[10px] text-destructive hover:underline">Limpar tudo</button>
+                  )}
+                </div>
+                {viewNotif ? (() => {
+                  const n = notificacoes.find(x => x.id === viewNotif);
+                  if (!n) { setViewNotif(null); return null; }
+                  return (
+                    <div className="p-4 space-y-2">
+                      <button onClick={() => setViewNotif(null)} className="text-xs text-primary hover:underline">← Voltar</button>
+                      <p className="font-semibold text-sm">{n.titulo}</p>
                       <p className="text-xs text-muted-foreground">{n.mensagem}</p>
+                      <p className="text-[10px] text-muted-foreground">{new Date(n.createdAt).toLocaleString('pt-BR')}</p>
+                      <button onClick={() => excluirNotif(n.id)} className="flex items-center gap-1 text-xs text-destructive hover:underline mt-2">
+                        <Trash2 className="h-3 w-3" /> Excluir
+                      </button>
                     </div>
-                  ))
+                  );
+                })() : (
+                  notificacoes.length === 0 ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">Nenhuma notificação</div>
+                  ) : (
+                    notificacoes.slice(-10).reverse().map(n => (
+                      <div
+                        key={n.id}
+                        className={`p-3 border-b last:border-0 text-sm ${!n.lida ? 'bg-primary/5' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs truncate">{n.titulo}</p>
+                            <p className="text-xs text-muted-foreground truncate">{n.mensagem}</p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button onClick={() => { marcarLida(n.id); setViewNotif(n.id); }} className="p-1 rounded hover:bg-muted text-primary" title="Ver">
+                              <Eye className="h-3 w-3" />
+                            </button>
+                            <button onClick={() => excluirNotif(n.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )
                 )}
               </div>
             )}
