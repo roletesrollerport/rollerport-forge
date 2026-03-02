@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { store } from '@/lib/store';
 import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ const emptyItem = (): ItemOrcamento => ({
   id: '', tipoRolete: 'RC', quantidade: 1, diametroTubo: 0, paredeTubo: 0, comprimentoTubo: 0,
   comprimentoEixo: 0, diametroEixo: 0, tipoEncaixe: '', medidaFresado: '', conjunto: '',
   tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: 0, custo: 0,
-  multiplicador: 1.9, desconto: 0, valorPorPeca: 0, valorTotal: 0,
+  multiplicador: 1.8, desconto: 0, valorPorPeca: 0, valorTotal: 0,
 });
 
 function calcItem(item: ItemOrcamento): ItemOrcamento {
@@ -121,6 +121,40 @@ export default function OrcamentosPage() {
   const diametrosEixo = eixos.map(e => e.diametro);
 
   useEffect(() => { setOrcamentos(store.getOrcamentos()); }, []);
+
+  // Autosave as draft every 10 seconds when in form view
+  const autosaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (view === 'form') {
+      autosaveTimer.current = setInterval(() => {
+        if (!clienteId && itensRolete.length === 0 && itensProduto.length === 0) return;
+        const orc: Orcamento = {
+          id: editingOrc?.id || store.nextId('orc'),
+          numero: editingOrc?.numero || store.nextNumero('orc'),
+          clienteId,
+          clienteNome: clientes.find(c => c.id === clienteId)?.nome || 'Sem cliente',
+          compradorNome: compradorSelecionado,
+          tipoFrete, condicaoPagamento, vendedor, dataOrcamento,
+          previsaoEntrega, observacao,
+          dataEntrega: previsaoEntrega,
+          itensRolete, itensProduto,
+          status: editingOrc?.status || 'RASCUNHO',
+          valorTotal: +(itensRolete.reduce((s, i) => s + i.valorTotal, 0) + itensProduto.reduce((s, i) => s + i.valorTotal, 0)).toFixed(2),
+          createdAt: editingOrc?.createdAt || new Date().toISOString().split('T')[0],
+        };
+        let updated: Orcamento[];
+        if (editingOrc) {
+          updated = orcamentos.map(o => o.id === editingOrc.id ? orc : o);
+        } else {
+          updated = [...orcamentos, orc];
+          setEditingOrc(orc);
+        }
+        store.saveOrcamentos(updated);
+        setOrcamentos(updated);
+      }, 10000);
+    }
+    return () => { if (autosaveTimer.current) clearInterval(autosaveTimer.current); };
+  }, [view, clienteId, tipoFrete, condicaoPagamento, vendedor, previsaoEntrega, observacao, itensRolete, itensProduto, compradorSelecionado]);
 
   const resetForm = () => {
     setClienteId(''); setClienteSearch(''); setTipoFrete('FOB');
