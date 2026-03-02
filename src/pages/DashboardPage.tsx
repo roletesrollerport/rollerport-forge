@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { store } from '@/lib/store';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
-  Eye, Printer, Download, Target
+  Eye, Printer, Download, Target, Save
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
@@ -39,11 +42,15 @@ export default function DashboardPage() {
   const [data, setData] = useState({
     orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[],
     taxaOrcPedido: 0, pedidosEntregues: 0, totalPedidos: 0,
-    // Status breakdowns
     orcRascunho: 0, orcEnviado: 0, orcAguardando: 0, orcAprovado: 0, orcReprovado: 0,
     pedPendente: 0, pedConfirmado: 0, pedProducao: 0, pedConcluido: 0, pedEntregue: 0,
   });
   const [metas, setMetas] = useState(store.getMetas());
+  const [editingMeta, setEditingMeta] = useState<{ vendedor: string; valor: number } | null>(null);
+
+  // Check if current user is master (simplified - in production use auth)
+  const currentUser = store.getUsuarios().find(u => u.nivel === 'master');
+  const isMaster = !!currentUser;
 
   useEffect(() => {
     const orc = store.getOrcamentos();
@@ -75,26 +82,25 @@ export default function DashboardPage() {
   const totalOrc = data.orcamentos.length;
   const totalPed = data.pedidos.length;
 
-  // Vendedor evolution data
   const usuarios = store.getUsuarios();
   const vendedores = usuarios.filter(u => u.nivel === 'vendedor' || u.nivel === 'master');
 
   const vendedorStats = vendedores.map(v => {
-    const orcVendedor = data.orcamentos.filter(o => o.vendedor === v.nome);
-    const pedVendedor = data.pedidos.filter(p => {
-      const orc = data.orcamentos.find(o => o.id === p.orcamentoId);
-      return orc?.vendedor === v.nome;
+    const orcVendedor = data.orcamentos.filter((o: any) => o.vendedor === v.nome);
+    const pedVendedor = data.pedidos.filter((p: any) => {
+      const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
+      return (orc as any)?.vendedor === v.nome;
     });
-    const totalVendido = pedVendedor.reduce((s, p) => s + p.valorTotal, 0);
+    const totalVendido = pedVendedor.reduce((s: number, p: any) => s + p.valorTotal, 0);
     const meta = metas.find(m => m.vendedor === v.nome);
-    const naoFecharam = orcVendedor.filter(o => o.status === 'REPROVADO' || o.status === 'RASCUNHO').length;
-    const conversao = orcVendedor.length > 0 ? ((orcVendedor.filter(o => o.status === 'APROVADO').length / orcVendedor.length) * 100) : 0;
+    const naoFecharam = orcVendedor.filter((o: any) => o.status === 'REPROVADO' || o.status === 'RASCUNHO').length;
+    const conversao = orcVendedor.length > 0 ? ((orcVendedor.filter((o: any) => o.status === 'APROVADO').length / orcVendedor.length) * 100) : 0;
 
     return {
       nome: v.nome,
       clientesCadastrados: data.clientes.length,
       orcFeitos: orcVendedor.length,
-      conversaoPedido: orcVendedor.filter(o => o.status === 'APROVADO').length,
+      conversaoPedido: orcVendedor.filter((o: any) => o.status === 'APROVADO').length,
       naoFecharam,
       totalVendido,
       percentualConversao: +conversao.toFixed(1),
@@ -102,10 +108,23 @@ export default function DashboardPage() {
     };
   });
 
-  // Clientes que receberam orçamento e não fecharam
+  const saveMeta = (vendedorNome: string, valor: number) => {
+    const existing = metas.find(m => m.vendedor === vendedorNome);
+    let updated;
+    if (existing) {
+      updated = metas.map(m => m.vendedor === vendedorNome ? { ...m, metaMensal: valor } : m);
+    } else {
+      updated = [...metas, { vendedor: vendedorNome, metaMensal: valor }];
+    }
+    store.saveMetas(updated);
+    setMetas(updated);
+    setEditingMeta(null);
+    toast.success('Meta salva!');
+  };
+
   const clientesNaoFecharam = data.orcamentos
-    .filter(o => o.status === 'REPROVADO' || o.status === 'ENVIADO' || o.status === 'AGUARDANDO')
-    .map(o => ({ numero: o.numero, cliente: o.clienteNome, data: o.dataOrcamento, valor: o.valorTotal, status: o.status }));
+    .filter((o: any) => o.status === 'REPROVADO' || o.status === 'ENVIADO' || o.status === 'AGUARDANDO')
+    .map((o: any) => ({ numero: o.numero, cliente: o.clienteNome, data: o.dataOrcamento, valor: o.valorTotal, status: o.status }));
 
   return (
     <div className="space-y-6">
@@ -208,7 +227,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {data.orcamentos.slice(-10).reverse().map(o => (
+              {data.orcamentos.slice(-10).reverse().map((o: any) => (
                 <tr key={`o-${o.id}`} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 font-mono text-xs">{o.numero}</td>
                   <td className="p-3">{o.clienteNome}</td>
@@ -233,7 +252,7 @@ export default function DashboardPage() {
                   </td>
                 </tr>
               ))}
-              {data.pedidos.slice(-5).reverse().map(p => (
+              {data.pedidos.slice(-5).reverse().map((p: any) => (
                 <tr key={`p-${p.id}`} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 font-mono text-xs">{p.numero}</td>
                   <td className="p-3">{p.clienteNome}</td>
@@ -299,7 +318,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Evolução do Vendedor - GRID */}
+      {/* Evolução do Vendedor - GRID with Meta editing */}
       <div className="bg-card rounded-lg border p-5">
         <h2 className="font-semibold mb-4 flex items-center gap-2">
           <Target className="h-4 w-4 text-primary" /> Evolução do Vendedor
@@ -316,33 +335,70 @@ export default function DashboardPage() {
                 <th className="text-right p-3 font-medium">Total Vendido</th>
                 <th className="text-center p-3 font-medium">% Conversão</th>
                 <th className="text-right p-3 font-medium">Meta Mensal</th>
+                <th className="text-center p-3 font-medium">Progresso</th>
               </tr>
             </thead>
             <tbody>
-              {vendedorStats.map((v, i) => (
-                <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-3 font-medium">{v.nome}</td>
-                  <td className="p-3 text-center">{v.clientesCadastrados}</td>
-                  <td className="p-3 text-center">{v.orcFeitos}</td>
-                  <td className="p-3 text-center font-medium text-success">{v.conversaoPedido}</td>
-                  <td className="p-3 text-center text-destructive">{v.naoFecharam}</td>
-                  <td className="p-3 text-right font-mono">{fmt(v.totalVendido)}</td>
-                  <td className="p-3 text-center">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      v.percentualConversao >= 50 ? 'bg-success/10 text-success' :
-                      v.percentualConversao >= 25 ? 'bg-secondary/10 text-secondary' :
-                      'bg-destructive/10 text-destructive'
-                    }`}>{v.percentualConversao}%</span>
-                  </td>
-                  <td className="p-3 text-right font-mono">{v.metaMensal > 0 ? fmt(v.metaMensal) : '-'}</td>
-                </tr>
-              ))}
+              {vendedorStats.map((v, i) => {
+                const metaPct = v.metaMensal > 0 ? Math.min((v.totalVendido / v.metaMensal) * 100, 100) : 0;
+                return (
+                  <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="p-3 font-medium">{v.nome}</td>
+                    <td className="p-3 text-center">{v.clientesCadastrados}</td>
+                    <td className="p-3 text-center">{v.orcFeitos}</td>
+                    <td className="p-3 text-center font-medium text-success">{v.conversaoPedido}</td>
+                    <td className="p-3 text-center text-destructive">{v.naoFecharam}</td>
+                    <td className="p-3 text-right font-mono">{fmt(v.totalVendido)}</td>
+                    <td className="p-3 text-center">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        v.percentualConversao >= 50 ? 'bg-success/10 text-success' :
+                        v.percentualConversao >= 25 ? 'bg-secondary/10 text-secondary' :
+                        'bg-destructive/10 text-destructive'
+                      }`}>{v.percentualConversao}%</span>
+                    </td>
+                    <td className="p-3 text-right">
+                      {editingMeta?.vendedor === v.nome ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            className="h-7 w-24 text-xs"
+                            value={editingMeta.valor || ''}
+                            onChange={e => setEditingMeta({ ...editingMeta, valor: +e.target.value })}
+                            autoFocus
+                          />
+                          <button onClick={() => saveMeta(v.nome, editingMeta.valor)} className="text-success hover:text-success/80">
+                            <Save className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          className={`font-mono ${isMaster ? 'cursor-pointer hover:text-primary underline decoration-dashed' : ''}`}
+                          onClick={() => isMaster && setEditingMeta({ vendedor: v.nome, valor: v.metaMensal })}
+                          title={isMaster ? 'Clique para editar meta' : 'Somente Master pode editar'}
+                        >
+                          {v.metaMensal > 0 ? fmt(v.metaMensal) : '-'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {v.metaMensal > 0 && (
+                        <div className="flex items-center gap-2 min-w-[100px]">
+                          <Progress value={metaPct} className="h-2 flex-1" />
+                          <span className="text-xs font-mono">{metaPct.toFixed(0)}%</span>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {vendedorStats.length === 0 && (
-                <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhum vendedor cadastrado.</td></tr>
+                <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Nenhum vendedor cadastrado.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        {isMaster && <p className="text-[10px] text-muted-foreground mt-2">💡 Clique no valor da meta para editar (somente Master)</p>}
       </div>
     </div>
   );

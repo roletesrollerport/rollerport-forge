@@ -65,6 +65,10 @@ export default function PedidosPage() {
     const updatedOrcs = orcamentos.map(o => o.id === orc.id ? { ...o, status: 'APROVADO' as const } : o);
     store.saveOrcamentos(updatedOrcs);
     setOrcamentos(updatedOrcs);
+    // Notification
+    const notifs = store.getNotificacoes();
+    notifs.push({ id: store.nextId('notif'), tipo: 'pedido', titulo: `Novo Pedido ${pedido.numero}`, mensagem: `Pedido gerado para ${orc.clienteNome} - ${fmt(orc.valorTotal)}`, lida: false, createdAt: new Date().toISOString() });
+    store.saveNotificacoes(notifs);
     toast.success(`Pedido ${pedido.numero} gerado!`);
   };
 
@@ -121,6 +125,10 @@ export default function PedidosPage() {
     const oss = [...store.getOrdensServico(), os];
     store.saveOrdensServico(oss);
     updateStatus(pedido.id, 'EM_PRODUCAO');
+    // Notification
+    const notifs = store.getNotificacoes();
+    notifs.push({ id: store.nextId('notif'), tipo: 'producao', titulo: `O.S. ${os.numero} Gerada`, mensagem: `Ordem de serviço criada para ${pedido.clienteNome}`, lida: false, createdAt: new Date().toISOString() });
+    store.saveNotificacoes(notifs);
     toast.success(`O.S. ${os.numero} gerada!`);
   };
 
