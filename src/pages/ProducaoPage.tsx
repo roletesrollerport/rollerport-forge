@@ -94,10 +94,9 @@ export default function ProducaoPage() {
           <th className="p-2 text-left font-semibold">COMP. TUBO</th>
           <th className="p-2 text-left font-semibold">COMP. EIXO</th>
           <th className="p-2 text-left font-semibold">ø EIXO</th>
-          <th className="p-2 text-left font-semibold">TIPO ENCAIXE</th>
-          <th className="p-2 text-left font-semibold">MEDIDA ENCAIXE</th>
-          <th className="p-2 text-left font-semibold">FURO EIXO</th>
-          <th className="p-2 text-left font-semibold">REVESTIMENTO</th>
+           <th className="p-2 text-left font-semibold">TIPO ENCAIXE</th>
+           <th className="p-2 text-left font-semibold">FRESA</th>
+           <th className="p-2 text-left font-semibold">REVESTIMENTO</th>
         </tr></thead>
         <tbody>
           {items.map((item, idx) => (
@@ -111,9 +110,8 @@ export default function ProducaoPage() {
               <td className="p-2">{item.comprimentoEixo}</td>
               <td className="p-2">{item.diametroEixo}</td>
               <td className="p-2">{item.tipoEncaixe}</td>
-              <td className="p-2">{editable ? <Input className="h-7 w-16 text-xs" value={item.encaixeFresado} onChange={e => updateItemField(idx, 'encaixeFresado', e.target.value)} /> : item.encaixeFresado}</td>
-              <td className="p-2">{editable ? <Input className="h-7 w-16 text-xs" value={item.furoEixo} onChange={e => updateItemField(idx, 'furoEixo', e.target.value)} /> : item.furoEixo}</td>
-              <td className="p-2">{item.revestimento || '-'}</td>
+               <td className="p-2">{editable ? <Input className="h-7 w-16 text-xs" value={item.encaixeFresado} onChange={e => updateItemField(idx, 'encaixeFresado', e.target.value)} /> : item.encaixeFresado}</td>
+               <td className="p-2">{item.revestimento || '-'}</td>
             </tr>
           ))}
         </tbody>
