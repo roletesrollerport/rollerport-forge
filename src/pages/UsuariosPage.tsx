@@ -4,7 +4,7 @@ import type { Usuario, NivelAcesso, Genero } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, ImagePlus, User, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 const niveis: { value: NivelAcesso; label: string }[] = [
@@ -138,46 +138,53 @@ export default function UsuariosPage() {
         </Dialog>
       </div>
 
-      <div className="bg-card rounded-lg border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="p-3 w-12"></th>
-              <th className="text-left p-3 font-medium">Nome</th>
-              <th className="text-left p-3 font-medium">Login</th>
-              <th className="text-left p-3 font-medium">Email</th>
-              <th className="text-left p-3 font-medium">Telefone</th>
-              <th className="text-left p-3 font-medium">Nível</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="p-3 w-20"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {usuarios.map(u => (
-              <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="p-3">
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                    {u.foto ? (
-                      <img src={u.foto} alt={u.nome} className="h-full w-full object-cover" />
-                    ) : (
-                      <User className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                </td>
-                <td className="p-3 font-medium">{u.nome}</td>
-                <td className="p-3 text-muted-foreground">{u.login}</td>
-                <td className="p-3 text-muted-foreground">{u.email}</td>
-                <td className="p-3 text-muted-foreground">{u.telefone || '-'}</td>
-                <td className="p-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span></td>
-                <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span></td>
-                <td className="p-3 flex gap-1">
-                  <button onClick={() => { setEditing(u); setOpen(true); }} className="text-primary hover:text-primary/80">✏️</button>
-                  <button onClick={() => handleDelete(u.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* GRID de Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {usuarios.map(u => (
+          <div key={u.id} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-primary/20">
+                {u.foto ? (
+                  <img src={u.foto} alt={u.nome} className="h-full w-full object-cover" />
+                ) : (
+                  <User className="h-7 w-7 text-muted-foreground" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-sm truncate">{u.nome || 'Sem nome'}</h3>
+                <p className="text-xs text-muted-foreground font-mono">{u.login}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span>
+                </div>
+              </div>
+              <div className="flex gap-1 flex-shrink-0">
+                <button onClick={() => { setEditing(u); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
+                <button onClick={() => handleDelete(u.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Mail className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{u.email || '-'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Phone className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{u.telefone || '-'}</span>
+              </div>
+              {u.whatsapp && (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Phone className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">WhatsApp: {u.whatsapp}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {usuarios.length === 0 && (
+          <div className="col-span-full text-center py-12 text-muted-foreground">Nenhum usuário cadastrado.</div>
+        )}
       </div>
     </div>
   );

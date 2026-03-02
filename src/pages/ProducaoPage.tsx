@@ -95,7 +95,7 @@ export default function ProducaoPage() {
           <th className="p-2 text-left font-semibold">COMP. EIXO</th>
           <th className="p-2 text-left font-semibold">ø EIXO</th>
            <th className="p-2 text-left font-semibold">TIPO ENCAIXE</th>
-           <th className="p-2 text-left font-semibold">FRESA</th>
+           <th className="p-2 text-left font-semibold">MED. ENCAIXE</th>
            <th className="p-2 text-left font-semibold">REVESTIMENTO</th>
         </tr></thead>
         <tbody>
@@ -122,17 +122,22 @@ export default function ProducaoPage() {
   const EtapasSection = ({ items, editable }: { items: ItemOS[], editable?: boolean }) => (
     <div className="mt-4 border-t pt-3">
       <h3 className="font-bold text-xs mb-2">ETAPAS DE PRODUÇÃO</h3>
-      <div className="flex flex-wrap gap-4">
-        {etapas.map(etapa => (
-          <label key={etapa} className="flex items-center gap-1.5 text-xs">
-            <input type="checkbox"
-              checked={items.some(i => (i as any)[etapa])}
-              onChange={() => editable && items.forEach((_, idx) => toggleEtapa(idx, etapa))}
-              readOnly={!editable}
-              className="h-4 w-4 rounded border-primary text-primary accent-primary"
-            />
-            <span className="font-medium uppercase">{etapa}</span>
-          </label>
+      <div className="space-y-2">
+        {items.map((item, itemIdx) => (
+          <div key={itemIdx} className="flex items-center gap-4 border rounded p-2 bg-muted/20">
+            <span className="text-xs font-semibold min-w-[60px]">Item {item.item}</span>
+            {etapas.map(etapa => (
+              <label key={etapa} className="flex items-center gap-1.5 text-xs">
+                <input type="checkbox"
+                  checked={(item as any)[etapa] || false}
+                  onChange={() => editable && toggleEtapa(itemIdx, etapa)}
+                  readOnly={!editable}
+                  className="h-4 w-4 rounded border-primary text-primary accent-primary"
+                />
+                <span className="font-medium uppercase">{etapa}</span>
+              </label>
+            ))}
+          </div>
         ))}
       </div>
     </div>

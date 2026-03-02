@@ -394,7 +394,7 @@ export default function OrcamentosPage() {
       const ipiVal = +(vliq * taxaIPI).toFixed(2);
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
-        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo}x${ir.paredeTubo}mm Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` Fresa: ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`,
+        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo}x${ir.paredeTubo}mm Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` Enc: ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`,
         ncm: ir.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
         icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ir.valorPorPeca,
         valorTotal: ir.valorTotal, valorIPI: +(ir.valorTotal + ipiVal * ir.quantidade).toFixed(2),
@@ -834,8 +834,8 @@ export default function OrcamentosPage() {
               </div>
               {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
                 <div>
-                   <label className="text-xs text-primary font-medium">Medida da Fresa</label>
-                  <Input placeholder="Medida da fresa" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
+                   <label className="text-xs text-primary font-medium">Medida do Encaixe</label>
+                  <Input placeholder="Medida do encaixe" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
                 </div>
               )}
               <div>
