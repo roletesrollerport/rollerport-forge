@@ -274,7 +274,15 @@ export const store = {
   getEstoque: (): ItemEstoque[] => load('rp_estoque', []),
   saveEstoque: (d: ItemEstoque[]) => save('rp_estoque', d),
 
-  getUsuarios: (): Usuario[] => load('rp_usuarios', SEED_USUARIOS),
+  getUsuarios: (): Usuario[] => {
+    const users = load('rp_usuarios', SEED_USUARIOS);
+    // Auto-fix: if users lack login/senha (old data), replace with seed
+    if (users.length > 0 && !users[0].login) {
+      save('rp_usuarios', SEED_USUARIOS);
+      return SEED_USUARIOS;
+    }
+    return users;
+  },
   saveUsuarios: (d: Usuario[]) => save('rp_usuarios', d),
 
   getNotificacoes: (): Notificacao[] => load('rp_notificacoes', []),
