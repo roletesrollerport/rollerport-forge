@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { store } from '@/lib/store';
 import type { Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Save, Eye, Edit, X, ImagePlus } from 'lucide-react';
+import { Plus, Trash2, Save, Eye, Edit, X, ImagePlus, Download, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 type CustoTab = 'tubos' | 'eixos' | 'conjuntos' | 'spiraflex' | 'aneis' | 'encaixes';
 
@@ -74,6 +75,104 @@ export default function CustosPage() {
     setEditingId(null); toast.success('Custos salvos com sucesso!');
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const tSheet = XLSX.utils.json_to_sheet(tubos.map(t => ({ Diâmetro: t.diametro, Parede: t.parede, 'Valor/Metro': t.valorMetro })));
+    XLSX.utils.book_append_sheet(wb, tSheet, 'Tubos');
+    const eSheet = XLSX.utils.json_to_sheet(eixos.map(e => ({ Diâmetro: e.diametro, 'Valor/Metro': e.valorMetro })));
+    XLSX.utils.book_append_sheet(wb, eSheet, 'Eixos');
+    const cSheet = XLSX.utils.json_to_sheet(conjuntos.map(c => ({ Código: c.codigo, Valor: c.valor })));
+    XLSX.utils.book_append_sheet(wb, cSheet, 'Conjuntos');
+    const sSheet = XLSX.utils.json_to_sheet(revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => ({ Tipo: r.tipo, 'Valor/Metro': r.valorMetroOuPeca })));
+    XLSX.utils.book_append_sheet(wb, sSheet, 'Spiraflex');
+    const aSheet = XLSX.utils.json_to_sheet(revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => ({ Modelo: r.tipo, 'Valor/Peça': r.valorMetroOuPeca })));
+    XLSX.utils.book_append_sheet(wb, aSheet, 'Anéis');
+    const encSheet = XLSX.utils.json_to_sheet(encaixes.map(e => ({ Tipo: e.tipo, Preço: e.preco })));
+    XLSX.utils.book_append_sheet(wb, encSheet, 'Encaixes');
+    XLSX.writeFile(wb, 'Custos_Rollerport.xlsx');
+    toast.success('Arquivo exportado!');
+  };
+
+  const exportModelo = () => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Diâmetro: '', Parede: '', 'Valor/Metro': '' }]), 'Tubos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Diâmetro: '', 'Valor/Metro': '' }]), 'Eixos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Código: '', Valor: '' }]), 'Conjuntos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Tipo: '', 'Valor/Metro': '' }]), 'Spiraflex');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Modelo: '', 'Valor/Peça': '' }]), 'Anéis');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Tipo: '', Preço: '' }]), 'Encaixes');
+    XLSX.writeFile(wb, 'Modelo_Custos_Rollerport.xlsx');
+    toast.success('Modelo exportado!');
+  };
+
+  const importExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const wb = XLSX.read(ev.target?.result, { type: 'binary' });
+      // Tubos
+      const tWs = wb.Sheets['Tubos'];
+      if (tWs) {
+        const rows: any[] = XLSX.utils.sheet_to_json(tWs);
+        const newTubos: Tubo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map((r, i) => ({
+          id: store.nextId('tubo'), diametro: +(r['Diâmetro'] || r['Diametro'] || 0), parede: +(r['Parede'] || 0), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+        }));
+        if (newTubos.length) setTubos(prev => [...prev, ...newTubos]);
+      }
+      // Eixos
+      const eWs = wb.Sheets['Eixos'];
+      if (eWs) {
+        const rows: any[] = XLSX.utils.sheet_to_json(eWs);
+        const newEixos: Eixo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map((r, i) => ({
+          id: store.nextId('eixo'), diametro: String(r['Diâmetro'] || r['Diametro'] || ''), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+        }));
+        if (newEixos.length) setEixos(prev => [...prev, ...newEixos]);
+      }
+      // Conjuntos
+      const cWs = wb.Sheets['Conjuntos'];
+      if (cWs) {
+        const rows: any[] = XLSX.utils.sheet_to_json(cWs);
+        const newConj: Conjunto[] = rows.filter(r => r['Código'] || r['Codigo']).map((r, i) => ({
+          id: store.nextId('conj'), codigo: String(r['Código'] || r['Codigo'] || ''), valor: +(r['Valor'] || 0),
+        }));
+        if (newConj.length) setConjuntos(prev => [...prev, ...newConj]);
+      }
+      // Spiraflex
+      const sWs = wb.Sheets['Spiraflex'];
+      if (sWs) {
+        const rows: any[] = XLSX.utils.sheet_to_json(sWs);
+        const newRev: Revestimento[] = rows.filter(r => r['Tipo']).map((r, i) => ({
+          id: store.nextId('rev'), tipo: String(r['Tipo'] || ''), valorMetroOuPeca: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+        }));
+        if (newRev.length) setRevestimentos(prev => [...prev, ...newRev]);
+      }
+      // Anéis
+      const aWs = wb.Sheets['Anéis'] || wb.Sheets['Aneis'];
+      if (aWs) {
+        const rows: any[] = XLSX.utils.sheet_to_json(aWs);
+        const newRev: Revestimento[] = rows.filter(r => r['Modelo']).map((r, i) => ({
+          id: store.nextId('rev'), tipo: String(r['Modelo'] || ''), valorMetroOuPeca: +(r['Valor/Peça'] || r['ValorPeca'] || 0),
+        }));
+        if (newRev.length) setRevestimentos(prev => [...prev, ...newRev]);
+      }
+      // Encaixes
+      const encWs = wb.Sheets['Encaixes'];
+      if (encWs) {
+        const rows: any[] = XLSX.utils.sheet_to_json(encWs);
+        const newEnc: Encaixe[] = rows.filter(r => r['Tipo']).map((r, i) => ({
+          id: store.nextId('enc'), tipo: String(r['Tipo'] || ''), preco: +(r['Preço'] || r['Preco'] || 0),
+        }));
+        if (newEnc.length) setEncaixes(prev => [...prev, ...newEnc]);
+      }
+      toast.success('Dados importados! Clique em Salvar para confirmar.');
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const addTubo = () => { const id = store.nextId('tubo'); setTubos([...tubos, { id, diametro: '' as any, parede: '' as any, valorMetro: '' as any }]); setEditingId(id); };
   const addEixo = () => { const id = store.nextId('eixo'); setEixos([...eixos, { id, diametro: '', valorMetro: '' as any }]); setEditingId(id); };
   const addConjunto = () => { const id = store.nextId('conj'); setConjuntos([...conjuntos, { id, codigo: '', valor: '' as any }]); setEditingId(id); };
@@ -102,12 +201,18 @@ export default function CustosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="page-header">Custos</h1>
           <p className="page-subtitle">Tabela de preços de matéria-prima</p>
         </div>
-        <Button onClick={saveAll} className="gap-2"><Save className="h-4 w-4" /> Salvar</Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={exportModelo} className="gap-2"><Download className="h-4 w-4" /> Modelo Excel</Button>
+          <Button variant="outline" onClick={exportExcel} className="gap-2"><Download className="h-4 w-4" /> Exportar Excel</Button>
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2"><Upload className="h-4 w-4" /> Importar Excel</Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={importExcel} />
+          <Button onClick={saveAll} className="gap-2"><Save className="h-4 w-4" /> Salvar</Button>
+        </div>
       </div>
 
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto">

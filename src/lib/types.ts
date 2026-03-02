@@ -209,6 +209,7 @@ export interface ItemEstoque {
 
 // ======= USUÁRIOS =======
 export type NivelAcesso = 'master' | 'admin' | 'vendedor' | 'producao' | 'estoque';
+export type Genero = 'M' | 'F';
 
 export interface Usuario {
   id: string;
@@ -219,6 +220,7 @@ export interface Usuario {
   login: string;
   senha: string;
   nivel: NivelAcesso;
+  genero?: Genero;
   ativo: boolean;
   foto?: string;
   createdAt: string;

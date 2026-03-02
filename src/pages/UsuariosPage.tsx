@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { store } from '@/lib/store';
-import type { Usuario, NivelAcesso } from '@/lib/types';
+import type { Usuario, NivelAcesso, Genero } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -118,6 +118,14 @@ export default function UsuariosPage() {
                 <label className="text-xs text-muted-foreground">Nível de Acesso</label>
                 <select value={editing.nivel} onChange={e => setEditing({ ...editing, nivel: e.target.value as NivelAcesso })} className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm">
                   {niveis.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Gênero</label>
+                <select value={editing.genero || ''} onChange={e => setEditing({ ...editing, genero: e.target.value as Genero })} className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Feminino</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
