@@ -214,6 +214,10 @@ export interface Usuario {
   id: string;
   nome: string;
   email: string;
+  telefone?: string;
+  whatsapp?: string;
+  login: string;
+  senha: string;
   nivel: NivelAcesso;
   ativo: boolean;
   foto?: string;

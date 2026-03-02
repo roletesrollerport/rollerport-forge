@@ -3,9 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, Bot
+  Bell, MessageSquare, Bot, LogOut, User
 } from 'lucide-react';
 import { store } from '@/lib/store';
+import type { Usuario } from '@/lib/types';
 import logo from '@/assets/logo.png';
 
 const navItems = [
@@ -22,7 +23,7 @@ const navItems = [
   { to: '/usuarios', label: 'Usuários', icon: UserCog },
 ];
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children, currentUser, onLogout }: { children: React.ReactNode; currentUser: Usuario; onLogout: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
@@ -172,7 +173,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          <span className="text-xs text-muted-foreground font-mono">ERP v1.0</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                {currentUser.foto ? <img src={currentUser.foto} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-muted-foreground" />}
+              </div>
+              <span className="text-xs font-medium hidden sm:block">{currentUser.nome}</span>
+            </div>
+            <button onClick={onLogout} className="p-2 rounded-md hover:bg-muted transition-colors" title="Sair">
+              <LogOut className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in">

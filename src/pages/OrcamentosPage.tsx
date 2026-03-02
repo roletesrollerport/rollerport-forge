@@ -79,6 +79,7 @@ export default function OrcamentosPage() {
   const [compradorSelecionado, setCompradorSelecionado] = useState('');
   const [itensRolete, setItensRolete] = useState<ItemOrcamento[]>([]);
   const [itensProduto, setItensProduto] = useState<ItemProdutoOrcamento[]>([]);
+  const [prazoPagamento, setPrazoPagamento] = useState('');
 
   // Sub-panels
   const [showProdutoSearch, setShowProdutoSearch] = useState(false);
@@ -521,13 +522,8 @@ export default function OrcamentosPage() {
               </label>
               <Input
                 placeholder={condicaoPagamento === 'Boleto' ? 'Ex: 30/60/90 dias' : 'Ex: 30/60/90 dias'}
-                value={observacao.includes(`[${condicaoPagamento}:`) ? '' : ''}
-                onChange={e => {
-                  // Store payment detail in a separate state field within observacao
-                  const regex = new RegExp(`\\[${condicaoPagamento}:.*?\\]`, 'g');
-                  const cleanObs = observacao.replace(regex, '').trim();
-                  setObservacao(e.target.value ? `${cleanObs} [${condicaoPagamento}: ${e.target.value}]`.trim() : cleanObs);
-                }}
+                value={(condicaoPagamento === 'Boleto' ? (editingOrc as any)?.prazoBoleto : (editingOrc as any)?.prazoCheque) || prazoPagamento}
+                onChange={e => setPrazoPagamento(e.target.value)}
                 className="mt-1"
               />
               <p className="text-[10px] text-muted-foreground mt-1">
@@ -559,7 +555,7 @@ export default function OrcamentosPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-primary font-medium">Data</label>
-              <Input value={dataOrcamento} readOnly className="bg-muted/30" />
+              <Input value={dataOrcamento} onChange={e => setDataOrcamento(e.target.value)} placeholder="dd/mm/aaaa" />
             </div>
             <div>
               <label className="text-xs text-primary font-medium">Previsão de Entrega</label>
