@@ -934,7 +934,7 @@ export default function OrcamentosPage() {
         {/* ===== Itens do Orçamento ===== */}
         {(itensProduto.length > 0 || itensRolete.length > 0) && (
           <div className="border rounded-lg p-4 bg-card">
-            <h3 className="font-semibold mb-3">Itens do Orçamento ({totalItens})</h3>
+            <h3 className="font-semibold mb-3">Itens do Orçamento - {clienteSelecionado?.nome || clienteSearch || 'Cliente'}</h3>
             <div className="space-y-2">
               {itensProduto.map((item, i) => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
