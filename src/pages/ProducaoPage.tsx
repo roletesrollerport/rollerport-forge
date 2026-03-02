@@ -139,9 +139,9 @@ export default function ProducaoPage() {
               ))}
             </tr>
           ))}
-          {/* Empty rows to match Excel format */}
-          {Array.from({ length: Math.max(0, 15 - items.length) }).map((_, i) => (
-            <tr key={`empty-${i}`} className="border-b">
+          {/* Empty rows only on screen, not print */}
+          {!editable && Array.from({ length: Math.max(0, 15 - items.length) }).map((_, i) => (
+            <tr key={`empty-${i}`} className="border-b print:hidden">
               <td className="p-2 text-muted-foreground">{items.length + i + 1}</td>
               <td colSpan={20} className="p-2"></td>
             </tr>
