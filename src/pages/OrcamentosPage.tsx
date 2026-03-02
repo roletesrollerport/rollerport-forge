@@ -463,7 +463,7 @@ export default function OrcamentosPage() {
           <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs border-y py-2">
             <span>Orçamento Nº: <strong>{viewOrc.numero}</strong></span>
             <span>Data: <strong>{viewOrc.dataOrcamento}</strong></span>
-            <span>Vendedor: <strong>{viewOrc.vendedor || '-'}</strong></span>
+            <span>{vendedorUser?.genero === 'F' ? 'Vendedora' : 'Vendedor'}: <strong>{viewOrc.vendedor || '-'}</strong></span>
             {vendedorUser?.telefone && <span>Tel: <strong>{vendedorUser.telefone}</strong></span>}
             {vendedorUser?.whatsapp && <span>WhatsApp: <strong>{vendedorUser.whatsapp}</strong></span>}
             {vendedorUser?.email && <span>E-mail: <strong>{vendedorUser.email}</strong></span>}
@@ -536,6 +536,19 @@ export default function OrcamentosPage() {
             <div>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></div>
             <div>Tipo de Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></div>
           </div>
+
+          {/* PIX / Transferência data on print */}
+          {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
+            <div className="mt-3 border rounded p-3 text-[10px]">
+              <p className="font-bold mb-1">Dados Bancários para {viewOrc.condicaoPagamento === 'PIX' ? 'PIX' : 'Transferência Bancária'}:</p>
+              <p>BANCO SANTANDER (033)</p>
+              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
+              <p>CNPJ: 10.311.350/0001-22</p>
+              <p>Agência: 3744 | Conta Corrente: 130094436</p>
+              {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): 10.311.350/0001-22</p>}
+            </div>
+          )}
+
           {viewOrc.observacao && (
             <div className="text-[10px] mt-2">Observação: <strong>{viewOrc.observacao}</strong></div>
           )}
