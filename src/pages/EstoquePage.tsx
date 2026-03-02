@@ -8,21 +8,25 @@ import { Plus, Trash2, AlertTriangle, Eye, Edit, Search, ImagePlus, X } from 'lu
 import { toast } from 'sonner';
 
 const emptyItem = (): ItemEstoque => ({
-  id: '', nome: '', categoria: '', quantidade: 0, unidade: 'un', metragem: undefined,
-  nivelCritico: 5, imagem: '', createdAt: new Date().toISOString().split('T')[0],
+  id: '', nome: '', categoria: '', quantidade: '' as any, unidade: 'un', metragem: undefined,
+  nivelCritico: '' as any, imagem: '', createdAt: new Date().toISOString().split('T')[0],
 });
+
+const CATEGORIAS_MATERIAIS = [
+  'Tubo', 'Eixo', 'Caneca', 'Rolamento', 'Anéis de Borracha', 'Labirinto', 'Retentor',
+  'Anel Elástico', 'Revest. Spiraflex', 'Revest. Borracha Vulcanizada', 'Bucha Nylon',
+  'Tinta', 'Flanges', 'Engrenagens', 'Encaixe Faço', 'Porcas', 'Parafusos', 'Arruelas',
+  'Conjuntos', 'Encaixes', 'Outros',
+];
 
 function buildDefaultEstoque(): ItemEstoque[] {
   const items: ItemEstoque[] = [];
   let idx = 1;
-  const add = (nome: string, categoria: string, unidade = 'metro') => {
-    items.push({ id: String(idx++), nome, categoria, quantidade: 100, unidade, metragem: unidade === 'metro' ? 100 : undefined, nivelCritico: 10, createdAt: new Date().toISOString().split('T')[0] });
+  const add = (nome: string, categoria: string, unidade = 'un') => {
+    items.push({ id: String(idx++), nome, categoria, quantidade: 0, unidade, metragem: undefined, nivelCritico: 10, createdAt: new Date().toISOString().split('T')[0] });
   };
-  store.getTubos().forEach(t => add(`Tubo ø${t.diametro} parede ${t.parede}`, 'Tubos'));
-  store.getEixos().forEach(e => add(`Eixo ø${e.diametro}`, 'Eixos'));
-  store.getConjuntos().forEach(c => add(`Conjunto ${c.codigo}`, 'Conjuntos', 'un'));
-  store.getRevestimentos().forEach(r => add(`Revestimento ${r.tipo}`, 'Revestimentos'));
-  store.getEncaixes().forEach(e => add(`Encaixe ${e.tipo}`, 'Encaixes', 'un'));
+  // Add one placeholder per category
+  CATEGORIAS_MATERIAIS.forEach(cat => add(`${cat} - estoque inicial`, cat));
   return items;
 }
 
@@ -91,7 +95,13 @@ export default function EstoquePage() {
             <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo'} Item</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Categoria</label><Input value={editing.categoria} onChange={e => setEditing({ ...editing, categoria: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Categoria</label>
+                <select value={editing.categoria} onChange={e => setEditing({ ...editing, categoria: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  {CATEGORIAS_MATERIAIS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
               <div><label className="text-xs text-muted-foreground">Unidade</label><Input value={editing.unidade} onChange={e => setEditing({ ...editing, unidade: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Quantidade</label><Input type="number" value={editing.quantidade || ''} onChange={e => setEditing({ ...editing, quantidade: e.target.value ? +e.target.value : '' as any })} /></div>
               <div><label className="text-xs text-muted-foreground">Metragem</label><Input type="number" value={editing.metragem || ''} onChange={e => setEditing({ ...editing, metragem: e.target.value ? +e.target.value : undefined })} /></div>

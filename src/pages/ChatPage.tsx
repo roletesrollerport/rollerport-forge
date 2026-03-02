@@ -97,7 +97,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="mb-4">
-        <h1 className="page-header">Chat Interno</h1>
+        <h1 className="page-header">Bate-Papo</h1>
         <p className="page-subtitle">Comunicação interna da equipe</p>
       </div>
 
@@ -108,7 +108,7 @@ export default function ChatPage() {
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center">
                 <Bot className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">Chat Interno Rollerport</p>
+                <p className="font-medium">Bate-Papo Rollerport</p>
                 <p className="text-sm">Envie uma mensagem para começar</p>
               </div>
             </div>

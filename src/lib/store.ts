@@ -218,6 +218,7 @@ const SEED_ENCAIXES: Encaixe[] = [
   { id: '3', tipo: 'FAÇO', preco: 4.00 },
   { id: '4', tipo: 'ROSCA EXTERNA', preco: 5.00 },
   { id: '5', tipo: 'ROSCA INTERNA', preco: 8.00 },
+  { id: '6', tipo: 'FURO NO EIXO', preco: 2.00 },
 ];
 
 const SEED_CLIENTES: Cliente[] = [
