@@ -49,7 +49,8 @@ function calcItem(item: ItemOrcamento): ItemOrcamento {
   }
 
   const custo = custoTubo + custoEixo + custoConj + custoRev + custoEnc;
-  const valorPorPeca = custo * item.multiplicador * (1 - item.desconto / 100);
+  const desconto = item.desconto || 0;
+  const valorPorPeca = custo * item.multiplicador * (1 - desconto / 100);
   const valorTotal = valorPorPeca * item.quantidade;
 
   return { ...item, custo: +custo.toFixed(2), valorPorPeca: +valorPorPeca.toFixed(2), valorTotal: +valorTotal.toFixed(2) };
@@ -338,6 +339,28 @@ export default function OrcamentosPage() {
   if (view === 'print' && viewOrc) {
     const cli = clientes.find(c => c.id === viewOrc.clienteId);
 
+    // Brazilian tax rates 2026 - Rollerport is in SP
+    const destinoUF = cli?.estado || 'SP';
+    const origemUF = 'SP';
+    // ICMS interestadual from SP
+    const icmsInterMap: Record<string, number> = {
+      'SP': 0.18, 'MG': 0.12, 'RJ': 0.12, 'PR': 0.12, 'SC': 0.12, 'RS': 0.12, 'ES': 0.12,
+      'BA': 0.07, 'SE': 0.07, 'AL': 0.07, 'PE': 0.07, 'PB': 0.07, 'RN': 0.07, 'CE': 0.07,
+      'PI': 0.07, 'MA': 0.07, 'PA': 0.07, 'AP': 0.07, 'AM': 0.07, 'RR': 0.07, 'AC': 0.07,
+      'RO': 0.07, 'TO': 0.07, 'MT': 0.07, 'MS': 0.07, 'GO': 0.07, 'DF': 0.07,
+    };
+    const icmsInternoMap: Record<string, number> = {
+      'SP': 0.18, 'MG': 0.18, 'RJ': 0.20, 'PR': 0.195, 'SC': 0.17, 'RS': 0.17, 'ES': 0.17,
+      'BA': 0.205, 'SE': 0.18, 'AL': 0.19, 'PE': 0.205, 'PB': 0.20, 'RN': 0.20, 'CE': 0.20,
+      'PI': 0.215, 'MA': 0.22, 'PA': 0.19, 'AP': 0.18, 'AM': 0.20, 'RR': 0.20, 'AC': 0.19,
+      'RO': 0.195, 'TO': 0.20, 'MT': 0.17, 'MS': 0.17, 'GO': 0.19, 'DF': 0.20,
+    };
+    const taxaICMSOrig = icmsInterMap[destinoUF] || 0.12;
+    const taxaICMSDest = origemUF === destinoUF ? 0 : Math.max(0, (icmsInternoMap[destinoUF] || 0.18) - taxaICMSOrig);
+    const taxaPIS = 0.0165;
+    const taxaCOFINS = 0.076;
+    const taxaIPI = 0.05;
+
     // Build all items for the table
     const allPrintItems: Array<{
       item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
@@ -349,11 +372,11 @@ export default function OrcamentosPage() {
     (viewOrc.itensProduto || []).forEach((ip) => {
       const prod = produtos.find(p => p.id === ip.produtoId);
       const vliq = ip.valorUnitario;
-      const pisVal = +(vliq * 0.0165).toFixed(2);
-      const cofinsVal = +(vliq * 0.076).toFixed(2);
-      const icmsOrig = +(vliq * 0.12).toFixed(2);
-      const icmsDest = +(vliq * 0.04).toFixed(2);
-      const ipiVal = +(vliq * 0.05).toFixed(2);
+      const pisVal = +(vliq * taxaPIS).toFixed(2);
+      const cofinsVal = +(vliq * taxaCOFINS).toFixed(2);
+      const icmsOrig = +(vliq * taxaICMSOrig).toFixed(2);
+      const icmsDest = +(vliq * taxaICMSDest).toFixed(2);
+      const ipiVal = +(vliq * taxaIPI).toFixed(2);
       allPrintItems.push({
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '', descricao: ip.produtoNome,
@@ -364,14 +387,14 @@ export default function OrcamentosPage() {
     });
     (viewOrc.itensRolete || []).forEach((ir) => {
       const vliq = ir.valorPorPeca;
-      const pisVal = +(vliq * 0.0165).toFixed(2);
-      const cofinsVal = +(vliq * 0.076).toFixed(2);
-      const icmsOrig = +(vliq * 0.12).toFixed(2);
-      const icmsDest = +(vliq * 0.04).toFixed(2);
-      const ipiVal = +(vliq * 0.05).toFixed(2);
+      const pisVal = +(vliq * taxaPIS).toFixed(2);
+      const cofinsVal = +(vliq * taxaCOFINS).toFixed(2);
+      const icmsOrig = +(vliq * taxaICMSOrig).toFixed(2);
+      const icmsDest = +(vliq * taxaICMSDest).toFixed(2);
+      const ipiVal = +(vliq * taxaIPI).toFixed(2);
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
-        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} ø${ir.diametroTubo}x${ir.paredeTubo} Tubo:${ir.comprimentoTubo}mm`,
+        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo}x${ir.paredeTubo}mm Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` Fresa: ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`,
         ncm: ir.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
         icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ir.valorPorPeca,
         valorTotal: ir.valorTotal, valorIPI: +(ir.valorTotal + ipiVal * ir.quantidade).toFixed(2),
@@ -442,6 +465,7 @@ export default function OrcamentosPage() {
             <span>Data: <strong>{viewOrc.dataOrcamento}</strong></span>
             <span>Vendedor: <strong>{viewOrc.vendedor || '-'}</strong></span>
             {vendedorUser?.telefone && <span>Tel: <strong>{vendedorUser.telefone}</strong></span>}
+            {vendedorUser?.whatsapp && <span>WhatsApp: <strong>{vendedorUser.whatsapp}</strong></span>}
             {vendedorUser?.email && <span>E-mail: <strong>{vendedorUser.email}</strong></span>}
             <span>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF' : 'FOB'}</strong></span>
             <span>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></span>
@@ -458,7 +482,7 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center">Qtd</th>
                 <th className="border p-1 text-center">Código</th>
                 {hasCodigoExterno && <th className="border p-1 text-center">Cód. Externo</th>}
-                <th className="border p-1 text-left">Descrição do Produto</th>
+                <th className="border p-1 text-left" style={{minWidth: '280px'}}>Descrição do Produto</th>
                 <th className="border p-1 text-center">NCM</th>
                 <th className="border p-1 text-right">Vlr Líquido</th>
                 <th className="border p-1 text-right">PIS</th>
@@ -797,8 +821,8 @@ export default function OrcamentosPage() {
               </div>
               {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
                 <div>
-                  <label className="text-xs text-primary font-medium">Medidas do Fresado</label>
-                  <Input placeholder="Medida do encaixe" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
+                   <label className="text-xs text-primary font-medium">Medida da Fresa</label>
+                  <Input placeholder="Medida da fresa" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
                 </div>
               )}
               <div>
@@ -892,7 +916,15 @@ export default function OrcamentosPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-primary">{fmt(item.valorTotal)}</span>
-                    <button onClick={() => setItensProduto(itensProduto.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                    <button onClick={() => {
+                      const prod = produtos.find(p => p.id === item.produtoId);
+                      if (prod) { setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); }
+                    }} className="text-muted-foreground hover:text-primary" title="Ver"><Eye className="h-4 w-4" /></button>
+                    <button onClick={() => {
+                      const prod = produtos.find(p => p.id === item.produtoId);
+                      if (prod) { setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); setItensProduto(itensProduto.filter((_, idx) => idx !== i)); }
+                    }} className="text-muted-foreground hover:text-primary" title="Editar"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => setItensProduto(itensProduto.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive" title="Excluir">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -903,13 +935,15 @@ export default function OrcamentosPage() {
                   <div className="flex items-center gap-3">
                     <Settings2 className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="font-medium text-sm">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo}</p>
-                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorPorPeca)}</p>
+                      <p className="font-medium text-sm">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo} Tubo:{item.comprimentoTubo}mm Eixo:ø{item.diametroEixo} {item.comprimentoEixo}mm</p>
+                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorPorPeca)}{item.tipoEncaixe ? ` • Enc: ${item.tipoEncaixe}` : ''}{item.especificacaoRevestimento ? ` • Rev: ${item.especificacaoRevestimento}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-primary">{fmt(item.valorTotal)}</span>
-                    <button onClick={() => setItensRolete(itensRolete.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                    <button onClick={() => { setRoleteItem(item); setCodigoRolete(item.codigoProduto || ''); setShowRoleteForm(true); }} className="text-muted-foreground hover:text-primary" title="Ver"><Eye className="h-4 w-4" /></button>
+                    <button onClick={() => { setRoleteItem(item); setCodigoRolete(item.codigoProduto || ''); setShowRoleteForm(true); setItensRolete(itensRolete.filter((_, idx) => idx !== i)); }} className="text-muted-foreground hover:text-primary" title="Editar"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => setItensRolete(itensRolete.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive" title="Excluir">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
