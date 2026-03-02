@@ -783,55 +783,66 @@ export default function OrcamentosPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-xl font-bold">Orçamentos</h1>
+        <div>
+          <h1 className="page-header">Orçamentos</h1>
+          <p className="page-subtitle">Gestão de orçamentos</p>
+        </div>
         <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Novo Orçamento</Button>
       </div>
 
       <div className="border rounded-lg p-4 bg-card">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por cliente ou número..." value={searchList} onChange={e => setSearchList(e.target.value)} className="pl-10" />
+          <Input placeholder="Buscar empresa, comprador, CNPJ, telefone, email, endereço..." value={searchList} onChange={e => setSearchList(e.target.value)} className="pl-10" />
         </div>
       </div>
 
-      <div className="space-y-2">
-        {filteredOrcamentos.slice().reverse().map(o => (
-          <div key={o.id} className="border rounded-lg p-4 bg-card flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-bold">ORC. {o.numero}</span>
-                <span className="px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground uppercase">{o.status === 'RASCUNHO' ? 'ORÇAMENTO' : o.status}</span>
-              </div>
-              <p className="text-sm text-muted-foreground">{o.clienteNome || 'Sem cliente'} • {o.dataOrcamento || o.createdAt}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="font-bold text-primary">{fmt(o.valorTotal)}</p>
-                <p className="text-xs text-muted-foreground">{(o.itensRolete?.length || 0) + (o.itensProduto?.length || 0)} item(s)</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1.5 rounded hover:bg-muted" title="Visualizar">
-                  <Eye className="h-4 w-4" />
-                </button>
-                <button onClick={() => openEdit(o)} className="p-1.5 rounded hover:bg-muted" title="Editar">
-                  <Edit className="h-4 w-4" />
-                </button>
-                <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1.5 rounded hover:bg-muted" title="Imprimir">
-                  <Printer className="h-4 w-4" />
-                </button>
-                <button onClick={() => convertToPedido(o)} className="p-1.5 rounded hover:bg-muted" title="Transformar em Pedido">
-                  <ShoppingCart className="h-4 w-4" />
-                </button>
-                <button onClick={() => deleteOrcamento(o.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-        {filteredOrcamentos.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">Nenhum orçamento encontrado.</div>
-        )}
+      <div className="bg-card rounded-lg border overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="text-left p-3 font-medium">Número</th>
+              <th className="text-left p-3 font-medium">Empresa</th>
+              <th className="text-left p-3 font-medium hidden md:table-cell">Comprador</th>
+              <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
+              <th className="text-right p-3 font-medium">Valor</th>
+              <th className="text-left p-3 font-medium">Status</th>
+              <th className="p-3 w-40">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredOrcamentos.slice().reverse().map(o => (
+              <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30">
+                <td className="p-3 font-mono font-medium">{o.numero}</td>
+                <td className="p-3">{o.clienteNome || 'Sem cliente'}</td>
+                <td className="p-3 hidden md:table-cell text-muted-foreground">{o.compradorNome || '-'}</td>
+                <td className="p-3 hidden md:table-cell text-muted-foreground">{o.dataOrcamento || o.createdAt}</td>
+                <td className="p-3 text-right font-mono font-medium">{fmt(o.valorTotal)}</td>
+                <td className="p-3">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    o.status === 'APROVADO' ? 'bg-success/10 text-success' :
+                    o.status === 'ENVIADO' ? 'bg-info/10 text-info' :
+                    o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
+                    o.status === 'AGUARDANDO' ? 'bg-secondary/10 text-secondary' :
+                    'bg-muted text-muted-foreground'
+                  }`}>{o.status}</span>
+                </td>
+                <td className="p-3">
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Visualizar"><Eye className="h-4 w-4" /></button>
+                    <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
+                    <button onClick={() => convertToPedido(o)} className="p-1 rounded hover:bg-muted text-primary" title="Transformar em Pedido"><ShoppingCart className="h-4 w-4" /></button>
+                    <button onClick={() => deleteOrcamento(o.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredOrcamentos.length === 0 && (
+              <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhum orçamento encontrado.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

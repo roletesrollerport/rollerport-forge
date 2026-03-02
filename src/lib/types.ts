@@ -4,30 +4,35 @@ export interface Tubo {
   diametro: number;
   parede: number;
   valorMetro: number;
+  imagem?: string;
 }
 
 export interface Eixo {
   id: string;
   diametro: string;
   valorMetro: number;
+  imagem?: string;
 }
 
 export interface Conjunto {
   id: string;
   codigo: string;
   valor: number;
+  imagem?: string;
 }
 
 export interface Revestimento {
   id: string;
   tipo: string;
   valorMetroOuPeca: number;
+  imagem?: string;
 }
 
 export interface Encaixe {
   id: string;
   tipo: string;
   preco: number;
+  imagem?: string;
 }
 
 // ======= CLIENTES =======
@@ -36,6 +41,8 @@ export interface Comprador {
   telefone: string;
   email: string;
   whatsapp: string;
+  aniversario?: string;
+  redesSociais?: string;
 }
 
 export interface Cliente {
@@ -50,6 +57,8 @@ export interface Cliente {
   estado: string;
   contato: string;
   compradores: Comprador[];
+  aniversarioEmpresa?: string;
+  redesSociais?: string;
   createdAt: string;
 }
 
@@ -59,16 +68,18 @@ export type TipoRolete = 'RC' | 'RR' | 'RG' | 'RI' | 'RRA';
 export interface Produto {
   id: string;
   codigo: string;
+  codigoCliente?: string;
   nome: string;
   tipo: TipoRolete | 'GENERICO';
   medidas: string;
   descricao: string;
+  miniDescricao?: string;
   valor: number;
   createdAt: string;
 }
 
 // ======= ORÇAMENTOS =======
-export type StatusOrcamento = 'RASCUNHO' | 'ENVIADO' | 'APROVADO' | 'REPROVADO';
+export type StatusOrcamento = 'RASCUNHO' | 'ENVIADO' | 'AGUARDANDO' | 'APROVADO' | 'REPROVADO';
 
 export type TipoFrete = 'CIF' | 'FOB';
 
@@ -108,6 +119,7 @@ export interface Orcamento {
   numero: string;
   clienteId: string;
   clienteNome: string;
+  compradorNome?: string;
   tipoFrete: TipoFrete;
   condicaoPagamento: string;
   vendedor: string;
@@ -123,12 +135,13 @@ export interface Orcamento {
 }
 
 // ======= PEDIDOS =======
-export type StatusPedido = 'PENDENTE' | 'EM_PRODUCAO' | 'CONCLUIDO' | 'ENTREGUE';
+export type StatusPedido = 'PENDENTE' | 'CONFIRMADO' | 'EM_PRODUCAO' | 'CONCLUIDO' | 'ENTREGUE';
 
 export interface Pedido {
   id: string;
   numero: string;
   orcamentoId: string;
+  orcamentoNumero?: string;
   clienteNome: string;
   dataEntrega: string;
   status: StatusPedido;
@@ -185,7 +198,9 @@ export interface ItemEstoque {
   categoria: string;
   quantidade: number;
   unidade: string;
+  metragem?: number;
   nivelCritico: number;
+  imagem?: string;
   createdAt: string;
 }
 
@@ -199,4 +214,20 @@ export interface Usuario {
   nivel: NivelAcesso;
   ativo: boolean;
   createdAt: string;
+}
+
+// ======= NOTIFICAÇÕES =======
+export interface Notificacao {
+  id: string;
+  tipo: 'aniversario' | 'pedido' | 'producao' | 'chat';
+  titulo: string;
+  mensagem: string;
+  lida: boolean;
+  createdAt: string;
+}
+
+// ======= VENDEDOR META =======
+export interface MetaVendedor {
+  vendedor: string;
+  metaMensal: number;
 }
