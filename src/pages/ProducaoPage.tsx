@@ -4,11 +4,14 @@ import { store } from '@/lib/store';
 import type { OrdemServico, StatusOS, ItemOS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
 type View = 'list' | 'view' | 'edit' | 'print';
+
+const statusProgress: Record<string, number> = { 'ABERTA': 33, 'EM_ANDAMENTO': 66, 'CONCLUIDA': 100 };
 
 export default function ProducaoPage() {
   const navigate = useNavigate();
@@ -18,34 +21,25 @@ export default function ProducaoPage() {
   const [editItems, setEditItems] = useState<ItemOS[]>([]);
   const [search, setSearch] = useState('');
 
+  const clientes = store.getClientes();
+  const orcamentos = store.getOrcamentos();
+
   useEffect(() => { setOrdens(store.getOrdensServico()); }, []);
 
-  const saveOrdens = (updated: OrdemServico[]) => {
-    store.saveOrdensServico(updated);
-    setOrdens(updated);
-  };
+  const saveOrdens = (updated: OrdemServico[]) => { store.saveOrdensServico(updated); setOrdens(updated); };
 
   const updateStatus = (id: string, status: StatusOS) => {
-    const updated = ordens.map(o => o.id === id ? { ...o, status } : o);
-    saveOrdens(updated);
-    toast.success('Status atualizado!');
+    saveOrdens(ordens.map(o => o.id === id ? { ...o, status } : o)); toast.success('Status atualizado!');
   };
 
   const cancelarOS = (os: OrdemServico) => {
-    const updated = ordens.filter(o => o.id !== os.id);
-    saveOrdens(updated);
-    // Set pedido back to PENDENTE
+    saveOrdens(ordens.filter(o => o.id !== os.id));
     const pedidos = store.getPedidos();
-    const updatedPedidos = pedidos.map(p => p.id === os.pedidoId ? { ...p, status: 'PENDENTE' as const } : p);
-    store.savePedidos(updatedPedidos);
-    toast.success('O.S. cancelada. Pedido voltou para pendente.');
-    navigate('/pedidos');
+    store.savePedidos(pedidos.map(p => p.id === os.pedidoId ? { ...p, status: 'PENDENTE' as const } : p));
+    toast.success('O.S. cancelada. Pedido voltou para pendente.'); navigate('/pedidos');
   };
 
-  const deleteOS = (id: string) => {
-    saveOrdens(ordens.filter(o => o.id !== id));
-    toast.success('O.S. excluída!');
-  };
+  const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
 
   const openView = (os: OrdemServico) => { setCurrent(os); setView('view'); };
   const openEdit = (os: OrdemServico) => { setCurrent(os); setEditItems([...os.itens]); setView('edit'); };
@@ -53,61 +47,67 @@ export default function ProducaoPage() {
 
   const saveEdit = () => {
     if (!current) return;
-    const updated = ordens.map(o => o.id === current.id ? { ...o, itens: editItems } : o);
-    saveOrdens(updated);
-    setCurrent({ ...current, itens: editItems });
-    setView('list');
-    toast.success('O.S. atualizada!');
+    saveOrdens(ordens.map(o => o.id === current.id ? { ...o, itens: editItems } : o));
+    setCurrent({ ...current, itens: editItems }); setView('list'); toast.success('O.S. atualizada!');
   };
 
   const toggleEtapa = (idx: number, etapa: string) => {
-    const items = [...editItems];
-    items[idx] = { ...items[idx], [etapa]: !(items[idx] as any)[etapa] };
-    setEditItems(items);
+    const items = [...editItems]; items[idx] = { ...items[idx], [etapa]: !(items[idx] as any)[etapa] }; setEditItems(items);
   };
-
   const updateItemField = (idx: number, field: string, value: any) => {
-    const items = [...editItems];
-    items[idx] = { ...items[idx], [field]: value };
-    setEditItems(items);
+    const items = [...editItems]; items[idx] = { ...items[idx], [field]: value }; setEditItems(items);
   };
 
-  const filteredOrdens = ordens.filter(o =>
-    o.empresa.toLowerCase().includes(search.toLowerCase()) ||
-    o.numero.includes(search) ||
-    o.pedidoNumero.includes(search)
-  );
+  // Comprehensive search
+  const clienteMatchesSearch = (empresa: string, s: string) => {
+    const cli = clientes.find(c => c.nome === empresa);
+    if (!cli) return empresa?.toLowerCase().includes(s.toLowerCase());
+    const compradorMatch = (cli.compradores || []).some(comp =>
+      comp.nome?.toLowerCase().includes(s.toLowerCase()) || comp.telefone?.includes(s) || comp.email?.toLowerCase().includes(s.toLowerCase())
+    );
+    return cli.nome?.toLowerCase().includes(s.toLowerCase()) || cli.cnpj?.includes(s) || cli.email?.toLowerCase().includes(s.toLowerCase()) ||
+      cli.telefone?.includes(s) || cli.endereco?.toLowerCase().includes(s.toLowerCase()) || compradorMatch;
+  };
+
+  const filteredOrdens = ordens.filter(o => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    // Search by OS number, pedido number
+    if (o.numero.includes(search) || o.pedidoNumero.includes(search)) return true;
+    // Search by orcamento number
+    const pedido = store.getPedidos().find(p => p.id === o.pedidoId);
+    if (pedido?.orcamentoNumero?.includes(search)) return true;
+    return clienteMatchesSearch(o.empresa, search);
+  });
 
   const etapas = ['corte', 'torno', 'fresa', 'solda', 'pintura', 'montagem'];
 
   const OSTable = ({ items, editable }: { items: ItemOS[], editable?: boolean }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr className="border-b-2 bg-muted/50">
-            <th className="p-2 text-left font-semibold">ITEM</th>
-            <th className="p-2 text-left font-semibold">QTD</th>
-            <th className="p-2 text-left font-semibold">TIPO</th>
-            <th className="p-2 text-left font-semibold">ø TUBO</th>
-            <th className="p-2 text-left font-semibold">PAREDE</th>
-            <th className="p-2 text-left font-semibold">COMP. TUBO</th>
-            <th className="p-2 text-left font-semibold">COMP. EIXO</th>
-            <th className="p-2 text-left font-semibold">ø EIXO</th>
-            <th className="p-2 text-left font-semibold">ENCAIXE FRESADO</th>
-            <th className="p-2 text-left font-semibold">COMP. FRESADO</th>
-            <th className="p-2 text-left font-semibold">MEDIDA ABA FRESADO</th>
-            <th className="p-2 text-left font-semibold">TIPO ENCAIXE</th>
-            <th className="p-2 text-left font-semibold">ROSCA I/E</th>
-            <th className="p-2 text-left font-semibold">FURO EIXO</th>
-            <th className="p-2 text-left font-semibold">REVESTIMENTO</th>
-            <th className="p-2 text-center font-semibold">CORTE</th>
-            <th className="p-2 text-center font-semibold">TORNO</th>
-            <th className="p-2 text-center font-semibold">FRESA</th>
-            <th className="p-2 text-center font-semibold">SOLDA</th>
-            <th className="p-2 text-center font-semibold">PINTURA</th>
-            <th className="p-2 text-center font-semibold">MONT.</th>
-          </tr>
-        </thead>
+        <thead><tr className="border-b-2 bg-muted/50">
+          <th className="p-2 text-left font-semibold">ITEM</th>
+          <th className="p-2 text-left font-semibold">QTD</th>
+          <th className="p-2 text-left font-semibold">TIPO</th>
+          <th className="p-2 text-left font-semibold">ø TUBO</th>
+          <th className="p-2 text-left font-semibold">PAREDE</th>
+          <th className="p-2 text-left font-semibold">COMP. TUBO</th>
+          <th className="p-2 text-left font-semibold">COMP. EIXO</th>
+          <th className="p-2 text-left font-semibold">ø EIXO</th>
+          <th className="p-2 text-left font-semibold">ENCAIXE FRESADO</th>
+          <th className="p-2 text-left font-semibold">COMP. FRESADO</th>
+          <th className="p-2 text-left font-semibold">MEDIDA ABA FRESADO</th>
+          <th className="p-2 text-left font-semibold">TIPO ENCAIXE</th>
+          <th className="p-2 text-left font-semibold">ROSCA I/E</th>
+          <th className="p-2 text-left font-semibold">FURO EIXO</th>
+          <th className="p-2 text-left font-semibold">REVESTIMENTO</th>
+          <th className="p-2 text-center font-semibold">CORTE</th>
+          <th className="p-2 text-center font-semibold">TORNO</th>
+          <th className="p-2 text-center font-semibold">FRESA</th>
+          <th className="p-2 text-center font-semibold">SOLDA</th>
+          <th className="p-2 text-center font-semibold">PINTURA</th>
+          <th className="p-2 text-center font-semibold">MONT.</th>
+        </tr></thead>
         <tbody>
           {items.map((item, idx) => (
             <tr key={idx} className="border-b last:border-0">
@@ -128,22 +128,11 @@ export default function ProducaoPage() {
               <td className="p-2">{item.revestimento || '-'}</td>
               {etapas.map(etapa => (
                 <td key={etapa} className="p-2 text-center">
-                  <input
-                    type="checkbox"
-                    checked={(item as any)[etapa] as boolean}
-                    onChange={() => editable ? toggleEtapa(idx, etapa) : null}
-                    readOnly={!editable}
-                    className="h-4 w-4 rounded border-primary text-primary accent-primary"
-                  />
+                  <input type="checkbox" checked={(item as any)[etapa] as boolean}
+                    onChange={() => editable ? toggleEtapa(idx, etapa) : null} readOnly={!editable}
+                    className="h-4 w-4 rounded border-primary text-primary accent-primary" />
                 </td>
               ))}
-            </tr>
-          ))}
-          {/* Empty rows only on screen, not print */}
-          {!editable && Array.from({ length: Math.max(0, 15 - items.length) }).map((_, i) => (
-            <tr key={`empty-${i}`} className="border-b print:hidden">
-              <td className="p-2 text-muted-foreground">{items.length + i + 1}</td>
-              <td colSpan={20} className="p-2"></td>
             </tr>
           ))}
         </tbody>
@@ -156,9 +145,7 @@ export default function ProducaoPage() {
       <h3 className="font-bold text-sm mb-3">MATERIAIS UTILIZADOS</h3>
       <div className="grid grid-cols-3 gap-3 text-xs">
         {['TUBO', 'EIXO', 'CANECA', 'ROLAMENTO', 'ANÉIS DE BORRACHA', 'LABIRINTO / RETENTOR', 'ANEL ELÁSTICO', 'REVESTIMENTO - SPIRAFLEX / BORRACHA VULCANIZADA', 'BUCHA DE NYLON', 'TINTA', 'FLANGES / ENGRENAGENS', 'ENCAIXE FAÇO / PORCAS / PARAFUSOS / ARRUELAS'].map(mat => (
-          <div key={mat} className="border rounded p-2 min-h-[40px]">
-            <span className="font-semibold text-[10px]">{mat}</span>
-          </div>
+          <div key={mat} className="border rounded p-2 min-h-[40px]"><span className="font-semibold text-[10px]">{mat}</span></div>
         ))}
       </div>
     </div>
@@ -172,34 +159,30 @@ export default function ProducaoPage() {
           <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
           <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
         </div>
-        <div className="bg-card border rounded-lg p-6 max-w-6xl mx-auto print:border-0 print:shadow-none print:max-w-none">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex items-start gap-4">
-              <img src={logo} alt="Rollerport" className="h-20 w-20 object-contain" />
+        <div className="bg-card border rounded-lg p-6 max-w-6xl mx-auto print:border-0 print:shadow-none print:max-w-none print:p-2">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-start gap-3">
+              <img src={logo} alt="Rollerport" className="h-16 w-16 object-contain" />
               <div>
-                <h2 className="text-xl font-bold">ROLLERPORT</h2>
-                <p className="text-xs text-muted-foreground">Roletes para Correia Transportadora</p>
+                <h2 className="text-lg font-bold">ROLLERPORT</h2>
+                <p className="text-[10px] text-muted-foreground">Roletes para Correia Transportadora</p>
               </div>
             </div>
-            <h2 className="text-xl font-bold">ORDEM DE PRODUÇÃO</h2>
+            <h2 className="text-lg font-bold">ORDEM DE PRODUÇÃO</h2>
           </div>
-
-          {/* Info grid */}
-          <div className="grid grid-cols-2 gap-4 text-sm mb-6 border rounded p-4">
-            <div className="flex gap-2"><span className="font-semibold">NÚMERO O.S.:</span><span>{current.numero}</span></div>
-            <div className="flex gap-2"><span className="font-semibold">EMISSÃO:</span><span>{current.emissao}</span></div>
-            <div className="flex gap-2"><span className="font-semibold">EMPRESA:</span><span>{current.empresa}</span></div>
-            <div className="flex gap-2"><span className="font-semibold">ENTREGA:</span><span>{current.entrega}</span></div>
-            <div className="flex gap-2"><span className="font-semibold">PEDIDO:</span><span>{current.pedidoNumero}</span></div>
-            <div className="flex gap-2"><span className="font-semibold">ENTRADA NA PRODUÇÃO:</span><span>{current.entradaProducao || '_______________'}</span></div>
-            <div className="flex gap-2"><span className="font-semibold">DIAS PROPOSTOS:</span><span>{current.diasPropostos}</span></div>
+          <div className="grid grid-cols-2 gap-3 text-xs mb-4 border rounded p-3">
+            <div><span className="font-semibold">NÚMERO O.S.:</span> {current.numero}</div>
+            <div><span className="font-semibold">EMISSÃO:</span> {current.emissao}</div>
+            <div><span className="font-semibold">EMPRESA:</span> {current.empresa}</div>
+            <div><span className="font-semibold">ENTREGA:</span> {current.entrega}</div>
+            <div><span className="font-semibold">PEDIDO:</span> {current.pedidoNumero}</div>
+            <div><span className="font-semibold">ENTRADA NA PRODUÇÃO:</span> {current.entradaProducao || '_______________'}</div>
+            <div><span className="font-semibold">DIAS PROPOSTOS:</span> {current.diasPropostos}</div>
           </div>
-
           <OSTable items={current.itens} />
           <MateriaisSection />
         </div>
-        <style>{`@media print { @page { size: landscape; margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+        <style>{`@media print { @page { size: landscape; margin: 0.3cm; } body { -webkit-print-color-adjust: exact; font-size: 9px; } .print\\:hidden { display: none !important; } }`}</style>
       </div>
     );
   }
@@ -251,63 +234,56 @@ export default function ProducaoPage() {
   // ========== LIST ==========
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-header">Produção</h1>
-        <p className="page-subtitle">Ordens de serviço e acompanhamento</p>
-      </div>
+      <div><h1 className="page-header">Produção</h1><p className="page-subtitle">Ordens de serviço e acompanhamento</p></div>
 
       <div className="border rounded-lg p-4 bg-card">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por empresa, O.S. ou pedido..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder="Buscar por nº O.S., nº pedido, nº orçamento, empresa, comprador, CNPJ, telefone, email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
         </div>
       </div>
 
       <div className="bg-card rounded-lg border overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">O.S.</th>
-              <th className="text-left p-3 font-medium">Empresa</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Pedido</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Emissão</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Entrega</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="p-3 w-56"></th>
-            </tr>
-          </thead>
+          <thead><tr className="border-b bg-muted/50">
+            <th className="text-left p-3 font-medium">O.S.</th>
+            <th className="text-left p-3 font-medium">Empresa</th>
+            <th className="text-left p-3 font-medium hidden md:table-cell">Pedido</th>
+            <th className="text-left p-3 font-medium hidden md:table-cell">Emissão</th>
+            <th className="text-left p-3 font-medium hidden lg:table-cell">Entrega</th>
+            <th className="text-left p-3 font-medium min-w-[150px]">Status</th>
+            <th className="p-3 w-56"></th>
+          </tr></thead>
           <tbody>
-            {filteredOrdens.map(os => (
-              <tr key={os.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="p-3 font-mono font-medium">{os.numero}</td>
-                <td className="p-3">{os.empresa}</td>
-                <td className="p-3 hidden md:table-cell font-mono">{os.pedidoNumero}</td>
-                <td className="p-3 hidden md:table-cell">{os.emissao}</td>
-                <td className="p-3 hidden lg:table-cell">{os.entrega}</td>
-                <td className="p-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' :
-                    os.status === 'EM_ANDAMENTO' ? 'bg-warning/10 text-warning' :
-                    'bg-muted text-muted-foreground'
-                  }`}>{os.status.replace('_', ' ')}</span>
-                </td>
-                <td className="p-3">
-                  <div className="flex gap-1 justify-end">
-                    <button onClick={() => openView(os)} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
-                    <button onClick={() => openEdit(os)} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => openPrint(os)} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
-                    {os.status === 'ABERTA' && (
-                      <button onClick={() => updateStatus(os.id, 'EM_ANDAMENTO')} className="p-1.5 rounded hover:bg-muted text-primary" title="Aprovar para Produção"><CheckCircle className="h-4 w-4" /></button>
-                    )}
-                    {os.status === 'EM_ANDAMENTO' && (
-                      <button onClick={() => updateStatus(os.id, 'CONCLUIDA')} className="p-1.5 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-4 w-4" /></button>
-                    )}
-                    <button onClick={() => cancelarOS(os)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar O.S."><XCircle className="h-4 w-4" /></button>
-                    <button onClick={() => deleteOS(os.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filteredOrdens.map(os => {
+              const pct = statusProgress[os.status] || 0;
+              return (
+                <tr key={os.id} className="border-b last:border-0 hover:bg-muted/30">
+                  <td className="p-3 font-mono font-medium">{os.numero}</td>
+                  <td className="p-3">{os.empresa}</td>
+                  <td className="p-3 hidden md:table-cell font-mono">{os.pedidoNumero}</td>
+                  <td className="p-3 hidden md:table-cell">{os.emissao}</td>
+                  <td className="p-3 hidden lg:table-cell">{os.entrega}</td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Progress value={pct} className="h-2 flex-1" />
+                      <span className={`text-xs font-medium whitespace-nowrap ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>{os.status.replace('_', ' ')}</span>
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => openView(os)} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
+                      <button onClick={() => openEdit(os)} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => openPrint(os)} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
+                      {os.status === 'ABERTA' && <button onClick={() => updateStatus(os.id, 'EM_ANDAMENTO')} className="p-1.5 rounded hover:bg-muted text-primary" title="Aprovar"><CheckCircle className="h-4 w-4" /></button>}
+                      {os.status === 'EM_ANDAMENTO' && <button onClick={() => updateStatus(os.id, 'CONCLUIDA')} className="p-1.5 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-4 w-4" /></button>}
+                      <button onClick={() => cancelarOS(os)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
+                      <button onClick={() => deleteOS(os.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filteredOrdens.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhuma O.S. criada.</td></tr>}
           </tbody>
         </table>
