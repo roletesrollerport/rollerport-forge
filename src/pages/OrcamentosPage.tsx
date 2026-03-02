@@ -337,6 +337,64 @@ export default function OrcamentosPage() {
   // ========== PRINT VIEW ==========
   if (view === 'print' && viewOrc) {
     const cli = clientes.find(c => c.id === viewOrc.clienteId);
+
+    // Build all items for the table
+    const allPrintItems: Array<{
+      item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
+      ncm: string; valorLiquido: number; pis: number; cofins: number; icmsOrigem: number;
+      icmsDestino: number; valorUnitario: number; valorTotal: number; valorIPI: number;
+    }> = [];
+
+    let idx = 1;
+    (viewOrc.itensProduto || []).forEach((ip) => {
+      const prod = produtos.find(p => p.id === ip.produtoId);
+      const vliq = ip.valorUnitario;
+      const pisVal = +(vliq * 0.0165).toFixed(2);
+      const cofinsVal = +(vliq * 0.076).toFixed(2);
+      const icmsOrig = +(vliq * 0.12).toFixed(2);
+      const icmsDest = +(vliq * 0.04).toFixed(2);
+      const ipiVal = +(vliq * 0.05).toFixed(2);
+      allPrintItems.push({
+        item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
+        codExterno: (prod as any)?.codigoCliente || '', descricao: ip.produtoNome,
+        ncm: (prod as any)?.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
+        icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ip.valorUnitario,
+        valorTotal: ip.valorTotal, valorIPI: +(ip.valorTotal + ipiVal * ip.quantidade).toFixed(2),
+      });
+    });
+    (viewOrc.itensRolete || []).forEach((ir) => {
+      const vliq = ir.valorPorPeca;
+      const pisVal = +(vliq * 0.0165).toFixed(2);
+      const cofinsVal = +(vliq * 0.076).toFixed(2);
+      const icmsOrig = +(vliq * 0.12).toFixed(2);
+      const icmsDest = +(vliq * 0.04).toFixed(2);
+      const ipiVal = +(vliq * 0.05).toFixed(2);
+      allPrintItems.push({
+        item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
+        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} ø${ir.diametroTubo}x${ir.paredeTubo} Tubo:${ir.comprimentoTubo}mm`,
+        ncm: ir.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
+        icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ir.valorPorPeca,
+        valorTotal: ir.valorTotal, valorIPI: +(ir.valorTotal + ipiVal * ir.quantidade).toFixed(2),
+      });
+    });
+
+    const hasCodigoExterno = allPrintItems.some(i => i.codExterno);
+
+    const totals = allPrintItems.reduce((acc, i) => ({
+      qtd: acc.qtd + i.qtd,
+      valorLiquido: acc.valorLiquido + i.valorLiquido * i.qtd,
+      pis: acc.pis + i.pis * i.qtd,
+      cofins: acc.cofins + i.cofins * i.qtd,
+      icmsOrigem: acc.icmsOrigem + i.icmsOrigem * i.qtd,
+      icmsDestino: acc.icmsDestino + i.icmsDestino * i.qtd,
+      valorTotal: acc.valorTotal + i.valorTotal,
+      valorIPI: acc.valorIPI + i.valorIPI,
+    }), { qtd: 0, valorLiquido: 0, pis: 0, cofins: 0, icmsOrigem: 0, icmsDestino: 0, valorTotal: 0, valorIPI: 0 });
+
+    // Find vendedor info
+    const usuarios = store.getUsuarios();
+    const vendedorUser = usuarios.find(u => u.nome === viewOrc.vendedor);
+
     return (
       <div>
         <div className="flex gap-2 mb-4 print:hidden">
@@ -347,100 +405,123 @@ export default function OrcamentosPage() {
             <Printer className="h-4 w-4" /> Imprimir / PDF
           </Button>
         </div>
-        <div className="bg-card border rounded-lg p-8 max-w-4xl mx-auto print:border-0 print:shadow-none print:max-w-none">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-start gap-4">
-              <img src={logo} alt="Rollerport" className="h-24 w-24 object-contain" />
+
+        <div className="bg-white text-black border rounded-lg p-6 mx-auto print:border-0 print:shadow-none print:p-4" style={{ maxWidth: '1200px' }}>
+          {/* ===== HEADER: Logo+Rollerport left, Cliente right ===== */}
+          <div className="flex justify-between items-start">
+            <div className="flex items-start gap-3">
+              <img src={logo} alt="Rollerport" className="h-20 w-20 object-contain" />
               <div>
-                <h2 className="text-xl font-bold">ROLLERPORT</h2>
-                <p className="text-xs text-muted-foreground">Roletes para Correia Transportadora</p>
-                <p className="text-xs text-muted-foreground">Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial</p>
-                <p className="text-xs text-muted-foreground">Franco da Rocha/SP – CEP: 07832-460</p>
-                <p className="text-xs text-muted-foreground">CNPJ: 58.234.180/0001-56 • Tel: (11) 4441-3572</p>
+                <h2 className="text-lg font-bold">ROLLERPORT</h2>
+                <p className="text-[10px]">Roletes para Correia Transportadora</p>
+                <p className="text-[10px]">Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial</p>
+                <p className="text-[10px]">Franco da Rocha/SP – CEP: 07832-460</p>
+                <p className="text-[10px]">CNPJ: 58.234.180/0001-56</p>
+                <p className="text-[10px]">Tel: (11) 4441-3572 • contato@rollerport.com.br</p>
               </div>
             </div>
             {cli && (
-              <div className="text-right text-sm">
-                <p className="font-semibold">{cli.nome}</p>
-                <p className="text-xs text-muted-foreground">CNPJ: {cli.cnpj}</p>
-                <p className="text-xs text-muted-foreground">{cli.endereco}</p>
-                <p className="text-xs text-muted-foreground">Tel: {cli.telefone}</p>
-                <p className="text-xs text-muted-foreground">{cli.email}</p>
+              <div className="text-right text-xs">
+                <p className="font-bold text-sm">{cli.nome}</p>
+                <p>CNPJ: {cli.cnpj}</p>
+                <p>{cli.endereco}</p>
+                <p>{cli.cidade}/{cli.estado}</p>
+                <p>Tel: {cli.telefone}</p>
+                {cli.email && <p>{cli.email}</p>}
+                {viewOrc.compradorNome && <p>Comprador: {viewOrc.compradorNome}</p>}
               </div>
             )}
           </div>
 
-          <div className="mb-6 text-sm">
-            <span>Orçamento: <strong>{viewOrc.numero}</strong></span>
-            <span className="ml-6">Data: <strong>{viewOrc.dataOrcamento}</strong></span>
-            <span className="ml-6">Vendedor: <strong>{viewOrc.vendedor || '-'}</strong></span>
+          {/* ===== Spacer ===== */}
+          <div className="h-6" />
+
+          {/* ===== Orçamento info line ===== */}
+          <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs border-y py-2">
+            <span>Orçamento Nº: <strong>{viewOrc.numero}</strong></span>
+            <span>Data: <strong>{viewOrc.dataOrcamento}</strong></span>
+            <span>Vendedor: <strong>{viewOrc.vendedor || '-'}</strong></span>
+            {vendedorUser?.telefone && <span>Tel: <strong>{vendedorUser.telefone}</strong></span>}
+            {vendedorUser?.email && <span>E-mail: <strong>{vendedorUser.email}</strong></span>}
+            <span>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF' : 'FOB'}</strong></span>
+            <span>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></span>
           </div>
 
-          {/* Items table */}
-          <table className="w-full text-sm border-collapse mb-6">
+          {/* ===== Spacer ===== */}
+          <div className="h-6" />
+
+          {/* ===== TABLE ===== */}
+          <table className="w-full text-[9px] border-collapse">
             <thead>
-              <tr className="border-b-2 border-foreground/20">
-                <th className="text-left p-2 font-semibold">Item</th>
-                <th className="text-left p-2 font-semibold">Código</th>
-                <th className="text-left p-2 font-semibold">Descrição do Produto</th>
-                <th className="text-center p-2 font-semibold">Qtd</th>
-                <th className="text-right p-2 font-semibold">Valor Unit.</th>
-                <th className="text-right p-2 font-semibold">Valor Total</th>
+              <tr className="bg-gray-100">
+                <th className="border p-1 text-center">Item</th>
+                <th className="border p-1 text-center">Qtd</th>
+                <th className="border p-1 text-center">Código</th>
+                {hasCodigoExterno && <th className="border p-1 text-center">Cód. Externo</th>}
+                <th className="border p-1 text-left">Descrição do Produto</th>
+                <th className="border p-1 text-center">NCM</th>
+                <th className="border p-1 text-right">Vlr Líquido</th>
+                <th className="border p-1 text-right">PIS</th>
+                <th className="border p-1 text-right">Cofins</th>
+                <th className="border p-1 text-right">ICMS Origem</th>
+                <th className="border p-1 text-right">ICMS Destino</th>
+                <th className="border p-1 text-right">Vlr Unitário</th>
+                <th className="border p-1 text-right">Vlr Total</th>
+                <th className="border p-1 text-right">Vlr c/ IPI</th>
               </tr>
             </thead>
             <tbody>
-              {(viewOrc.itensProduto || []).map((item, i) => {
-                const prod = produtos.find(p => p.id === item.produtoId);
-                return (
-                  <tr key={`p-${i}`} className="border-b">
-                    <td className="p-2 text-center">{String(i + 1).padStart(2, '0')}</td>
-                    <td className="p-2">{prod?.codigo || '-'}</td>
-                    <td className="p-2">{item.produtoNome}</td>
-                    <td className="p-2 text-center">{item.quantidade}</td>
-                    <td className="p-2 text-right">{fmt(item.valorUnitario)}</td>
-                    <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
-                  </tr>
-                );
-              })}
-              {(viewOrc.itensRolete || []).map((item, i) => {
-                const idx = (viewOrc.itensProduto || []).length + i;
-                return (
-                  <tr key={`r-${i}`} className="border-b">
-                    <td className="p-2 text-center">{String(idx + 1).padStart(2, '0')}</td>
-                    <td className="p-2">{item.tipoRolete}</td>
-                    <td className="p-2">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo} Tubo:{item.comprimentoTubo}mm</td>
-                    <td className="p-2 text-center">{item.quantidade}</td>
-                    <td className="p-2 text-right">{fmt(item.valorPorPeca)}</td>
-                    <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t-2 border-foreground/20 font-bold">
-                <td colSpan={5} className="p-2 text-right">TOTAL GERAL</td>
-                <td className="p-2 text-right">{fmt(viewOrc.valorTotal)}</td>
+              {allPrintItems.map((row) => (
+                <tr key={row.item}>
+                  <td className="border p-1 text-center">{String(row.item).padStart(2, '0')}</td>
+                  <td className="border p-1 text-center">{row.qtd}</td>
+                  <td className="border p-1 text-center">{row.codigo}</td>
+                  {hasCodigoExterno && <td className="border p-1 text-center">{row.codExterno || '-'}</td>}
+                  <td className="border p-1 text-left">{row.descricao}</td>
+                  <td className="border p-1 text-center">{row.ncm || '-'}</td>
+                  <td className="border p-1 text-right">{fmt(row.valorLiquido)}</td>
+                  <td className="border p-1 text-right">{fmt(row.pis)}</td>
+                  <td className="border p-1 text-right">{fmt(row.cofins)}</td>
+                  <td className="border p-1 text-right">{fmt(row.icmsOrigem)}</td>
+                  <td className="border p-1 text-right">{fmt(row.icmsDestino)}</td>
+                  <td className="border p-1 text-right">{fmt(row.valorUnitario)}</td>
+                  <td className="border p-1 text-right">{fmt(row.valorTotal)}</td>
+                  <td className="border p-1 text-right">{fmt(row.valorIPI)}</td>
+                </tr>
+              ))}
+              {/* TOTALS ROW */}
+              <tr className="bg-gray-100 font-bold">
+                <td className="border p-1 text-center" colSpan={1}>TOTAL</td>
+                <td className="border p-1 text-center">{totals.qtd}</td>
+                <td className="border p-1" colSpan={hasCodigoExterno ? 4 : 3}></td>
+                <td className="border p-1 text-right">{fmt(totals.valorLiquido)}</td>
+                <td className="border p-1 text-right">{fmt(totals.pis)}</td>
+                <td className="border p-1 text-right">{fmt(totals.cofins)}</td>
+                <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
+                <td className="border p-1 text-right">{fmt(totals.icmsDestino)}</td>
+                <td className="border p-1"></td>
+                <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
+                <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
               </tr>
             </tbody>
           </table>
 
-          {/* Footer info */}
-          <div className="border-t pt-4 grid grid-cols-3 gap-4 text-sm mb-4">
-            <div><span className="text-muted-foreground text-xs">Previsão de Entrega:</span><br /><strong>{viewOrc.previsaoEntrega || '-'}</strong></div>
-            <div><span className="text-muted-foreground text-xs">Condição de Pagamento:</span><br /><strong>{viewOrc.condicaoPagamento || '-'}</strong></div>
-            <div><span className="text-muted-foreground text-xs">Tipo de Frete:</span><br /><strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></div>
+          {/* ===== Footer ===== */}
+          <div className="mt-4 grid grid-cols-3 gap-4 text-[10px] border-t pt-3">
+            <div>Previsão de Entrega: <strong>{viewOrc.previsaoEntrega || '-'}</strong></div>
+            <div>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></div>
+            <div>Tipo de Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></div>
           </div>
           {viewOrc.observacao && (
-            <div className="text-sm mb-6">
-              <span className="text-muted-foreground text-xs">Observação:</span><br />
-              <strong>{viewOrc.observacao}</strong>
-            </div>
+            <div className="text-[10px] mt-2">Observação: <strong>{viewOrc.observacao}</strong></div>
           )}
-          <div className="text-center text-sm text-primary mt-8">
+          <div className="text-center text-[10px] mt-6">
             <p className="font-semibold">ROLLERPORT – Roletes para Correia Transportadora</p>
-            <p className="text-muted-foreground text-xs">Orçamento válido por 5 dias úteis.</p>
+            <p className="text-gray-500">Orçamento válido por 5 dias úteis.</p>
           </div>
         </div>
-        <style>{`@media print { @page { size: landscape; margin: 1cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+
+        <style>{`@media print { @page { size: landscape; margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
       </div>
     );
   }
