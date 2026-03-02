@@ -13,8 +13,8 @@ const tabs: { key: CustoTab; label: string }[] = [
   { key: 'tubos', label: 'Tubos' },
   { key: 'eixos', label: 'Eixos' },
   { key: 'conjuntos', label: 'Conjuntos' },
-  { key: 'spiraflex', label: 'Spiraflex' },
-  { key: 'aneis', label: 'Anéis' },
+  { key: 'spiraflex', label: 'Revest. Spiraflex' },
+  { key: 'aneis', label: 'Revest. Anéis' },
   { key: 'encaixes', label: 'Encaixes' },
 ];
 
@@ -22,7 +22,6 @@ const fmt = (v: number) => v ? `R$ ${v.toFixed(2).replace('.', ',')}` : '';
 
 function ImageCell({ src, onUpload, onRemove }: { src?: string; onUpload: (url: string) => void; onRemove: () => void }) {
   const [preview, setPreview] = useState(false);
-
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -30,25 +29,13 @@ function ImageCell({ src, onUpload, onRemove }: { src?: string; onUpload: (url: 
     reader.onload = () => onUpload(reader.result as string);
     reader.readAsDataURL(file);
   };
-
   return (
     <div className="flex items-center gap-1">
       {src ? (
         <>
-          <img
-            src={src}
-            alt="item"
-            className="h-8 w-8 object-cover rounded cursor-pointer border"
-            onClick={() => setPreview(true)}
-          />
-          <button onClick={onRemove} className="text-destructive hover:text-destructive/80 p-0.5">
-            <X className="h-3 w-3" />
-          </button>
-          <Dialog open={preview} onOpenChange={setPreview}>
-            <DialogContent className="max-w-lg">
-              <img src={src} alt="preview" className="w-full rounded" />
-            </DialogContent>
-          </Dialog>
+          <img src={src} alt="item" className="h-8 w-8 object-cover rounded cursor-pointer border" onClick={() => setPreview(true)} />
+          <button onClick={onRemove} className="text-destructive hover:text-destructive/80 p-0.5"><X className="h-3 w-3" /></button>
+          <Dialog open={preview} onOpenChange={setPreview}><DialogContent className="max-w-lg"><img src={src} alt="preview" className="w-full rounded" /></DialogContent></Dialog>
         </>
       ) : (
         <label className="cursor-pointer text-muted-foreground hover:text-primary p-1">
@@ -70,9 +57,8 @@ export default function CustosPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewItem, setViewItem] = useState<any>(null);
 
-  // Split revestimentos into spiraflex and aneis
-  const spiraflex = revestimentos.filter(r => r.tipo.toLowerCase().includes('spiraflex'));
-  const aneis = revestimentos.filter(r => !r.tipo.toLowerCase().includes('spiraflex'));
+  const spiraflex = revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX'));
+  const aneis = revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI'));
 
   useEffect(() => {
     setTubos(store.getTubos());
@@ -83,19 +69,15 @@ export default function CustosPage() {
   }, []);
 
   const saveAll = () => {
-    store.saveTubos(tubos);
-    store.saveEixos(eixos);
-    store.saveConjuntos(conjuntos);
-    store.saveRevestimentos(revestimentos);
-    store.saveEncaixes(encaixes);
-    setEditingId(null);
-    toast.success('Custos salvos com sucesso!');
+    store.saveTubos(tubos); store.saveEixos(eixos); store.saveConjuntos(conjuntos);
+    store.saveRevestimentos(revestimentos); store.saveEncaixes(encaixes);
+    setEditingId(null); toast.success('Custos salvos com sucesso!');
   };
 
   const addTubo = () => { const id = store.nextId('tubo'); setTubos([...tubos, { id, diametro: '' as any, parede: '' as any, valorMetro: '' as any }]); setEditingId(id); };
   const addEixo = () => { const id = store.nextId('eixo'); setEixos([...eixos, { id, diametro: '', valorMetro: '' as any }]); setEditingId(id); };
   const addConjunto = () => { const id = store.nextId('conj'); setConjuntos([...conjuntos, { id, codigo: '', valor: '' as any }]); setEditingId(id); };
-  const addRevestimento = (isSpiraflex: boolean) => { const id = store.nextId('rev'); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : '', valorMetroOuPeca: '' as any }]); setEditingId(id); };
+  const addRevestimento = (isSpiraflex: boolean) => { const id = store.nextId('rev'); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : 'ABI-', valorMetroOuPeca: '' as any }]); setEditingId(id); };
   const addEncaixe = () => { const id = store.nextId('enc'); setEncaixes([...encaixes, { id, tipo: '', preco: '' as any }]); setEditingId(id); };
 
   const deleteTubo = (id: string) => { setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); };
@@ -150,9 +132,7 @@ export default function CustosPage() {
             <tbody>
               {tubos.map((t, i) => (
                 <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-2">
-                    <ImageCell src={t.imagem} onUpload={(url) => updateTuboImg(t.id, url)} onRemove={() => updateTuboImg(t.id, '')} />
-                  </td>
+                  <td className="p-2"><ImageCell src={t.imagem} onUpload={(url) => updateTuboImg(t.id, url)} onRemove={() => updateTuboImg(t.id, '')} /></td>
                   {editingId === t.id ? (<>
                     <td className="p-2"><Input type="number" value={t.diametro || ''} placeholder="Diâmetro" onChange={e => { const n = [...tubos]; n[i] = { ...t, diametro: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
                     <td className="p-2"><Input type="number" value={t.parede || ''} placeholder="Parede" onChange={e => { const n = [...tubos]; n[i] = { ...t, parede: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
@@ -180,9 +160,7 @@ export default function CustosPage() {
             <tbody>
               {eixos.map((e, i) => (
                 <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-2">
-                    <ImageCell src={e.imagem} onUpload={(url) => updateEixoImg(e.id, url)} onRemove={() => updateEixoImg(e.id, '')} />
-                  </td>
+                  <td className="p-2"><ImageCell src={e.imagem} onUpload={(url) => updateEixoImg(e.id, url)} onRemove={() => updateEixoImg(e.id, '')} /></td>
                   {editingId === e.id ? (<>
                     <td className="p-2"><Input value={e.diametro} placeholder="Diâmetro" onChange={ev => { const n = [...eixos]; n[i] = { ...e, diametro: ev.target.value }; setEixos(n); }} /></td>
                     <td className="p-2"><Input type="number" step="0.01" value={e.valorMetro || ''} placeholder="R$ 0,00" onChange={ev => { const n = [...eixos]; n[i] = { ...e, valorMetro: ev.target.value ? +ev.target.value : '' as any }; setEixos(n); }} /></td>
@@ -208,9 +186,7 @@ export default function CustosPage() {
             <tbody>
               {conjuntos.map((c, i) => (
                 <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-2">
-                    <ImageCell src={c.imagem} onUpload={(url) => updateConjImg(c.id, url)} onRemove={() => updateConjImg(c.id, '')} />
-                  </td>
+                  <td className="p-2"><ImageCell src={c.imagem} onUpload={(url) => updateConjImg(c.id, url)} onRemove={() => updateConjImg(c.id, '')} /></td>
                   {editingId === c.id ? (<>
                     <td className="p-2"><Input value={c.codigo} placeholder="Código" onChange={e => { const n = [...conjuntos]; n[i] = { ...c, codigo: e.target.value }; setConjuntos(n); }} /></td>
                     <td className="p-2"><Input type="number" step="0.01" value={c.valor || ''} placeholder="R$ 0,00" onChange={e => { const n = [...conjuntos]; n[i] = { ...c, valor: e.target.value ? +e.target.value : '' as any }; setConjuntos(n); }} /></td>
@@ -230,7 +206,7 @@ export default function CustosPage() {
             <thead><tr className="border-b bg-muted/50">
               <th className="p-3 w-12"></th>
               <th className="text-left p-3 font-medium">Tipo</th>
-              <th className="text-left p-3 font-medium">Valor/metro ou peça</th>
+              <th className="text-left p-3 font-medium">Valor/metro</th>
               <th className="p-3 w-28">Ações</th>
             </tr></thead>
             <tbody>
@@ -238,9 +214,7 @@ export default function CustosPage() {
                 const i = revestimentos.findIndex(x => x.id === r.id);
                 return (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-2">
-                      <ImageCell src={r.imagem} onUpload={(url) => updateRevImg(r.id, url)} onRemove={() => updateRevImg(r.id, '')} />
-                    </td>
+                    <td className="p-2"><ImageCell src={r.imagem} onUpload={(url) => updateRevImg(r.id, url)} onRemove={() => updateRevImg(r.id, '')} /></td>
                     {editingId === r.id ? (<>
                       <td className="p-2"><Input value={r.tipo} placeholder="Tipo" onChange={e => { const n = [...revestimentos]; n[i] = { ...r, tipo: e.target.value }; setRevestimentos(n); }} /></td>
                       <td className="p-2"><Input type="number" step="0.01" value={r.valorMetroOuPeca || ''} placeholder="R$ 0,00" onChange={e => { const n = [...revestimentos]; n[i] = { ...r, valorMetroOuPeca: e.target.value ? +e.target.value : '' as any }; setRevestimentos(n); }} /></td>
@@ -260,7 +234,7 @@ export default function CustosPage() {
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
               <th className="p-3 w-12"></th>
-              <th className="text-left p-3 font-medium">Tipo</th>
+              <th className="text-left p-3 font-medium">Modelo</th>
               <th className="text-left p-3 font-medium">Valor/peça</th>
               <th className="p-3 w-28">Ações</th>
             </tr></thead>
@@ -269,11 +243,9 @@ export default function CustosPage() {
                 const i = revestimentos.findIndex(x => x.id === r.id);
                 return (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-2">
-                      <ImageCell src={r.imagem} onUpload={(url) => updateRevImg(r.id, url)} onRemove={() => updateRevImg(r.id, '')} />
-                    </td>
+                    <td className="p-2"><ImageCell src={r.imagem} onUpload={(url) => updateRevImg(r.id, url)} onRemove={() => updateRevImg(r.id, '')} /></td>
                     {editingId === r.id ? (<>
-                      <td className="p-2"><Input value={r.tipo} placeholder="Tipo" onChange={e => { const n = [...revestimentos]; n[i] = { ...r, tipo: e.target.value }; setRevestimentos(n); }} /></td>
+                      <td className="p-2"><Input value={r.tipo} placeholder="Modelo ABI" onChange={e => { const n = [...revestimentos]; n[i] = { ...r, tipo: e.target.value }; setRevestimentos(n); }} /></td>
                       <td className="p-2"><Input type="number" step="0.01" value={r.valorMetroOuPeca || ''} placeholder="R$ 0,00" onChange={e => { const n = [...revestimentos]; n[i] = { ...r, valorMetroOuPeca: e.target.value ? +e.target.value : '' as any }; setRevestimentos(n); }} /></td>
                     </>) : (<>
                       <td className="p-3">{r.tipo}</td>
@@ -298,9 +270,7 @@ export default function CustosPage() {
             <tbody>
               {encaixes.map((enc, i) => (
                 <tr key={enc.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-2">
-                    <ImageCell src={enc.imagem} onUpload={(url) => updateEncImg(enc.id, url)} onRemove={() => updateEncImg(enc.id, '')} />
-                  </td>
+                  <td className="p-2"><ImageCell src={enc.imagem} onUpload={(url) => updateEncImg(enc.id, url)} onRemove={() => updateEncImg(enc.id, '')} /></td>
                   {editingId === enc.id ? (<>
                     <td className="p-2"><Input value={enc.tipo} placeholder="Tipo" onChange={e => { const n = [...encaixes]; n[i] = { ...enc, tipo: e.target.value }; setEncaixes(n); }} /></td>
                     <td className="p-2"><Input type="number" step="0.01" value={enc.preco || ''} placeholder="R$ 0,00" onChange={e => { const n = [...encaixes]; n[i] = { ...enc, preco: e.target.value ? +e.target.value : '' as any }; setEncaixes(n); }} /></td>
@@ -325,7 +295,6 @@ export default function CustosPage() {
         else addEncaixe();
       }} className="gap-2"><Plus className="h-4 w-4" /> Adicionar</Button>
 
-      {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Detalhes</DialogTitle></DialogHeader>
@@ -333,10 +302,7 @@ export default function CustosPage() {
             <div className="space-y-2 text-sm">
               {viewItem.imagem && <img src={viewItem.imagem} alt="item" className="w-full max-h-48 object-contain rounded mb-3" />}
               {Object.entries(viewItem).filter(([k]) => k !== 'id' && k !== 'imagem').map(([k, v]) => (
-                <div key={k} className="flex justify-between py-1 border-b last:border-0">
-                  <span className="text-muted-foreground capitalize">{k}</span>
-                  <span className="font-medium">{typeof v === 'number' ? fmt(v as number) : String(v)}</span>
-                </div>
+                <div key={k}><span className="text-muted-foreground capitalize">{k}:</span> <strong>{String(v)}</strong></div>
               ))}
             </div>
           )}

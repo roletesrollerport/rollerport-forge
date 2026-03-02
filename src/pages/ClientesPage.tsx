@@ -11,8 +11,7 @@ const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', wh
 
 const emptyCliente = (): Cliente => ({
   id: '', nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
-  compradores: [emptyComprador()],
-  aniversarioEmpresa: '', redesSociais: '',
+  compradores: [emptyComprador()], aniversarioEmpresa: '', redesSociais: '',
   createdAt: new Date().toISOString().split('T')[0],
 });
 
@@ -28,32 +27,39 @@ export default function ClientesPage() {
   const orcamentos = store.getOrcamentos();
   const pedidos = store.getPedidos();
 
-  const filtered = clientes.filter(c =>
-    c.nome.toLowerCase().includes(search.toLowerCase()) ||
-    c.cnpj.includes(search) ||
-    c.cidade?.toLowerCase().includes(search.toLowerCase()) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Comprehensive search across all fields
+  const filtered = clientes.filter(c => {
+    const s = search.toLowerCase();
+    if (!s) return true;
+    const compradorMatch = (c.compradores || []).some(comp =>
+      comp.nome?.toLowerCase().includes(s) ||
+      comp.telefone?.includes(s) ||
+      comp.email?.toLowerCase().includes(s) ||
+      comp.whatsapp?.includes(s)
+    );
+    return (
+      c.nome?.toLowerCase().includes(s) ||
+      c.cnpj?.includes(s) ||
+      c.email?.toLowerCase().includes(s) ||
+      c.telefone?.includes(s) ||
+      c.whatsapp?.includes(s) ||
+      c.endereco?.toLowerCase().includes(s) ||
+      c.cidade?.toLowerCase().includes(s) ||
+      c.estado?.toLowerCase().includes(s) ||
+      compradorMatch
+    );
+  });
 
   const handleSave = () => {
     let updated: Cliente[];
-    if (editing.id) {
-      updated = clientes.map(c => c.id === editing.id ? editing : c);
-    } else {
-      const novo = { ...editing, id: store.nextId('cli') };
-      updated = [...clientes, novo];
-    }
-    store.saveClientes(updated);
-    setClientes(updated);
-    setOpen(false);
-    toast.success('Cliente salvo!');
+    if (editing.id) { updated = clientes.map(c => c.id === editing.id ? editing : c); }
+    else { updated = [...clientes, { ...editing, id: store.nextId('cli') }]; }
+    store.saveClientes(updated); setClientes(updated); setOpen(false); toast.success('Cliente salvo!');
   };
 
   const handleDelete = (id: string) => {
     const updated = clientes.filter(c => c.id !== id);
-    store.saveClientes(updated);
-    setClientes(updated);
-    toast.success('Cliente removido!');
+    store.saveClientes(updated); setClientes(updated); toast.success('Cliente removido!');
   };
 
   const updateComprador = (idx: number, partial: Partial<Comprador>) => {
@@ -62,34 +68,17 @@ export default function ClientesPage() {
     setEditing({ ...editing, compradores });
   };
 
-  const addComprador = () => {
-    setEditing({ ...editing, compradores: [...editing.compradores, emptyComprador()] });
-  };
-
-  const removeComprador = (idx: number) => {
-    if (editing.compradores.length <= 1) return;
-    setEditing({ ...editing, compradores: editing.compradores.filter((_, i) => i !== idx) });
-  };
+  const addComprador = () => setEditing({ ...editing, compradores: [...editing.compradores, emptyComprador()] });
+  const removeComprador = (idx: number) => { if (editing.compradores.length <= 1) return; setEditing({ ...editing, compradores: editing.compradores.filter((_, i) => i !== idx) }); };
 
   const getUltimoOrcamento = (clienteId: string) => {
     const orcs = orcamentos.filter(o => o.clienteId === clienteId);
     return orcs.length > 0 ? orcs[orcs.length - 1].dataOrcamento || orcs[orcs.length - 1].createdAt : '-';
   };
-
   const getUltimaCompra = (clienteNome: string) => {
     const peds = pedidos.filter(p => p.clienteNome === clienteNome && p.status === 'ENTREGUE');
     return peds.length > 0 ? peds[peds.length - 1].createdAt : '-';
   };
-
-  const getUltimaInteracao = (clienteId: string, clienteNome: string) => {
-    const datas: string[] = [];
-    const orcs = orcamentos.filter(o => o.clienteId === clienteId);
-    if (orcs.length > 0) datas.push(orcs[orcs.length - 1].dataOrcamento || orcs[orcs.length - 1].createdAt);
-    const peds = pedidos.filter(p => p.clienteNome === clienteNome);
-    if (peds.length > 0) datas.push(peds[peds.length - 1].createdAt);
-    return datas.length > 0 ? datas.sort().reverse()[0] : '-';
-  };
-
   const getAnivComprador = (c: Cliente) => {
     const comps = (c.compradores || []).filter(comp => comp.aniversario);
     if (comps.length === 0) return '-';
@@ -113,16 +102,14 @@ export default function ClientesPage() {
               <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={editing.cnpj} onChange={e => setEditing({ ...editing, cnpj: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={editing.telefone} onChange={e => setEditing({ ...editing, telefone: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={editing.whatsapp} onChange={e => setEditing({ ...editing, whatsapp: e.target.value })} placeholder="(00) 90000-0000" /></div>
+              <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={editing.whatsapp} onChange={e => setEditing({ ...editing, whatsapp: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Email</label><Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></div>
               <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={editing.endereco} onChange={e => setEditing({ ...editing, endereco: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={editing.cidade} onChange={e => setEditing({ ...editing, cidade: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Estado</label><Input value={editing.estado} onChange={e => setEditing({ ...editing, estado: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Aniversário da Empresa</label><Input type="date" value={editing.aniversarioEmpresa || ''} onChange={e => setEditing({ ...editing, aniversarioEmpresa: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={editing.redesSociais || ''} onChange={e => setEditing({ ...editing, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
+              <div><label className="text-xs text-muted-foreground">Redes Sociais da Empresa</label><Input value={editing.redesSociais || ''} onChange={e => setEditing({ ...editing, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
             </div>
-
-            {/* Compradores */}
             <div className="mt-4 border-t pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-sm">Compradores</h3>
@@ -132,9 +119,7 @@ export default function ClientesPage() {
                 <div key={idx} className="border rounded-lg p-3 mb-2 bg-muted/20">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs font-medium text-muted-foreground">Comprador {idx + 1}</span>
-                    {editing.compradores.length > 1 && (
-                      <button onClick={() => removeComprador(idx)} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                    )}
+                    {editing.compradores.length > 1 && <button onClick={() => removeComprador(idx)} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div><label className="text-xs text-muted-foreground">Nome</label><Input value={comp.nome} onChange={e => updateComprador(idx, { nome: e.target.value })} /></div>
@@ -147,20 +132,16 @@ export default function ClientesPage() {
                 </div>
               ))}
             </div>
-
-            <div className="flex justify-end mt-4">
-              <Button onClick={handleSave}>Salvar</Button>
-            </div>
+            <div className="flex justify-end mt-4"><Button onClick={handleSave}>Salvar</Button></div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="relative max-w-sm">
+      <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar por nome, CNPJ, cidade ou email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        <Input placeholder="Buscar por empresa, comprador, CNPJ, endereço, telefone, email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
       </div>
 
-      {/* View Dialog */}
       <Dialog open={!!viewCliente} onOpenChange={() => setViewCliente(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{viewCliente?.nome}</DialogTitle></DialogHeader>
@@ -172,9 +153,9 @@ export default function ClientesPage() {
                 <div><span className="text-muted-foreground">Telefone:</span> <strong>{viewCliente.telefone}</strong></div>
                 <div><span className="text-muted-foreground">WhatsApp:</span> <strong>{viewCliente.whatsapp}</strong></div>
                 <div><span className="text-muted-foreground">Email:</span> <strong>{viewCliente.email}</strong></div>
-                <div><span className="text-muted-foreground">Aniversário:</span> <strong>{viewCliente.aniversarioEmpresa || '-'}</strong></div>
+                <div><span className="text-muted-foreground">Aniv. Empresa:</span> <strong>{viewCliente.aniversarioEmpresa || '-'}</strong></div>
                 <div className="col-span-2"><span className="text-muted-foreground">Endereço:</span> <strong>{viewCliente.endereco}</strong></div>
-                <div className="col-span-2"><span className="text-muted-foreground">Redes Sociais:</span> <strong>{viewCliente.redesSociais || '-'}</strong></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Redes Sociais (Empresa):</span> <strong>{viewCliente.redesSociais || '-'}</strong></div>
               </div>
               <div className="border-t pt-3">
                 <h4 className="font-semibold text-xs mb-2">Compradores</h4>
@@ -183,7 +164,7 @@ export default function ClientesPage() {
                     <strong>{c.nome}</strong> • {c.telefone} • {c.email}
                     {c.whatsapp && ` • WhatsApp: ${c.whatsapp}`}
                     {c.aniversario && ` • Aniv: ${c.aniversario}`}
-                    {c.redesSociais && ` • ${c.redesSociais}`}
+                    {c.redesSociais && ` • Redes: ${c.redesSociais}`}
                   </div>
                 ))}
               </div>
@@ -199,11 +180,12 @@ export default function ClientesPage() {
               <th className="text-left p-3 font-medium">Empresa</th>
               <th className="text-left p-3 font-medium">CNPJ</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Cidade</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Último Orçamento</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Última Compra</th>
-              <th className="text-left p-3 font-medium hidden xl:table-cell">Última Interação</th>
-              <th className="text-left p-3 font-medium hidden xl:table-cell">Aniv. Empresa</th>
-              <th className="text-left p-3 font-medium hidden 2xl:table-cell">Aniv. Comprador</th>
+              <th className="text-left p-3 font-medium hidden lg:table-cell">Telefone</th>
+              <th className="text-left p-3 font-medium hidden lg:table-cell">Aniv. Empresa</th>
+              <th className="text-left p-3 font-medium hidden xl:table-cell">Redes (Empresa)</th>
+              <th className="text-left p-3 font-medium hidden xl:table-cell">Aniv. Comprador</th>
+              <th className="text-left p-3 font-medium hidden 2xl:table-cell">Último Orçamento</th>
+              <th className="text-left p-3 font-medium hidden 2xl:table-cell">Última Compra</th>
               <th className="p-3 w-24">Ações</th>
             </tr>
           </thead>
@@ -213,11 +195,12 @@ export default function ClientesPage() {
                 <td className="p-3 font-medium">{c.nome}</td>
                 <td className="p-3 font-mono text-xs">{c.cnpj}</td>
                 <td className="p-3 hidden md:table-cell">{c.cidade}/{c.estado}</td>
-                <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">{getUltimoOrcamento(c.id)}</td>
-                <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">{getUltimaCompra(c.nome)}</td>
-                <td className="p-3 hidden xl:table-cell text-muted-foreground text-xs">{getUltimaInteracao(c.id, c.nome)}</td>
-                <td className="p-3 hidden xl:table-cell text-muted-foreground text-xs">{c.aniversarioEmpresa || '-'}</td>
-                <td className="p-3 hidden 2xl:table-cell text-muted-foreground text-xs truncate max-w-[150px]" title={getAnivComprador(c)}>{getAnivComprador(c)}</td>
+                <td className="p-3 hidden lg:table-cell text-xs">{c.telefone}</td>
+                <td className="p-3 hidden lg:table-cell text-xs">{c.aniversarioEmpresa || '-'}</td>
+                <td className="p-3 hidden xl:table-cell text-xs truncate max-w-[100px]">{c.redesSociais || '-'}</td>
+                <td className="p-3 hidden xl:table-cell text-xs truncate max-w-[150px]" title={getAnivComprador(c)}>{getAnivComprador(c)}</td>
+                <td className="p-3 hidden 2xl:table-cell text-muted-foreground text-xs">{getUltimoOrcamento(c.id)}</td>
+                <td className="p-3 hidden 2xl:table-cell text-muted-foreground text-xs">{getUltimaCompra(c.nome)}</td>
                 <td className="p-3">
                   <div className="flex gap-1">
                     <button onClick={() => setViewCliente(c)} className="p-1 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
@@ -227,7 +210,7 @@ export default function ClientesPage() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>}
           </tbody>
         </table>
       </div>

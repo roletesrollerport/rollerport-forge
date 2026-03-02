@@ -31,11 +31,22 @@ function calcItem(item: ItemOrcamento): ItemOrcamento {
   const rev = revestimentos.find(r => r.tipo === item.especificacaoRevestimento);
   const enc = encaixes.find(e => e.tipo === item.tipoEncaixe);
 
+  // Formula: Tubo * compTubo + Eixo * compEixo + Encaixe + Conjunto
   const custoTubo = tubo ? (item.comprimentoTubo / 1000) * tubo.valorMetro : 0;
   const custoEixo = eixo ? (item.comprimentoEixo / 1000) * eixo.valorMetro : 0;
   const custoConj = conj ? conj.valor * 2 : 0;
-  const custoRev = rev ? (item.comprimentoTubo / 1000) * rev.valorMetroOuPeca * (item.quantidadeAneis || 1) : 0;
   const custoEnc = enc ? enc.preco * 2 : 0;
+
+  // Revestimento: Spiraflex = valor * comprimentoEixo; Anéis = valor * quantidade
+  let custoRev = 0;
+  if (rev) {
+    const isSpiraflex = rev.tipo.toUpperCase().includes('SPIRAFLEX');
+    if (isSpiraflex) {
+      custoRev = (item.comprimentoEixo / 1000) * rev.valorMetroOuPeca;
+    } else {
+      custoRev = rev.valorMetroOuPeca * (item.quantidadeAneis || 1);
+    }
+  }
 
   const custo = custoTubo + custoEixo + custoConj + custoRev + custoEnc;
   const valorPorPeca = custo * item.multiplicador * (1 - item.desconto / 100);
@@ -102,12 +113,16 @@ export default function OrcamentosPage() {
 
   const clienteSelecionado = clientes.find(c => c.id === clienteId);
 
-  const filteredClientes = clientes.filter(c =>
-    c.nome.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-    c.cnpj.includes(clienteSearch) ||
-    c.telefone.includes(clienteSearch) ||
-    c.email.toLowerCase().includes(clienteSearch.toLowerCase())
-  );
+  const filteredClientes = clientes.filter(c => {
+    const s = clienteSearch.toLowerCase();
+    if (!s) return true;
+    const compradorMatch = (c.compradores || []).some(comp =>
+      comp.nome?.toLowerCase().includes(s) || comp.telefone?.includes(clienteSearch) || comp.email?.toLowerCase().includes(s)
+    );
+    return c.nome.toLowerCase().includes(s) || c.cnpj.includes(clienteSearch) ||
+      c.telefone.includes(clienteSearch) || c.email.toLowerCase().includes(s) ||
+      c.endereco?.toLowerCase().includes(s) || c.whatsapp?.includes(clienteSearch) || compradorMatch;
+  });
 
   const filteredProdutos = produtos.filter(p =>
     p.tipo === 'GENERICO' && (
@@ -339,8 +354,9 @@ export default function OrcamentosPage() {
               <div>
                 <h2 className="text-xl font-bold">ROLLERPORT</h2>
                 <p className="text-xs text-muted-foreground">Roletes para Correia Transportadora</p>
-                <p className="text-xs text-muted-foreground">Rua Exemplo, 123 – Cidade/UF – CEP 00000-000</p>
-                <p className="text-xs text-muted-foreground">Tel: (00) 0000-0000 • contato@rollerport.com.br</p>
+                <p className="text-xs text-muted-foreground">Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial</p>
+                <p className="text-xs text-muted-foreground">Franco da Rocha/SP – CEP: 07832-460</p>
+                <p className="text-xs text-muted-foreground">CNPJ: 58.234.180/0001-56 • Tel: (11) 4441-3572</p>
               </div>
             </div>
             {cli && (
@@ -420,7 +436,7 @@ export default function OrcamentosPage() {
           )}
           <div className="text-center text-sm text-primary mt-8">
             <p className="font-semibold">ROLLERPORT – Roletes para Correia Transportadora</p>
-            <p className="text-muted-foreground text-xs">Orçamento válido por 10 dias.</p>
+            <p className="text-muted-foreground text-xs">Orçamento válido por 5 dias úteis.</p>
           </div>
         </div>
         <style>{`@media print { @page { size: landscape; margin: 1cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
@@ -482,7 +498,14 @@ export default function OrcamentosPage() {
             </div>
             <div>
               <label className="text-xs text-primary font-medium">Condição de Pagamento</label>
-              <Input placeholder="Ex: 30/60/90" value={condicaoPagamento} onChange={e => setCondicaoPagamento(e.target.value)} />
+              <select value={condicaoPagamento} onChange={e => setCondicaoPagamento(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Selecione...</option>
+                <option value="Boleto">Boleto</option>
+                <option value="PIX">PIX – CNPJ: 10.311.350/0001-22</option>
+                <option value="Transferência Bancária">Transferência – Santander Ag:3744 CC:130094436</option>
+                <option value="Cheque">Cheque</option>
+              </select>
             </div>
             <div>
               <label className="text-xs text-primary font-medium">Vendedor</label>
@@ -662,14 +685,24 @@ export default function OrcamentosPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-primary font-medium">Revestimento</label>
-                <select value={roleteItem.especificacaoRevestimento} onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, quantidadeAneis: e.target.value ? roleteItem.quantidadeAneis || 1 : 0 })}
+                <label className="text-xs text-primary font-medium">Revest. Spiraflex</label>
+                <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('SPIRAFLEX') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                  onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'SPIRAFLEX' : '', quantidadeAneis: 0 })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Sem revestimento</option>
-                  {revestimentos.map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+                  <option value="">Sem Spiraflex</option>
+                  {revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
                 </select>
               </div>
-              {roleteItem.especificacaoRevestimento && (
+              <div>
+                <label className="text-xs text-primary font-medium">Revest. Anéis</label>
+                <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                  onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'ANEIS' : '', quantidadeAneis: e.target.value ? (roleteItem.quantidadeAneis || 1) : 0 })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Sem Anéis</option>
+                  {revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+                </select>
+              </div>
+              {roleteItem.especificacaoRevestimento && revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento && r.tipo.toUpperCase().includes('ABI')) && (
                 <div>
                   <label className="text-xs text-primary font-medium">Qtd. Anéis</label>
                   <Input type="number" min={1} value={roleteItem.quantidadeAneis} onChange={e => updateRoleteField({ quantidadeAneis: +e.target.value })} />
