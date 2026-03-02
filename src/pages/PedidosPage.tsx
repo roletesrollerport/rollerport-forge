@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
-import type { Pedido, StatusPedido, Orcamento } from '@/lib/types';
+import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamento } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,126 @@ import logo from '@/assets/logo.png';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
+function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos, setCurrentPedido, setView }: {
+  pedido: Pedido; orcamentos: Orcamento[]; pedidos: Pedido[];
+  setOrcamentos: (o: Orcamento[]) => void; setPedidos: (p: Pedido[]) => void;
+  setCurrentPedido: (p: Pedido) => void; setView: (v: 'list' | 'view' | 'print') => void;
+}) {
+  const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
+  const [editOrc, setEditOrc] = useState<Orcamento | null>(orc ? { ...orc, itensRolete: [...(orc.itensRolete || [])], itensProduto: [...(orc.itensProduto || [])] } : null);
+
+  const saveOrcChanges = () => {
+    if (!editOrc) return;
+    const itensR = editOrc.itensRolete.map(ir => ({ ...ir, valorTotal: ir.valorPorPeca * ir.quantidade }));
+    const itensP = editOrc.itensProduto.map(ip => ({ ...ip, valorTotal: ip.valorUnitario * ip.quantidade }));
+    const valorTotal = itensR.reduce((s, i) => s + i.valorTotal, 0) + itensP.reduce((s, i) => s + i.valorTotal, 0);
+    const updatedOrc = { ...editOrc, itensRolete: itensR, itensProduto: itensP, valorTotal };
+    const updatedOrcs = orcamentos.map(o => o.id === updatedOrc.id ? updatedOrc : o);
+    store.saveOrcamentos(updatedOrcs); setOrcamentos(updatedOrcs);
+    const updatedPedido = { ...pedido, valorTotal };
+    const updatedPedidos = pedidos.map(p => p.id === updatedPedido.id ? updatedPedido : p);
+    store.savePedidos(updatedPedidos); setPedidos(updatedPedidos); setCurrentPedido(updatedPedido);
+    toast.success('Pedido atualizado!');
+  };
+
+  const updateRoleteItem = (idx: number, field: string, value: any) => {
+    if (!editOrc) return;
+    const items = [...editOrc.itensRolete]; items[idx] = { ...items[idx], [field]: value };
+    setEditOrc({ ...editOrc, itensRolete: items });
+  };
+  const updateProdutoItem = (idx: number, field: string, value: any) => {
+    if (!editOrc) return;
+    const items = [...editOrc.itensProduto]; items[idx] = { ...items[idx], [field]: value };
+    setEditOrc({ ...editOrc, itensProduto: items });
+  };
+  const deleteRoleteItem = (idx: number) => { if (!editOrc) return; setEditOrc({ ...editOrc, itensRolete: editOrc.itensRolete.filter((_, i) => i !== idx) }); };
+  const deleteProdutoItem = (idx: number) => { if (!editOrc) return; setEditOrc({ ...editOrc, itensProduto: editOrc.itensProduto.filter((_, i) => i !== idx) }); };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+        <Button variant="outline" onClick={() => setView('print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
+        <Button onClick={saveOrcChanges} className="gap-2">Salvar Alterações</Button>
+      </div>
+      <div className="bg-card border rounded-lg p-6">
+        <h2 className="text-lg font-bold mb-4">Pedido {pedido.numero} — Edição Completa</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
+          <div><span className="text-muted-foreground">Empresa:</span> <strong>{pedido.clienteNome}</strong></div>
+          <div><span className="text-muted-foreground">Orçamento:</span> <strong>{pedido.orcamentoNumero || '-'}</strong></div>
+          <div><span className="text-muted-foreground">Data:</span> <strong>{pedido.createdAt}</strong></div>
+          <div><span className="text-muted-foreground">Entrega:</span> <strong>{pedido.dataEntrega}</strong></div>
+        </div>
+        {editOrc && (
+          <>
+            {editOrc.itensRolete.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-sm mb-2">Itens Rolete</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead><tr className="border-b bg-muted/50">
+                      <th className="p-2 text-left">Item</th><th className="p-2">Tipo</th><th className="p-2">Qtd</th>
+                      <th className="p-2">ø Tubo</th><th className="p-2">Parede</th><th className="p-2">Comp. Tubo</th>
+                      <th className="p-2">ø Eixo</th><th className="p-2">Comp. Eixo</th><th className="p-2">Encaixe</th>
+                      <th className="p-2">Fresa</th><th className="p-2">Revestimento</th>
+                      <th className="p-2">Valor Un.</th><th className="p-2">Ações</th>
+                    </tr></thead>
+                    <tbody>
+                      {editOrc.itensRolete.map((item, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="p-1">{i + 1}</td>
+                          <td className="p-1"><select value={item.tipoRolete} onChange={e => updateRoleteItem(i, 'tipoRolete', e.target.value)}
+                            className="h-7 text-xs rounded border bg-background px-1">
+                            {['RC','RR','RG','RI','RRA'].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.quantidade} onChange={e => updateRoleteItem(i, 'quantidade', +e.target.value)} /></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.diametroTubo} onChange={e => updateRoleteItem(i, 'diametroTubo', +e.target.value)} /></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.paredeTubo} onChange={e => updateRoleteItem(i, 'paredeTubo', +e.target.value)} /></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.comprimentoTubo} onChange={e => updateRoleteItem(i, 'comprimentoTubo', +e.target.value)} /></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.diametroEixo} onChange={e => updateRoleteItem(i, 'diametroEixo', +e.target.value)} /></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.comprimentoEixo} onChange={e => updateRoleteItem(i, 'comprimentoEixo', +e.target.value)} /></td>
+                          <td className="p-1"><Input className="h-7 w-20 text-xs" value={item.tipoEncaixe} onChange={e => updateRoleteItem(i, 'tipoEncaixe', e.target.value)} /></td>
+                          <td className="p-1"><Input className="h-7 w-20 text-xs" value={item.medidaFresado} onChange={e => updateRoleteItem(i, 'medidaFresado', e.target.value)} /></td>
+                          <td className="p-1"><Input className="h-7 w-24 text-xs" value={item.especificacaoRevestimento} onChange={e => updateRoleteItem(i, 'especificacaoRevestimento', e.target.value)} /></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-20 text-xs" value={item.valorPorPeca} onChange={e => updateRoleteItem(i, 'valorPorPeca', +e.target.value)} /></td>
+                          <td className="p-1"><button onClick={() => deleteRoleteItem(i)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {editOrc.itensProduto.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-sm mb-2">Itens Produto</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead><tr className="border-b bg-muted/50">
+                      <th className="p-2 text-left">Item</th><th className="p-2 text-left">Produto</th>
+                      <th className="p-2">Qtd</th><th className="p-2">Valor Un.</th><th className="p-2">Ações</th>
+                    </tr></thead>
+                    <tbody>
+                      {editOrc.itensProduto.map((item, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="p-1">{(editOrc.itensRolete?.length || 0) + i + 1}</td>
+                          <td className="p-1 font-medium">{item.produtoNome}</td>
+                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.quantidade} onChange={e => updateProdutoItem(i, 'quantidade', +e.target.value)} /></td>
+                          <td className="p-1"><Input type="number" className="h-7 w-20 text-xs" value={item.valorUnitario} onChange={e => updateProdutoItem(i, 'valorUnitario', +e.target.value)} /></td>
+                          <td className="p-1"><button onClick={() => deleteProdutoItem(i)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 const statusProgress: Record<string, number> = {
   'PENDENTE': 20, 'CONFIRMADO': 40, 'EM_PRODUCAO': 60, 'CONCLUIDO': 80, 'ENTREGUE': 100,
 };
@@ -96,7 +216,7 @@ export default function PedidosPage() {
         item: i + 1, quantidade: item.quantidade, tipo: item.tipoRolete,
         diametroTubo: item.diametroTubo, paredeTubo: item.paredeTubo,
         comprimentoTubo: item.comprimentoTubo, comprimentoEixo: item.comprimentoEixo,
-        diametroEixo: item.diametroEixo, encaixeFresado: item.tipoEncaixe,
+        diametroEixo: item.diametroEixo, encaixeFresado: item.medidaFresado || '',
         comprimentoFresado: 0, medidaAbaFresado: '', tipoEncaixe: item.tipoEncaixe,
         roscaIE: '', furoEixo: '', revestimento: item.especificacaoRevestimento,
         corte: false, torno: false, fresa: false, solda: false, pintura: false, montagem: false,
@@ -197,53 +317,11 @@ export default function PedidosPage() {
     );
   }
 
-  // ========== VIEW ==========
+  // ========== VIEW (editable) ==========
   if (view === 'view' && currentPedido) {
-    const orc = orcamentos.find(o => o.id === currentPedido.orcamentoId);
-    return (
-      <div className="space-y-4">
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
-          <Button variant="outline" onClick={() => { setView('print'); }} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
-        </div>
-        <div className="bg-card border rounded-lg p-6">
-          <h2 className="text-lg font-bold mb-4">Pedido {currentPedido.numero}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
-            <div><span className="text-muted-foreground">Empresa:</span> <strong>{currentPedido.clienteNome}</strong></div>
-            <div><span className="text-muted-foreground">Orçamento:</span> <strong>{currentPedido.orcamentoNumero || '-'}</strong></div>
-            <div><span className="text-muted-foreground">Data:</span> <strong>{currentPedido.createdAt}</strong></div>
-            <div><span className="text-muted-foreground">Entrega:</span> <strong>{currentPedido.dataEntrega}</strong></div>
-            <div><span className="text-muted-foreground">Valor:</span> <strong>{fmt(currentPedido.valorTotal)}</strong></div>
-            <div><span className="text-muted-foreground">Status:</span> <StatusProgressBar status={currentPedido.status} /></div>
-          </div>
-          {orc && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-2 text-left">Item</th><th className="p-2 text-left">Descrição</th>
-                  <th className="p-2 text-center">Qtd</th><th className="p-2 text-right">Valor</th><th className="p-2 text-right">Total</th>
-                </tr></thead>
-                <tbody>
-                  {(orc.itensRolete || []).map((item, i) => (
-                    <tr key={i} className="border-b"><td className="p-2">{i + 1}</td>
-                      <td className="p-2">Rolete {item.tipoRolete} ø{item.diametroTubo} Tubo:{item.comprimentoTubo}mm</td>
-                      <td className="p-2 text-center">{item.quantidade}</td>
-                      <td className="p-2 text-right">{fmt(item.valorPorPeca)}</td><td className="p-2 text-right">{fmt(item.valorTotal)}</td>
-                    </tr>
-                  ))}
-                  {(orc.itensProduto || []).map((item, i) => (
-                    <tr key={`p-${i}`} className="border-b"><td className="p-2">{(orc.itensRolete?.length || 0) + i + 1}</td>
-                      <td className="p-2">{item.produtoNome}</td><td className="p-2 text-center">{item.quantidade}</td>
-                      <td className="p-2 text-right">{fmt(item.valorUnitario)}</td><td className="p-2 text-right">{fmt(item.valorTotal)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return <PedidoEditView pedido={currentPedido} orcamentos={orcamentos} pedidos={pedidos}
+      setOrcamentos={setOrcamentos} setPedidos={setPedidos} setCurrentPedido={setCurrentPedido}
+      setView={setView} />;
   }
 
   // ========== LIST ==========

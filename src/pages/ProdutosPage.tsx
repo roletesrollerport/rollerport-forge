@@ -103,6 +103,7 @@ export default function ProdutosPage() {
                 </select>
               </div>
               <div><label className="text-xs text-muted-foreground">Mini Descrição</label><Input value={editing.miniDescricao || ''} onChange={e => setEditing({ ...editing, miniDescricao: e.target.value })} placeholder='Ex: Rolete para correia de 30"' /></div>
+              <div><label className="text-xs text-muted-foreground">NCM</label><Input value={(editing as any).ncm || ''} onChange={e => setEditing({ ...editing, ncm: e.target.value } as any)} placeholder="Ex: 8431.39.00" /></div>
               <p className="text-xs text-muted-foreground italic">Valor do rolete é sempre zero (calculado no orçamento)</p>
               <div className="flex justify-end mt-4"><Button onClick={() => handleSave({ ...editing, valor: 0 }, true)}>Salvar</Button></div>
             </div>
@@ -121,6 +122,17 @@ export default function ProdutosPage() {
               <div><label className="text-xs text-muted-foreground">Medidas</label><Input value={editing.medidas} onChange={e => setEditing({ ...editing, medidas: e.target.value })} placeholder="Ex: 100x50x30mm" /></div>
               <div><label className="text-xs text-muted-foreground">Descrição</label><Textarea value={editing.descricao} onChange={e => setEditing({ ...editing, descricao: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Valor (R$)</label><Input type="number" step="0.01" value={editing.valor || ''} placeholder="Deixe vazio se necessário" onChange={e => setEditing({ ...editing, valor: e.target.value ? +e.target.value : '' as any })} /></div>
+              <div><label className="text-xs text-muted-foreground">NCM</label><Input value={(editing as any).ncm || ''} onChange={e => setEditing({ ...editing, ncm: e.target.value } as any)} placeholder="Ex: 8431.39.00" /></div>
+              <h4 className="text-xs font-semibold text-muted-foreground mt-3">Impostos (%)</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div><label className="text-xs text-muted-foreground">PIS (%)</label><Input type="number" step="0.01" value={(editing as any).pis || ''} onChange={e => setEditing({ ...editing, pis: e.target.value ? +e.target.value : '' } as any)} placeholder="1.65" /></div>
+                <div><label className="text-xs text-muted-foreground">COFINS (%)</label><Input type="number" step="0.01" value={(editing as any).cofins || ''} onChange={e => setEditing({ ...editing, cofins: e.target.value ? +e.target.value : '' } as any)} placeholder="7.60" /></div>
+                <div><label className="text-xs text-muted-foreground">IPI (%)</label><Input type="number" step="0.01" value={(editing as any).ipi || ''} onChange={e => setEditing({ ...editing, ipi: e.target.value ? +e.target.value : '' } as any)} placeholder="5.00" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-xs text-muted-foreground">ICMS (%)</label><Input type="number" step="0.01" value={(editing as any).icms || ''} onChange={e => setEditing({ ...editing, icms: e.target.value ? +e.target.value : '' } as any)} placeholder="18.00" /></div>
+                <div><label className="text-xs text-muted-foreground">ICMS ST (%)</label><Input type="number" step="0.01" value={(editing as any).icmsSt || ''} onChange={e => setEditing({ ...editing, icmsSt: e.target.value ? +e.target.value : '' } as any)} placeholder="0" /></div>
+              </div>
               <div className="flex justify-end mt-4"><Button onClick={() => handleSave(editing, false)}>Salvar</Button></div>
             </div>
           )}
