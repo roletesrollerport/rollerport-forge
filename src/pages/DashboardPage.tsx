@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Download, Target, Save, Edit, ArrowLeft, Trash2, X,
-  User, Circle, Phone, Mail
+  User, Circle, Phone, Mail, ClipboardList
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,14 +63,16 @@ export default function DashboardPage() {
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
+  // Fetch real users from database
+  const { usuarios: dbUsuarios } = useUsuarios();
+
   // Current logged-in user
   const currentUser = (() => {
     const loggedIn = localStorage.getItem('rp_logged_user');
     if (loggedIn) {
-      const usuarios = store.getUsuarios();
-      return usuarios.find(u => u.id === loggedIn) || null;
+      return dbUsuarios.find(u => u.id === loggedIn) || null;
     }
-    return store.getUsuarios().find(u => u.nivel === 'master') || null;
+    return dbUsuarios.find(u => u.nivel === 'master') || null;
   })();
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';
@@ -115,8 +120,7 @@ export default function DashboardPage() {
 
   const totalOrc = data.orcamentos.length;
   const totalPed = data.pedidos.length;
-  const usuarios = store.getUsuarios();
-  const vendedores = usuarios.filter(u => u.nivel === 'vendedor' || u.nivel === 'master' || u.nivel === 'admin');
+  const vendedores = dbUsuarios.filter(u => u.nivel === 'vendedor' || u.nivel === 'master' || u.nivel === 'admin');
 
   // Filter data per user when not master
   const userOrcamentos = isMaster ? data.orcamentos : data.orcamentos.filter((o: any) => o.vendedor === currentUserName);
@@ -502,59 +506,81 @@ export default function DashboardPage() {
 
   // ========== MAIN DASHBOARD ==========
 
-  // Build user card component for vendedores
+  // Build enhanced user card component
   const renderUserCard = (usuario: any) => {
     const isVendedor = usuario.nivel === 'vendedor' || usuario.nivel === 'master' || usuario.nivel === 'admin';
     const isOnline = onlineUserIds.has(usuario.id);
     const vs = isVendedor ? allVendorStats.find(v => v.nome === usuario.nome) : null;
     const metaPct = vs && vs.metaMensal > 0 ? Math.min((vs.totalVendido / vs.metaMensal) * 100, 100) : 0;
-    const nivelLabel = { master: 'Master', admin: 'Administrador', vendedor: 'Vendedor', producao: 'Produção', estoque: 'Estoque' }[usuario.nivel] || usuario.nivel;
+
+    // Per-user stats
+    const userOrcs = data.orcamentos.filter((o: any) => o.vendedor === usuario.nome);
+    const userPeds = data.pedidos.filter((p: any) => {
+      const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
+      return (orc as any)?.vendedor === usuario.nome;
+    });
+    const userOS = data.os.filter((os: any) => {
+      const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
+      if (!ped) return false;
+      const orc = data.orcamentos.find((o: any) => o.id === (ped as any).orcamentoId);
+      return (orc as any)?.vendedor === usuario.nome;
+    });
+
+    // Status breakdown
+    const statusRascunho = userOrcs.filter((o: any) => o.status === 'RASCUNHO').length;
+    const statusAprovado = userOrcs.filter((o: any) => o.status === 'APROVADO').length;
+    const statusEmProducao = userPeds.filter((p: any) => p.status === 'EM_PRODUCAO').length;
 
     return (
-      <div key={usuario.id} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
-        {/* Header: Avatar + name + status */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="relative">
-            <Avatar className="h-12 w-12">
-              {usuario.foto ? <AvatarImage src={usuario.foto} alt={usuario.nome} /> : null}
-              <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">
-                {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <Circle className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 ${isOnline ? 'text-success fill-success' : 'text-muted-foreground fill-muted'}`} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm truncate">{usuario.nome}</p>
-            <div className="flex items-center gap-2">
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${usuario.nivel === 'master' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>{nivelLabel}</span>
+      <Card key={usuario.id} className="hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar className="h-12 w-12">
+                {usuario.foto ? <AvatarImage src={usuario.foto} alt={usuario.nome} /> : null}
+                <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">
+                  {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <Circle className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 ${isOnline ? 'text-success fill-success' : 'text-muted-foreground fill-muted'}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-sm truncate">{usuario.nome}</p>
+                <Badge variant={usuario.ativo ? 'default' : 'destructive'} className="text-[10px] px-1.5 py-0">
+                  {usuario.ativo ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
               <span className={`text-[10px] ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>{isOnline ? 'Online' : 'Offline'}</span>
             </div>
           </div>
-        </div>
+        </CardHeader>
 
-        {/* User info */}
-        <div className="space-y-1 text-xs text-muted-foreground mb-3">
-          {usuario.email && <div className="flex items-center gap-1.5 truncate"><Mail className="h-3 w-3 flex-shrink-0" />{usuario.email}</div>}
-          {usuario.telefone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3 flex-shrink-0" />{usuario.telefone}</div>}
-          {usuario.whatsapp && <div className="flex items-center gap-1.5"><span className="flex-shrink-0 text-[10px]">📱</span>{usuario.whatsapp}</div>}
-        </div>
-
-        {/* Vendedor stats */}
-        {vs && isVendedor && (
-          <div className="border-t pt-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="flex justify-between"><span className="text-muted-foreground">Clientes:</span><strong>{vs.clientesCadastrados}</strong></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Orçamentos:</span><strong>{vs.orcFeitos}</strong></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Convertidos:</span><strong className="text-success">{vs.conversaoPedido}</strong></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Não Fecharam:</span><strong className="text-destructive">{vs.naoFecharam}</strong></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Total Vendido:</span><strong>{fmt(vs.totalVendido)}</strong></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Conversão:</span><strong className={vs.percentualConversao >= 50 ? 'text-success' : vs.percentualConversao >= 25 ? 'text-secondary' : 'text-destructive'}>{vs.percentualConversao}%</strong></div>
+        <CardContent className="space-y-3 pt-0">
+          {/* Individual Stats */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg bg-muted/40 p-2">
+              <FileText className="h-3.5 w-3.5 mx-auto mb-1 text-primary" />
+              <p className="text-lg font-bold">{userOrcs.length}</p>
+              <p className="text-[10px] text-muted-foreground">Orçamentos</p>
             </div>
+            <div className="rounded-lg bg-muted/40 p-2">
+              <ShoppingCart className="h-3.5 w-3.5 mx-auto mb-1 text-secondary" />
+              <p className="text-lg font-bold">{userPeds.length}</p>
+              <p className="text-[10px] text-muted-foreground">Pedidos</p>
+            </div>
+            <div className="rounded-lg bg-muted/40 p-2">
+              <ClipboardList className="h-3.5 w-3.5 mx-auto mb-1 text-accent-foreground" />
+              <p className="text-lg font-bold">{userOS.length}</p>
+              <p className="text-[10px] text-muted-foreground">O.S.</p>
+            </div>
+          </div>
 
-            {/* Meta + Progress */}
+          {/* Meta do Mês */}
+          {vs && (
             <div className="text-xs">
               <div className="flex justify-between mb-1">
-                <span className="text-muted-foreground">Meta Mensal:</span>
+                <span className="text-muted-foreground font-medium">Meta do Mês</span>
                 {isMaster && editingMeta?.vendedor === usuario.nome ? (
                   <div className="flex items-center gap-1">
                     <Input type="number" step="0.01" className="h-5 w-20 text-[10px] px-1" value={editingMeta.valor || ''} onChange={e => setEditingMeta({ ...editingMeta, valor: +e.target.value })} autoFocus />
@@ -563,7 +589,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-1">
-                    <strong>{vs.metaMensal > 0 ? fmt(vs.metaMensal) : '-'}</strong>
+                    <strong>{vs.metaMensal > 0 ? fmt(vs.metaMensal) : 'Não definida'}</strong>
                     {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: vs.metaMensal })} className="text-muted-foreground hover:text-primary"><Edit className="h-3 w-3" /></button>}
                   </div>
                 )}
@@ -574,18 +600,35 @@ export default function DashboardPage() {
                   <span className="text-[10px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
                 </div>
               )}
+              {vs.metaMensal > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">{fmt(vs.totalVendido)} de {fmt(vs.metaMensal)}</p>
+              )}
             </div>
+          )}
 
-            {/* Actions */}
-            {isMaster && (
-              <div className="flex gap-1 pt-1">
-                <button onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Ver Detalhes"><Eye className="h-3.5 w-3.5" /></button>
-                <button onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Imprimir"><Printer className="h-3.5 w-3.5" /></button>
-              </div>
-            )}
+          {/* Status Summary */}
+          <div className="flex items-center gap-2 flex-wrap text-[10px]">
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+              Rascunho: {statusRascunho}
+            </span>
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">
+              Aprovado: {statusAprovado}
+            </span>
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">
+              Em Produção: {statusEmProducao}
+            </span>
           </div>
-        )}
-      </div>
+        </CardContent>
+
+        <CardFooter className="flex gap-2 pt-0">
+          <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+            <Eye className="h-3 w-3" /> Ver Relatório
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+            <Printer className="h-3 w-3" /> Imprimir
+          </Button>
+        </CardFooter>
+      </Card>
     );
   };
 
@@ -655,58 +698,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Relatórios Comerciais */}
-      <div className="bg-card rounded-lg border p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Relatórios Comerciais</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDashView('report-detail')} className="gap-1 text-xs"><Eye className="h-3 w-3" /> Ver Completo</Button>
-            <Button variant="outline" size="sm" onClick={() => setDashView('report-print')} className="gap-1 text-xs"><Printer className="h-3 w-3" /> Imprimir</Button>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Nº</th>
-              <th className="text-left p-3 font-medium">Cliente</th>
-              <th className="text-left p-3 font-medium">Vendedor</th>
-              <th className="text-left p-3 font-medium">Data</th>
-              <th className="text-right p-3 font-medium">Valor</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="text-left p-3 font-medium">Tipo</th>
-              <th className="p-3 w-24">Ações</th>
-            </tr></thead>
-            <tbody>
-              {(isMaster ? data.orcamentos : userOrcamentos).slice(-10).reverse().map((o: any) => (
-                <tr key={`o-${o.id}`} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-3 font-mono text-xs">{o.numero}</td>
-                  <td className="p-3">{o.clienteNome}</td>
-                  <td className="p-3 text-xs text-muted-foreground">{o.vendedor}</td>
-                  <td className="p-3 text-muted-foreground">{o.dataOrcamento || o.createdAt}</td>
-                  <td className="p-3 text-right font-mono">{fmt(o.valorTotal)}</td>
-                  <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
-                  <td className="p-3 text-xs text-muted-foreground">Orçamento</td>
-                  <td className="p-3">
-                    <div className="flex gap-1">
-                      <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
-                      {isMaster && <button onClick={() => deleteOrcamento(o.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {(isMaster ? totalOrc : userOrcamentos.length) === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhum registro.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* User Cards Grid - Master sees all, Vendedor sees only their own */}
+      {/* User Cards Grid - replaces Relatórios Comerciais */}
       {isMaster ? (
         <div>
           <h2 className="font-semibold mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Usuários do Sistema</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {usuarios.filter(u => u.ativo).map(u => renderUserCard(u))}
+            {dbUsuarios.filter(u => u.ativo).map(u => renderUserCard(u))}
           </div>
         </div>
       ) : myVendorStats ? (
