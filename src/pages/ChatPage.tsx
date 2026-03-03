@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Users, ArrowLeft, Paperclip, Mic, MicOff, User, Trash2, FileText, File, Play, Pause, MoreVertical, Eye } from 'lucide-react';
+import { Send, Users, ArrowLeft, Paperclip, Mic, MicOff, User, Trash2, FileText, File, Play, Pause, MoreVertical, Eye, Download, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -304,8 +304,54 @@ export default function ChatPage() {
         <Dialog open={masterViewDialog} onOpenChange={setMasterViewDialog}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-sm">
-                Conversa: {masterViewUsers?.u1.nome} ↔ {masterViewUsers?.u2.nome}
+              <DialogTitle className="text-sm flex items-center justify-between">
+                <span>Conversa: {masterViewUsers?.u1.nome} ↔ {masterViewUsers?.u2.nome}</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 text-xs"
+                    onClick={() => {
+                      const lines = masterMessages.map(msg => {
+                        const time = new Date(msg.created_at).toLocaleString('pt-BR');
+                        const sender = getUserName(msg.sender_id);
+                        const deleted = msg.deleted_for_all ? ' [APAGADA P/ TODOS]' : msg.deleted_for_sender ? ' [APAGADA P/ REMETENTE]' : '';
+                        const content = msg.message_type === 'text' ? msg.content : msg.message_type === 'audio' ? '[Áudio]' : `[Arquivo: ${msg.file_name}]`;
+                        return `[${time}] ${sender}${deleted}: ${content}`;
+                      });
+                      const header = `HISTÓRICO DE CONVERSA\n${masterViewUsers?.u1.nome} ↔ ${masterViewUsers?.u2.nome}\nExportado em: ${new Date().toLocaleString('pt-BR')}\n${'—'.repeat(40)}\n\n`;
+                      const blob = new Blob([header + lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `conversa_${masterViewUsers?.u1.nome}_${masterViewUsers?.u2.nome}_${new Date().toISOString().slice(0,10)}.txt`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      toast.success('Histórico salvo!');
+                    }}
+                  >
+                    <Download className="h-3.5 w-3.5" /> Salvar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 text-xs"
+                    onClick={() => {
+                      const lines = masterMessages.map(msg => {
+                        const time = new Date(msg.created_at).toLocaleString('pt-BR');
+                        const sender = getUserName(msg.sender_id);
+                        const deleted = msg.deleted_for_all ? ' <span style="color:red">[APAGADA]</span>' : '';
+                        const content = msg.message_type === 'text' ? msg.content : msg.message_type === 'audio' ? '<em>[Áudio]</em>' : `<em>[Arquivo: ${msg.file_name}]</em>`;
+                        return `<p><strong>[${time}] ${sender}</strong>${deleted}: ${content}</p>`;
+                      });
+                      const html = `<html><head><title>Conversa</title><style>body{font-family:sans-serif;padding:20px;font-size:13px}h2{font-size:16px}p{margin:4px 0}</style></head><body><h2>Conversa: ${masterViewUsers?.u1.nome} ↔ ${masterViewUsers?.u2.nome}</h2><p style="color:gray;font-size:11px">Exportado em: ${new Date().toLocaleString('pt-BR')}</p><hr/>${lines.join('')}</body></html>`;
+                      const win = window.open('', '_blank');
+                      if (win) { win.document.write(html); win.document.close(); win.print(); }
+                    }}
+                  >
+                    <Printer className="h-3.5 w-3.5" /> Imprimir
+                  </Button>
+                </div>
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 mt-2">
