@@ -57,7 +57,8 @@ export default function DashboardPage() {
   const currentUser = (() => {
     const loggedIn = localStorage.getItem('rp_logged_user');
     if (loggedIn) {
-      try { return JSON.parse(loggedIn); } catch { return null; }
+      const usuarios = store.getUsuarios();
+      return usuarios.find(u => u.id === loggedIn) || null;
     }
     return store.getUsuarios().find(u => u.nivel === 'master') || null;
   })();

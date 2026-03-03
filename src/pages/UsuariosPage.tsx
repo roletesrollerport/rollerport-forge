@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { store } from '@/lib/store';
-import type { Usuario, NivelAcesso, Genero, PermissaoModulo } from '@/lib/types';
+import { useState } from 'react';
+import { useUsuarios, type UsuarioDB } from '@/hooks/useUsuarios';
+import type { NivelAcesso, Genero, PermissaoModulo } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail } from 'lucide-react';
+import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -32,50 +32,62 @@ const TODOS_MODULOS: { value: PermissaoModulo; label: string }[] = [
 
 const ALL_MODULOS = TODOS_MODULOS.map(m => m.value);
 
-const emptyUsuario = (): Usuario => ({
-  id: '', nome: '', email: '', telefone: '', whatsapp: '', login: '', senha: '', nivel: 'vendedor', ativo: true,
+const emptyEditing = () => ({
+  id: '' as string | undefined,
+  nome: '', email: '', telefone: '', whatsapp: '', login: '', senha: '',
+  nivel: 'vendedor' as NivelAcesso, ativo: true, foto: undefined as string | undefined,
+  genero: undefined as Genero | undefined,
   permissoes: { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] },
-  createdAt: new Date().toISOString().split('T')[0],
 });
 
-export default function UsuariosPage() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Usuario>(emptyUsuario());
-  const [showSenha, setShowSenha] = useState(false);
+type EditingState = ReturnType<typeof emptyEditing>;
 
-  useEffect(() => { setUsuarios(store.getUsuarios()); }, []);
+export default function UsuariosPage() {
+  const { usuarios, loading, saveUsuario, deleteUsuario } = useUsuarios();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<EditingState>(emptyEditing());
+  const [showSenha, setShowSenha] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const loggedUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = loggedUser?.nivel === 'master';
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing.login || !editing.senha) { toast.error('Login e senha são obrigatórios!'); return; }
-    // Master always has full permissions
-    if (editing.nivel === 'master') {
-      editing.permissoes = { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] };
+    const perms = editing.nivel === 'master'
+      ? { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] }
+      : editing.permissoes;
+
+    setSaving(true);
+    try {
+      await saveUsuario({
+        id: editing.id || undefined,
+        nome: editing.nome,
+        email: editing.email,
+        telefone: editing.telefone,
+        whatsapp: editing.whatsapp,
+        login: editing.login,
+        senha: editing.senha,
+        nivel: editing.nivel,
+        genero: editing.genero,
+        ativo: editing.ativo,
+        foto: editing.foto,
+        permissoes: perms,
+      });
+      setOpen(false);
+      toast.success('Usuário salvo!');
+    } catch {
+      toast.error('Erro ao salvar!');
+    } finally {
+      setSaving(false);
     }
-    console.log('[Save] Salvando usuário:', JSON.stringify({ id: editing.id, login: editing.login, senha: editing.senha, nome: editing.nome }));
-    let updated: Usuario[];
-    if (editing.id) {
-      updated = usuarios.map(u => u.id === editing.id ? { ...editing } : u);
-    } else {
-      updated = [...usuarios, { ...editing, id: store.nextId('usr') }];
-    }
-    console.log('[Save] Lista após salvar:', JSON.stringify(updated.map(u => ({ id: u.id, login: u.login, senha: u.senha }))));
-    store.saveUsuarios(updated);
-    setUsuarios(updated);
-    setOpen(false);
-    toast.success('Usuário salvo!');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const u = usuarios.find(x => x.id === id);
     if (u?.nivel === 'master') { toast.error('Não é possível excluir o usuário Master!'); return; }
-    const updated = usuarios.filter(u => u.id !== id);
-    store.saveUsuarios(updated);
-    setUsuarios(updated);
+    await deleteUsuario(id);
     toast.success('Usuário removido!');
   };
 
@@ -91,19 +103,37 @@ export default function UsuariosPage() {
     const perms = editing.permissoes || { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] };
     const list = perms[tipo];
     const newList = list.includes(modulo) ? list.filter(m => m !== modulo) : [...list, modulo];
-    // If removing 'ver', also remove 'editar'
     if (tipo === 'ver' && !newList.includes(modulo)) {
       const newEditar = perms.editar.filter(m => m !== modulo);
       setEditing({ ...editing, permissoes: { ver: newList, editar: newEditar } });
+    } else if (tipo === 'editar' && newList.includes(modulo) && !perms.ver.includes(modulo)) {
+      setEditing({ ...editing, permissoes: { ver: [...perms.ver, modulo], editar: newList } });
     } else {
-      // If adding 'editar', also add 'ver'
-      if (tipo === 'editar' && newList.includes(modulo) && !perms.ver.includes(modulo)) {
-        setEditing({ ...editing, permissoes: { ver: [...perms.ver, modulo], editar: newList } });
-      } else {
-        setEditing({ ...editing, permissoes: { ...perms, [tipo]: newList } });
-      }
+      setEditing({ ...editing, permissoes: { ...perms, [tipo]: newList } });
     }
   };
+
+  const openEdit = (u: UsuarioDB) => {
+    setEditing({
+      id: u.id,
+      nome: u.nome,
+      email: u.email,
+      telefone: u.telefone,
+      whatsapp: u.whatsapp,
+      login: u.login,
+      senha: u.senha,
+      nivel: u.nivel,
+      ativo: u.ativo,
+      foto: u.foto,
+      genero: u.genero,
+      permissoes: u.permissoes || { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] },
+    });
+    setOpen(true);
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -115,7 +145,7 @@ export default function UsuariosPage() {
         {isMaster && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setEditing(emptyUsuario())} className="gap-2"><Plus className="h-4 w-4" /> Novo Usuário</Button>
+              <Button onClick={() => setEditing(emptyEditing())} className="gap-2"><Plus className="h-4 w-4" /> Novo Usuário</Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo'} Usuário</DialogTitle></DialogHeader>
@@ -185,7 +215,6 @@ export default function UsuariosPage() {
                   <label className="text-sm">Ativo</label>
                 </div>
 
-                {/* Permissões - only show for non-master users */}
                 {editing.nivel !== 'master' && (
                   <div className="border-t pt-3 mt-2">
                     <p className="text-xs font-semibold text-primary mb-3">Permissões de Acesso</p>
@@ -201,17 +230,10 @@ export default function UsuariosPage() {
                           <div key={mod.value} className="grid grid-cols-3 gap-2 items-center py-1.5 px-1 rounded hover:bg-muted/30">
                             <span className="text-xs font-medium">{mod.label}</span>
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={perms.ver.includes(mod.value)}
-                                onCheckedChange={() => togglePerm('ver', mod.value)}
-                              />
+                              <Checkbox checked={perms.ver.includes(mod.value)} onCheckedChange={() => togglePerm('ver', mod.value)} />
                             </div>
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={perms.editar.includes(mod.value)}
-                                onCheckedChange={() => togglePerm('editar', mod.value)}
-                                disabled={!perms.ver.includes(mod.value)}
-                              />
+                              <Checkbox checked={perms.editar.includes(mod.value)} onCheckedChange={() => togglePerm('editar', mod.value)} disabled={!perms.ver.includes(mod.value)} />
                             </div>
                           </div>
                         );
@@ -220,13 +242,17 @@ export default function UsuariosPage() {
                   </div>
                 )}
               </div>
-              <div className="flex justify-end mt-4"><Button onClick={handleSave}>Salvar</Button></div>
+              <div className="flex justify-end mt-4">
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Salvar
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         )}
       </div>
 
-      {/* GRID de Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {usuarios.map(u => (
           <div key={u.id} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -251,7 +277,7 @@ export default function UsuariosPage() {
               </div>
               {isMaster && (
                 <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => { setEditing({ ...u, permissoes: u.permissoes || { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] } }); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => openEdit(u)} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
                   {u.nivel !== 'master' && <button onClick={() => handleDelete(u.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>}
                 </div>
               )}

@@ -2,9 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Users, ArrowLeft, Paperclip, Mic, MicOff, User, Trash2, FileText, File, Play, Pause, MoreVertical, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
-import type { Usuario } from '@/lib/types';
+import { useUsuarios, type UsuarioDB } from '@/hooks/useUsuarios';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -27,15 +26,15 @@ interface ChatMessage {
 }
 
 export default function ChatPage() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
+  const { usuarios: dbUsuarios, loading: loadingUsers } = useUsuarios();
+  const [selectedUser, setSelectedUser] = useState<UsuarioDB | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [masterViewDialog, setMasterViewDialog] = useState(false);
-  const [masterViewUsers, setMasterViewUsers] = useState<{ u1: Usuario; u2: Usuario } | null>(null);
+  const [masterViewUsers, setMasterViewUsers] = useState<{ u1: UsuarioDB; u2: UsuarioDB } | null>(null);
   const [masterMessages, setMasterMessages] = useState<ChatMessage[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,12 +45,7 @@ export default function ChatPage() {
 
   const loggedUserId = localStorage.getItem('rp_logged_user');
 
-  useEffect(() => {
-    const allUsers = store.getUsuarios();
-    console.log('[Chat] Todos os usuários:', JSON.stringify(allUsers.map(u => ({ id: u.id, nome: u.nome, login: u.login }))));
-    console.log('[Chat] Logged ID:', loggedUserId);
-    setUsuarios(allUsers);
-  }, []);
+  const usuarios = dbUsuarios;
 
   const currentUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = currentUser?.nivel === 'master';
@@ -189,7 +183,7 @@ export default function ChatPage() {
   };
 
   // Master: view conversation between two users
-  const masterViewConversation = async (u1: Usuario, u2: Usuario) => {
+  const masterViewConversation = async (u1: UsuarioDB, u2: UsuarioDB) => {
     const { data } = await supabase
       .from('chat_messages' as any)
       .select('*')

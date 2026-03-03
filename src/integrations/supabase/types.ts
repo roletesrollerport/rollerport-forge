@@ -65,6 +65,54 @@ export type Database = {
         }
         Relationships: []
       }
+      usuarios: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          email: string
+          foto: string | null
+          genero: string | null
+          id: string
+          login: string
+          nivel: string
+          nome: string
+          permissoes: Json | null
+          senha: string
+          telefone: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          email?: string
+          foto?: string | null
+          genero?: string | null
+          id?: string
+          login: string
+          nivel?: string
+          nome?: string
+          permissoes?: Json | null
+          senha: string
+          telefone?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          email?: string
+          foto?: string | null
+          genero?: string | null
+          id?: string
+          login?: string
+          nivel?: string
+          nome?: string
+          permissoes?: Json | null
+          senha?: string
+          telefone?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
