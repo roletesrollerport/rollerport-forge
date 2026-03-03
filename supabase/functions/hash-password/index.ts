@@ -11,7 +11,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { action, password, hashedPassword, userId, loginStr } = await req.json();
+    const body = await req.json();
+    const { action, password, hashedPassword, userId, loginStr, sessionToken: bodySessionToken } = body;
 
     if (action === "hash") {
       // Hash a password
@@ -103,6 +104,12 @@ serve(async (req) => {
         expires_at: expiresAt,
       });
 
+      // Update last_seen
+      await supabaseAdmin
+        .from("usuarios")
+        .update({ last_seen: new Date().toISOString() })
+        .eq("id", user.id);
+
       // Clean up expired sessions for this user
       await supabaseAdmin
         .from("sessions")
@@ -113,6 +120,41 @@ serve(async (req) => {
       // Return user without senha, plus session token
       const { senha: _, ...safeUser } = user;
       return new Response(JSON.stringify({ user: safeUser, sessionToken }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "logout") {
+      const token = bodySessionToken;
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Missing token" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: session } = await supabaseAdmin
+        .from("sessions")
+        .select("user_id")
+        .eq("token", token)
+        .maybeSingle();
+      
+      if (session) {
+        await supabaseAdmin
+          .from("usuarios")
+          .update({ last_seen: new Date().toISOString() })
+          .eq("id", session.user_id);
+      }
+
+      await supabaseAdmin
+        .from("sessions")
+        .delete()
+        .eq("token", token);
+
+      return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

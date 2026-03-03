@@ -12,7 +12,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Download, Target, Save, Edit, ArrowLeft, Trash2, X,
-  User, Circle, Phone, Mail, ClipboardList
+  User, Phone, Mail, ClipboardList
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -77,7 +77,7 @@ export default function DashboardPage() {
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';
 
-  // Check which users have active sessions
+  // Check which users have active sessions + realtime
   useEffect(() => {
     const checkOnline = async () => {
       const now = new Date().toISOString();
@@ -91,7 +91,23 @@ export default function DashboardPage() {
     };
     checkOnline();
     const interval = setInterval(checkOnline, 30000);
-    return () => clearInterval(interval);
+
+    // Realtime subscription for sessions changes
+    const channel = supabase
+      .channel('sessions-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'sessions',
+      }, () => {
+        checkOnline();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -542,7 +558,15 @@ export default function DashboardPage() {
                   {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <Circle className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 ${isOnline ? 'text-success fill-success' : 'text-muted-foreground fill-muted'}`} />
+              {isOnline && (
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-card"></span>
+                </span>
+              )}
+              {!isOnline && (
+                <span className="absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-4 w-4 bg-muted-foreground/40 border-2 border-card"></span>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">

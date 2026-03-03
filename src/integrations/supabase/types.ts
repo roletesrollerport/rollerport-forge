@@ -220,6 +220,7 @@ export type Database = {
           foto: string | null
           genero: string | null
           id: string
+          last_seen: string | null
           login: string
           nivel: string
           nome: string
@@ -235,6 +236,7 @@ export type Database = {
           foto?: string | null
           genero?: string | null
           id?: string
+          last_seen?: string | null
           login: string
           nivel?: string
           nome?: string
@@ -250,6 +252,7 @@ export type Database = {
           foto?: string | null
           genero?: string | null
           id?: string
+          last_seen?: string | null
           login?: string
           nivel?: string
           nome?: string
