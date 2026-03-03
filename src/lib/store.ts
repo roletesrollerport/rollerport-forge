@@ -235,8 +235,8 @@ const SEED_PRODUTOS: Produto[] = [
 ];
 
 const SEED_USUARIOS: Usuario[] = [
-  { id: '1', nome: 'Sistema Rollerport', email: 'gerente@rollerport.com.br', telefone: '(11) 4441-3572', whatsapp: '(11) 94441-3572', login: 'Gerente De sistema', senha: 'Port@38610', nivel: 'master', ativo: true, createdAt: '2025-01-01' },
-  { id: '2', nome: 'Paulo Vendas', email: 'paulo@rollerport.com.br', telefone: '', whatsapp: '', login: 'paulo', senha: '123456', nivel: 'vendedor', ativo: true, createdAt: '2025-01-10' },
+  { id: '1', nome: 'Sistema Rollerport', email: 'gerente@rollerport.com.br', telefone: '(11) 4441-3572', whatsapp: '(11) 94441-3572', login: 'Gerente De sistema', senha: '••••••', nivel: 'master', ativo: true, createdAt: '2025-01-01' },
+  { id: '2', nome: 'Paulo Vendas', email: 'paulo@rollerport.com.br', telefone: '', whatsapp: '', login: 'paulo', senha: '••••••', nivel: 'vendedor', ativo: true, createdAt: '2025-01-10' },
 ];
 
 // ===== Store functions =====
