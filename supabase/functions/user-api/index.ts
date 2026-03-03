@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { hashSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,11 +82,9 @@ serve(async (req) => {
         permissoes: userData.permissoes,
       };
 
-      // Handle password
-      if (userData.senha && userData.senha !== "••••••") {
+      // Handle password - only update if provided and non-empty
+      if (userData.senha && userData.senha.trim() !== "") {
         if (!userData.senha.startsWith("$2")) {
-          // Hash it
-          const { hashSync } = await import("https://deno.land/x/bcrypt@v0.4.1/mod.ts");
           payload.senha = hashSync(userData.senha);
         } else {
           payload.senha = userData.senha;
