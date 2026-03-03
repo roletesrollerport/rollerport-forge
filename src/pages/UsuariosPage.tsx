@@ -56,12 +56,14 @@ export default function UsuariosPage() {
     if (editing.nivel === 'master') {
       editing.permissoes = { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] };
     }
+    console.log('[Save] Salvando usuário:', JSON.stringify({ id: editing.id, login: editing.login, senha: editing.senha, nome: editing.nome }));
     let updated: Usuario[];
     if (editing.id) {
-      updated = usuarios.map(u => u.id === editing.id ? editing : u);
+      updated = usuarios.map(u => u.id === editing.id ? { ...editing } : u);
     } else {
       updated = [...usuarios, { ...editing, id: store.nextId('usr') }];
     }
+    console.log('[Save] Lista após salvar:', JSON.stringify(updated.map(u => ({ id: u.id, login: u.login, senha: u.senha }))));
     store.saveUsuarios(updated);
     setUsuarios(updated);
     setOpen(false);
