@@ -889,7 +889,7 @@ export default function OrcamentosPage() {
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Tubo (mm)</label>
                 <div className="relative">
-                  <Input type="number" value={roleteItem.comprimentoTubo || ''} onChange={e => updateRoleteField({ comprimentoTubo: e.target.value ? +e.target.value : '' as any })} className="pr-10" />
+                  <Input type="number" step="0.01" value={roleteItem.comprimentoTubo || ''} onChange={e => updateRoleteField({ comprimentoTubo: e.target.value ? parseFloat(e.target.value) : '' as any })} className="pr-10" />
                   {roleteItem.comprimentoTubo ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{roleteItem.comprimentoTubo} mm</span> : null}
                 </div>
               </div>
@@ -904,7 +904,7 @@ export default function OrcamentosPage() {
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Eixo (mm)</label>
                 <div className="relative">
-                  <Input type="number" value={roleteItem.comprimentoEixo || ''} onChange={e => updateRoleteField({ comprimentoEixo: e.target.value ? +e.target.value : '' as any })} className="pr-10" />
+                  <Input type="number" step="0.01" value={roleteItem.comprimentoEixo || ''} onChange={e => updateRoleteField({ comprimentoEixo: e.target.value ? parseFloat(e.target.value) : '' as any })} className="pr-10" />
                   {roleteItem.comprimentoEixo ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{roleteItem.comprimentoEixo} mm</span> : null}
                 </div>
               </div>
