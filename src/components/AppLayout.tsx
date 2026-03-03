@@ -13,6 +13,7 @@ import ChatWidget from '@/components/ChatWidget';
 import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import { usePresence } from '@/hooks/usePresence';
+import { PresenceContext } from '@/contexts/PresenceContext';
 
 const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
   { to: '/', label: 'Início', icon: Home, modulo: 'inicio' },
@@ -40,7 +41,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const autoCloseTimer = useRef<NodeJS.Timeout | null>(null);
   const { usuarios: allUsuarios } = useUsuarios();
   // Track presence for the current user (broadcasts to all subscribers)
-  usePresence(currentUser?.id || null);
+  const { onlineUserIds } = usePresence(currentUser?.id || null);
 
   const notificacoes = store.getNotificacoes();
   const naoLidas = notificacoes.filter(n => !n.lida).length + unreadChatCount;
@@ -344,9 +345,11 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in">
-          {children}
-        </main>
+        <PresenceContext.Provider value={{ onlineUserIds }}>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in">
+            {children}
+          </main>
+        </PresenceContext.Provider>
       </div>
 
       {/* Floating chat button */}

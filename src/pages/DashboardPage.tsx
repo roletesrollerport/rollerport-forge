@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios } from '@/hooks/useUsuarios';
-import { usePresence } from '@/hooks/usePresence';
+import { usePresenceContext } from '@/contexts/PresenceContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -74,10 +74,10 @@ export default function DashboardPage() {
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';
 
-  // Real-time online presence
-  const { onlineUserIds } = usePresence(loggedUserId);
+  // Real-time online presence from context (shared with AppLayout)
+  const { onlineUserIds } = usePresenceContext();
 
-  useEffect(() => {
+  const loadDashboardData = useCallback(() => {
     const orc = store.getOrcamentos();
     const ped = store.getPedidos();
     const cli = store.getClientes();
@@ -101,6 +101,23 @@ export default function DashboardPage() {
     });
     setDataLoaded(true);
   }, []);
+
+  // Load on mount + auto-refresh every 5s + on tab focus
+  useEffect(() => {
+    loadDashboardData();
+    const interval = setInterval(loadDashboardData, 5000);
+    const handleVisibility = () => { if (document.visibilityState === 'visible') loadDashboardData(); };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key?.startsWith('rp_')) loadDashboardData();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [loadDashboardData]);
 
   const totalOrc = data.orcamentos.length;
   const totalPed = data.pedidos.length;
@@ -528,8 +545,8 @@ export default function DashboardPage() {
               </Avatar>
               {isOnline && (
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-card"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-success border-2 border-card"></span>
                 </span>
               )}
               {!isOnline && (
