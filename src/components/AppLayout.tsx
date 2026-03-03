@@ -6,21 +6,21 @@ import {
   Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2
 } from 'lucide-react';
 import { store } from '@/lib/store';
-import type { Usuario } from '@/lib/types';
+import type { Usuario, PermissaoModulo } from '@/lib/types';
 import logo from '@/assets/logo.png';
 
-const navItems = [
-  { to: '/', label: 'Início', icon: Home },
-  { to: '/custos', label: 'Custos', icon: DollarSign },
-  { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/produtos', label: 'Produtos', icon: Package },
-  { to: '/orcamentos', label: 'Orçamentos', icon: FileText },
-  { to: '/pedidos', label: 'Pedidos', icon: ShoppingCart },
-  { to: '/producao', label: 'Produção', icon: Factory },
-  { to: '/estoque', label: 'Estoque', icon: Warehouse },
-  { to: '/chat', label: 'Bate-Papo', icon: MessageSquare },
-  { to: '/ia', label: 'IA', icon: Bot },
-  { to: '/usuarios', label: 'Usuários', icon: UserCog },
+const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
+  { to: '/', label: 'Início', icon: Home, modulo: 'inicio' },
+  { to: '/custos', label: 'Custos', icon: DollarSign, modulo: 'custos' },
+  { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
+  { to: '/produtos', label: 'Produtos', icon: Package, modulo: 'produtos' },
+  { to: '/orcamentos', label: 'Orçamentos', icon: FileText, modulo: 'orcamentos' },
+  { to: '/pedidos', label: 'Pedidos', icon: ShoppingCart, modulo: 'pedidos' },
+  { to: '/producao', label: 'Produção', icon: Factory, modulo: 'producao' },
+  { to: '/estoque', label: 'Estoque', icon: Warehouse, modulo: 'estoque' },
+  { to: '/chat', label: 'Bate-Papo', icon: MessageSquare, modulo: 'chat' },
+  { to: '/ia', label: 'IA', icon: Bot, modulo: 'ia' },
+  { to: '/usuarios', label: 'Usuários', icon: UserCog, modulo: 'usuarios' },
 ];
 
 export default function AppLayout({ children, currentUser, onLogout }: { children: React.ReactNode; currentUser: Usuario; onLogout: () => void }) {
@@ -32,6 +32,20 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
 
   const notificacoes = store.getNotificacoes();
   const naoLidas = notificacoes.filter(n => !n.lida).length;
+
+  const isMaster = currentUser.nivel === 'master';
+  const userPerms = currentUser.permissoes?.ver || [];
+
+  // Filter nav items based on permissions (master sees all)
+  const visibleNavItems = isMaster
+    ? navItems
+    : navItems.filter(item => {
+        // Chat is always visible for everyone
+        if (item.modulo === 'chat') return true;
+        // Usuarios only visible to master
+        if (item.modulo === 'usuarios') return false;
+        return userPerms.includes(item.modulo);
+      });
 
   // Generate birthday notifications
   useEffect(() => {
@@ -116,7 +130,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2">
-          {navItems.map(item => {
+          {visibleNavItems.map(item => {
             const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
             return (
               <Link
