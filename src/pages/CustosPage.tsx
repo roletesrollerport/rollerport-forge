@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { store } from '@/lib/store';
+import { useState, useRef } from 'react';
+import { useCustos } from '@/hooks/useCustos';
 import type { Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,47 +50,61 @@ function ImageCell({ src, onUpload, onRemove }: { src?: string; onUpload: (url: 
 
 export default function CustosPage() {
   const [activeTab, setActiveTab] = useState<CustoTab>('tubos');
-  const [tubos, setTubos] = useState<Tubo[]>([]);
-  const [eixos, setEixos] = useState<Eixo[]>([]);
-  const [conjuntos, setConjuntos] = useState<Conjunto[]>([]);
-  const [revestimentos, setRevestimentos] = useState<Revestimento[]>([]);
-  const [encaixes, setEncaixes] = useState<Encaixe[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewItem, setViewItem] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+
+  const custos = useCustos();
+  const { tubos, eixos, conjuntos, revestimentos, encaixes, loading,
+    setTubos, setEixos, setConjuntos, setRevestimentos, setEncaixes } = custos;
 
   const spiraflex = revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX'));
   const aneis = revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI'));
 
-  useEffect(() => {
-    setTubos(store.getTubos());
-    setEixos(store.getEixos());
-    setConjuntos(store.getConjuntos());
-    setRevestimentos(store.getRevestimentos());
-    setEncaixes(store.getEncaixes());
-  }, []);
+  const saveAll = async () => {
+    setSaving(true);
+    try {
+      await Promise.all([
+        custos.saveAllTubos(tubos),
+        custos.saveAllEixos(eixos),
+        custos.saveAllConjuntos(conjuntos),
+        custos.saveAllRevestimentos(revestimentos),
+        custos.saveAllEncaixes(encaixes),
+      ]);
+      await custos.reload();
+      setEditingId(null);
+      toast.success('Custos salvos com sucesso!');
+    } catch {
+      toast.error('Erro ao salvar custos');
+    }
+    setSaving(false);
+  };
 
-  const saveAll = () => {
-    store.saveTubos(tubos); store.saveEixos(eixos); store.saveConjuntos(conjuntos);
-    store.saveRevestimentos(revestimentos); store.saveEncaixes(encaixes);
-    setEditingId(null); toast.success('Custos salvos com sucesso!');
+  const handleDeleteAll = async () => {
+    if (!confirm('Tem certeza que deseja excluir TODOS os itens desta aba?')) return;
+    setSaving(true);
+    try {
+      if (activeTab === 'tubos') { await custos.deleteAllTubos(); setTubos([]); }
+      else if (activeTab === 'eixos') { await custos.deleteAllEixos(); setEixos([]); }
+      else if (activeTab === 'conjuntos') { await custos.deleteAllConjuntos(); setConjuntos([]); }
+      else if (activeTab === 'spiraflex') { await custos.deleteAllRevestimentos('spiraflex'); setRevestimentos(prev => prev.filter(r => !r.tipo.toUpperCase().includes('SPIRAFLEX'))); }
+      else if (activeTab === 'aneis') { await custos.deleteAllRevestimentos('aneis'); setRevestimentos(prev => prev.filter(r => !r.tipo.toUpperCase().includes('ABI'))); }
+      else if (activeTab === 'encaixes') { await custos.deleteAllEncaixes(); setEncaixes([]); }
+      toast.success('Todos os itens foram excluídos!');
+    } catch { toast.error('Erro ao excluir'); }
+    setSaving(false);
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const exportExcel = () => {
     const wb = XLSX.utils.book_new();
-    const tSheet = XLSX.utils.json_to_sheet(tubos.map(t => ({ Diâmetro: t.diametro, Parede: t.parede, 'Valor/Metro': t.valorMetro })));
-    XLSX.utils.book_append_sheet(wb, tSheet, 'Tubos');
-    const eSheet = XLSX.utils.json_to_sheet(eixos.map(e => ({ Diâmetro: e.diametro, 'Valor/Metro': e.valorMetro })));
-    XLSX.utils.book_append_sheet(wb, eSheet, 'Eixos');
-    const cSheet = XLSX.utils.json_to_sheet(conjuntos.map(c => ({ Código: c.codigo, Valor: c.valor })));
-    XLSX.utils.book_append_sheet(wb, cSheet, 'Conjuntos');
-    const sSheet = XLSX.utils.json_to_sheet(revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => ({ Tipo: r.tipo, 'Valor/Metro': r.valorMetroOuPeca })));
-    XLSX.utils.book_append_sheet(wb, sSheet, 'Spiraflex');
-    const aSheet = XLSX.utils.json_to_sheet(revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => ({ Modelo: r.tipo, 'Valor/Peça': r.valorMetroOuPeca })));
-    XLSX.utils.book_append_sheet(wb, aSheet, 'Anéis');
-    const encSheet = XLSX.utils.json_to_sheet(encaixes.map(e => ({ Tipo: e.tipo, Preço: e.preco })));
-    XLSX.utils.book_append_sheet(wb, encSheet, 'Encaixes');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tubos.map(t => ({ Diâmetro: t.diametro, Parede: t.parede, 'Valor/Metro': t.valorMetro }))), 'Tubos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eixos.map(e => ({ Diâmetro: e.diametro, 'Valor/Metro': e.valorMetro }))), 'Eixos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(conjuntos.map(c => ({ Código: c.codigo, Valor: c.valor }))), 'Conjuntos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(spiraflex.map(r => ({ Tipo: r.tipo, 'Valor/Metro': r.valorMetroOuPeca }))), 'Spiraflex');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(aneis.map(r => ({ Modelo: r.tipo, 'Valor/Peça': r.valorMetroOuPeca }))), 'Anéis');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(encaixes.map(e => ({ Tipo: e.tipo, Preço: e.preco }))), 'Encaixes');
     XLSX.writeFile(wb, 'Custos_Rollerport.xlsx');
     toast.success('Arquivo exportado!');
   };
@@ -113,59 +127,53 @@ export default function CustosPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const wb = XLSX.read(ev.target?.result, { type: 'binary' });
-      // Tubos
       const tWs = wb.Sheets['Tubos'];
       if (tWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(tWs);
-        const newTubos: Tubo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map((r, i) => ({
-          id: store.nextId('tubo'), diametro: +(r['Diâmetro'] || r['Diametro'] || 0), parede: +(r['Parede'] || 0), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+        const newItems: Tubo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map(r => ({
+          id: 'new_' + crypto.randomUUID(), diametro: +(r['Diâmetro'] || r['Diametro'] || 0), parede: +(r['Parede'] || 0), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
         }));
-        if (newTubos.length) setTubos(prev => [...prev, ...newTubos]);
+        if (newItems.length) setTubos(prev => [...prev, ...newItems]);
       }
-      // Eixos
       const eWs = wb.Sheets['Eixos'];
       if (eWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(eWs);
-        const newEixos: Eixo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map((r, i) => ({
-          id: store.nextId('eixo'), diametro: String(r['Diâmetro'] || r['Diametro'] || ''), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+        const newItems: Eixo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map(r => ({
+          id: 'new_' + crypto.randomUUID(), diametro: String(r['Diâmetro'] || r['Diametro'] || ''), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
         }));
-        if (newEixos.length) setEixos(prev => [...prev, ...newEixos]);
+        if (newItems.length) setEixos(prev => [...prev, ...newItems]);
       }
-      // Conjuntos
       const cWs = wb.Sheets['Conjuntos'];
       if (cWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(cWs);
-        const newConj: Conjunto[] = rows.filter(r => r['Código'] || r['Codigo']).map((r, i) => ({
-          id: store.nextId('conj'), codigo: String(r['Código'] || r['Codigo'] || ''), valor: +(r['Valor'] || 0),
+        const newItems: Conjunto[] = rows.filter(r => r['Código'] || r['Codigo']).map(r => ({
+          id: 'new_' + crypto.randomUUID(), codigo: String(r['Código'] || r['Codigo'] || ''), valor: +(r['Valor'] || 0),
         }));
-        if (newConj.length) setConjuntos(prev => [...prev, ...newConj]);
+        if (newItems.length) setConjuntos(prev => [...prev, ...newItems]);
       }
-      // Spiraflex
       const sWs = wb.Sheets['Spiraflex'];
       if (sWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(sWs);
-        const newRev: Revestimento[] = rows.filter(r => r['Tipo']).map((r, i) => ({
-          id: store.nextId('rev'), tipo: String(r['Tipo'] || ''), valorMetroOuPeca: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+        const newItems: Revestimento[] = rows.filter(r => r['Tipo']).map(r => ({
+          id: 'new_' + crypto.randomUUID(), tipo: String(r['Tipo'] || ''), valorMetroOuPeca: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
         }));
-        if (newRev.length) setRevestimentos(prev => [...prev, ...newRev]);
+        if (newItems.length) setRevestimentos(prev => [...prev, ...newItems]);
       }
-      // Anéis
       const aWs = wb.Sheets['Anéis'] || wb.Sheets['Aneis'];
       if (aWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(aWs);
-        const newRev: Revestimento[] = rows.filter(r => r['Modelo']).map((r, i) => ({
-          id: store.nextId('rev'), tipo: String(r['Modelo'] || ''), valorMetroOuPeca: +(r['Valor/Peça'] || r['ValorPeca'] || 0),
+        const newItems: Revestimento[] = rows.filter(r => r['Modelo']).map(r => ({
+          id: 'new_' + crypto.randomUUID(), tipo: String(r['Modelo'] || ''), valorMetroOuPeca: +(r['Valor/Peça'] || r['ValorPeca'] || 0),
         }));
-        if (newRev.length) setRevestimentos(prev => [...prev, ...newRev]);
+        if (newItems.length) setRevestimentos(prev => [...prev, ...newItems]);
       }
-      // Encaixes
       const encWs = wb.Sheets['Encaixes'];
       if (encWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(encWs);
-        const newEnc: Encaixe[] = rows.filter(r => r['Tipo']).map((r, i) => ({
-          id: store.nextId('enc'), tipo: String(r['Tipo'] || ''), preco: +(r['Preço'] || r['Preco'] || 0),
+        const newItems: Encaixe[] = rows.filter(r => r['Tipo']).map(r => ({
+          id: 'new_' + crypto.randomUUID(), tipo: String(r['Tipo'] || ''), preco: +(r['Preço'] || r['Preco'] || 0),
         }));
-        if (newEnc.length) setEncaixes(prev => [...prev, ...newEnc]);
+        if (newItems.length) setEncaixes(prev => [...prev, ...newItems]);
       }
       toast.success('Dados importados! Clique em Salvar para confirmar.');
     };
@@ -173,17 +181,17 @@ export default function CustosPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const addTubo = () => { const id = store.nextId('tubo'); setTubos([...tubos, { id, diametro: '' as any, parede: '' as any, valorMetro: '' as any }]); setEditingId(id); };
-  const addEixo = () => { const id = store.nextId('eixo'); setEixos([...eixos, { id, diametro: '', valorMetro: '' as any }]); setEditingId(id); };
-  const addConjunto = () => { const id = store.nextId('conj'); setConjuntos([...conjuntos, { id, codigo: '', valor: '' as any }]); setEditingId(id); };
-  const addRevestimento = (isSpiraflex: boolean) => { const id = store.nextId('rev'); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : 'ABI-', valorMetroOuPeca: '' as any }]); setEditingId(id); };
-  const addEncaixe = () => { const id = store.nextId('enc'); setEncaixes([...encaixes, { id, tipo: '', preco: '' as any }]); setEditingId(id); };
+  const addTubo = () => { const id = 'new_' + crypto.randomUUID(); setTubos([...tubos, { id, diametro: '' as any, parede: '' as any, valorMetro: '' as any }]); setEditingId(id); };
+  const addEixo = () => { const id = 'new_' + crypto.randomUUID(); setEixos([...eixos, { id, diametro: '', valorMetro: '' as any }]); setEditingId(id); };
+  const addConjunto = () => { const id = 'new_' + crypto.randomUUID(); setConjuntos([...conjuntos, { id, codigo: '', valor: '' as any }]); setEditingId(id); };
+  const addRevestimento = (isSpiraflex: boolean) => { const id = 'new_' + crypto.randomUUID(); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : 'ABI-', valorMetroOuPeca: '' as any }]); setEditingId(id); };
+  const addEncaixe = () => { const id = 'new_' + crypto.randomUUID(); setEncaixes([...encaixes, { id, tipo: '', preco: '' as any }]); setEditingId(id); };
 
-  const deleteTubo = (id: string) => { setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); };
-  const deleteEixo = (id: string) => { setEixos(eixos.filter(e => e.id !== id)); toast.success('Removido!'); };
-  const deleteConjunto = (id: string) => { setConjuntos(conjuntos.filter(c => c.id !== id)); toast.success('Removido!'); };
-  const deleteRevestimento = (id: string) => { setRevestimentos(revestimentos.filter(r => r.id !== id)); toast.success('Removido!'); };
-  const deleteEncaixe = (id: string) => { setEncaixes(encaixes.filter(e => e.id !== id)); toast.success('Removido!'); };
+  const handleDeleteTubo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteTubo(id); setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); };
+  const handleDeleteEixo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEixo(id); setEixos(eixos.filter(e => e.id !== id)); toast.success('Removido!'); };
+  const handleDeleteConjunto = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteConjunto(id); setConjuntos(conjuntos.filter(c => c.id !== id)); toast.success('Removido!'); };
+  const handleDeleteRevestimento = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteRevestimento(id); setRevestimentos(revestimentos.filter(r => r.id !== id)); toast.success('Removido!'); };
+  const handleDeleteEncaixe = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEncaixe(id); setEncaixes(encaixes.filter(e => e.id !== id)); toast.success('Removido!'); };
 
   const ActionButtons = ({ id, item, onDelete }: { id: string; item: any; onDelete: (id: string) => void }) => (
     <div className="flex gap-1">
@@ -199,6 +207,8 @@ export default function CustosPage() {
   const updateRevImg = (id: string, img: string) => setRevestimentos(revestimentos.map(r => r.id === id ? { ...r, imagem: img } : r));
   const updateEncImg = (id: string, img: string) => setEncaixes(encaixes.map(e => e.id === id ? { ...e, imagem: img } : e));
 
+  if (loading) return <div className="flex items-center justify-center p-12 text-muted-foreground">Carregando custos...</div>;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -211,7 +221,7 @@ export default function CustosPage() {
           <Button variant="outline" onClick={exportExcel} className="gap-2"><Download className="h-4 w-4" /> Exportar Excel</Button>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2"><Upload className="h-4 w-4" /> Importar Excel</Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={importExcel} />
-          <Button onClick={saveAll} className="gap-2"><Save className="h-4 w-4" /> Salvar</Button>
+          <Button onClick={saveAll} disabled={saving} className="gap-2"><Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}</Button>
         </div>
       </div>
 
@@ -222,6 +232,13 @@ export default function CustosPage() {
               activeTab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             }`}>{t.label}</button>
         ))}
+      </div>
+
+      {/* Delete All button */}
+      <div className="flex justify-end">
+        <Button variant="destructive" size="sm" onClick={handleDeleteAll} disabled={saving} className="gap-2">
+          <Trash2 className="h-4 w-4" /> Excluir Tudo ({tabs.find(t => t.key === activeTab)?.label})
+        </Button>
       </div>
 
       <div className="bg-card rounded-lg border overflow-x-auto">
@@ -247,7 +264,7 @@ export default function CustosPage() {
                     <td className="p-3">{t.parede || ''}</td>
                     <td className="p-3 font-mono">{fmt(t.valorMetro)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={t.id} item={t} onDelete={deleteTubo} /></td>
+                  <td className="p-3"><ActionButtons id={t.id} item={t} onDelete={handleDeleteTubo} /></td>
                 </tr>
               ))}
             </tbody>
@@ -273,7 +290,7 @@ export default function CustosPage() {
                     <td className="p-3">{e.diametro}</td>
                     <td className="p-3 font-mono">{fmt(e.valorMetro)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={e.id} item={e} onDelete={deleteEixo} /></td>
+                  <td className="p-3"><ActionButtons id={e.id} item={e} onDelete={handleDeleteEixo} /></td>
                 </tr>
               ))}
             </tbody>
@@ -299,7 +316,7 @@ export default function CustosPage() {
                     <td className="p-3">{c.codigo}</td>
                     <td className="p-3 font-mono">{fmt(c.valor)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={c.id} item={c} onDelete={deleteConjunto} /></td>
+                  <td className="p-3"><ActionButtons id={c.id} item={c} onDelete={handleDeleteConjunto} /></td>
                 </tr>
               ))}
             </tbody>
@@ -327,7 +344,7 @@ export default function CustosPage() {
                       <td className="p-3">{r.tipo}</td>
                       <td className="p-3 font-mono">{fmt(r.valorMetroOuPeca)}</td>
                     </>)}
-                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={deleteRevestimento} /></td>
+                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} /></td>
                   </tr>
                 );
               })}
@@ -356,7 +373,7 @@ export default function CustosPage() {
                       <td className="p-3">{r.tipo}</td>
                       <td className="p-3 font-mono">{fmt(r.valorMetroOuPeca)}</td>
                     </>)}
-                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={deleteRevestimento} /></td>
+                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} /></td>
                   </tr>
                 );
               })}
@@ -383,7 +400,7 @@ export default function CustosPage() {
                     <td className="p-3">{enc.tipo}</td>
                     <td className="p-3 font-mono">{fmt(enc.preco)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={enc.id} item={enc} onDelete={deleteEncaixe} /></td>
+                  <td className="p-3"><ActionButtons id={enc.id} item={enc} onDelete={handleDeleteEncaixe} /></td>
                 </tr>
               ))}
             </tbody>

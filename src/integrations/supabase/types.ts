@@ -65,6 +65,129 @@ export type Database = {
         }
         Relationships: []
       }
+      custos_conjuntos: {
+        Row: {
+          codigo: string
+          created_at: string
+          id: string
+          imagem: string | null
+          valor: number
+        }
+        Insert: {
+          codigo?: string
+          created_at?: string
+          id?: string
+          imagem?: string | null
+          valor?: number
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          id?: string
+          imagem?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      custos_eixos: {
+        Row: {
+          created_at: string
+          diametro: string
+          id: string
+          imagem: string | null
+          valor_metro: number
+        }
+        Insert: {
+          created_at?: string
+          diametro?: string
+          id?: string
+          imagem?: string | null
+          valor_metro?: number
+        }
+        Update: {
+          created_at?: string
+          diametro?: string
+          id?: string
+          imagem?: string | null
+          valor_metro?: number
+        }
+        Relationships: []
+      }
+      custos_encaixes: {
+        Row: {
+          created_at: string
+          id: string
+          imagem: string | null
+          preco: number
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          imagem?: string | null
+          preco?: number
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          imagem?: string | null
+          preco?: number
+          tipo?: string
+        }
+        Relationships: []
+      }
+      custos_revestimentos: {
+        Row: {
+          created_at: string
+          id: string
+          imagem: string | null
+          tipo: string
+          valor_metro_ou_peca: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          imagem?: string | null
+          tipo?: string
+          valor_metro_ou_peca?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          imagem?: string | null
+          tipo?: string
+          valor_metro_ou_peca?: number
+        }
+        Relationships: []
+      }
+      custos_tubos: {
+        Row: {
+          created_at: string
+          diametro: number
+          id: string
+          imagem: string | null
+          parede: number
+          valor_metro: number
+        }
+        Insert: {
+          created_at?: string
+          diametro?: number
+          id?: string
+          imagem?: string | null
+          parede?: number
+          valor_metro?: number
+        }
+        Update: {
+          created_at?: string
+          diametro?: number
+          id?: string
+          imagem?: string | null
+          parede?: number
+          valor_metro?: number
+        }
+        Relationships: []
+      }
       usuarios: {
         Row: {
           ativo: boolean

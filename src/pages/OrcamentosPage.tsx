@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { store } from '@/lib/store';
-import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto } from '@/lib/types';
+import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
+import { useCustos } from '@/hooks/useCustos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,12 +20,7 @@ const emptyItem = (): ItemOrcamento => ({
   multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '',
 });
 
-function calcItem(item: ItemOrcamento): ItemOrcamento {
-  const tubos = store.getTubos();
-  const eixos = store.getEixos();
-  const conjuntos = store.getConjuntos();
-  const revestimentos = store.getRevestimentos();
-  const encaixes = store.getEncaixes();
+function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[]): ItemOrcamento {
 
   const tubo = tubos.find(t => t.diametro === item.diametroTubo && t.parede === item.paredeTubo);
   const eixo = eixos.find(e => e.diametro === String(item.diametroEixo));
@@ -112,11 +108,8 @@ export default function OrcamentosPage() {
 
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
-  const tubos = store.getTubos();
-  const eixos = store.getEixos();
-  const encaixes = store.getEncaixes();
-  const conjuntos = store.getConjuntos();
-  const revestimentos = store.getRevestimentos();
+  const costData = useCustos();
+  const { tubos, eixos, conjuntos, revestimentos, encaixes } = costData;
 
   const clienteSelecionado = clientes.find(c => c.id === clienteId);
 
@@ -318,7 +311,7 @@ export default function OrcamentosPage() {
 
   // Insert rolete into orçamento
   const insertRolete = () => {
-    const calculated = calcItem({ ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete });
+    const calculated = calcItem({ ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete }, tubos, eixos, conjuntos, revestimentos, encaixes);
     setItensRolete([...itensRolete, calculated]);
     // Salvar rolete como produto na lista de produtos
     const novoProduto: Produto = {
@@ -342,7 +335,7 @@ export default function OrcamentosPage() {
   };
 
   const updateRoleteField = (partial: Partial<ItemOrcamento>) => {
-    setRoleteItem(prev => calcItem({ ...prev, ...partial }));
+    setRoleteItem(prev => calcItem({ ...prev, ...partial }, tubos, eixos, conjuntos, revestimentos, encaixes));
   };
 
   // Cadastrar cliente rápido
