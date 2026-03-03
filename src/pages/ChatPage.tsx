@@ -46,11 +46,15 @@ export default function ChatPage() {
 
   const loggedUserId = localStorage.getItem('rp_logged_user');
 
-  useEffect(() => { setUsuarios(store.getUsuarios()); }, []);
+  useEffect(() => {
+    const allUsers = store.getUsuarios();
+    console.log('[Chat] Loaded users:', allUsers.length, 'Logged ID:', loggedUserId);
+    setUsuarios(allUsers);
+  }, []);
 
   const currentUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = currentUser?.nivel === 'master';
-  const otherUsers = usuarios.filter(u => u.id !== currentUser?.id);
+  const otherUsers = usuarios.filter(u => u.id !== loggedUserId);
 
   // Load messages for conversation
   const loadMessages = useCallback(async () => {
