@@ -34,15 +34,15 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   const isMaster = currentUser.nivel === 'master';
-  const userPerms = currentUser.permissoes?.ver || [];
+  // If no permissions set, default to all modules (backwards compatibility)
+  const allModulos: import('@/lib/types').PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios'];
+  const userPerms = currentUser.permissoes?.ver || allModulos;
 
   // Filter nav items based on permissions (master sees all)
   const visibleNavItems = isMaster
     ? navItems
     : navItems.filter(item => {
-        // Chat is always visible for everyone
         if (item.modulo === 'chat') return true;
-        // Usuarios only visible to master
         if (item.modulo === 'usuarios') return false;
         return userPerms.includes(item.modulo);
       });
