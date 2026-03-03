@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
@@ -29,6 +29,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const [showNotif, setShowNotif] = useState(false);
   const [viewNotif, setViewNotif] = useState<string | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const notificacoes = store.getNotificacoes();
   const naoLidas = notificacoes.filter(n => !n.lida).length;
@@ -98,6 +99,23 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const marcarLida = (id: string) => {
     const updated = notificacoes.map(n => n.id === id ? { ...n, lida: true } : n);
     store.saveNotificacoes(updated);
+  };
+
+  const getNotifRoute = (tipo: string) => {
+    switch (tipo) {
+      case 'chat': return '/chat';
+      case 'pedido': return '/pedidos';
+      case 'producao': return '/producao';
+      case 'aniversario': return '/clientes';
+      default: return '/';
+    }
+  };
+
+  const handleNotifClick = (n: import('@/lib/types').Notificacao) => {
+    marcarLida(n.id);
+    setShowNotif(false);
+    setViewNotif(null);
+    navigate(getNotifRoute(n.tipo));
   };
 
   const excluirNotif = (id: string) => {
@@ -207,7 +225,8 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                     notificacoes.slice(-10).reverse().map(n => (
                       <div
                         key={n.id}
-                        className={`p-3 border-b last:border-0 text-sm ${!n.lida ? 'bg-primary/5' : ''}`}
+                        className={`p-3 border-b last:border-0 text-sm cursor-pointer hover:bg-muted/50 ${!n.lida ? 'bg-primary/5' : ''}`}
+                        onClick={() => handleNotifClick(n)}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -215,10 +234,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                             <p className="text-xs text-muted-foreground truncate">{n.mensagem}</p>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
-                            <button onClick={() => { marcarLida(n.id); setViewNotif(n.id); }} className="p-1 rounded hover:bg-muted text-primary" title="Ver">
-                              <Eye className="h-3 w-3" />
-                            </button>
-                            <button onClick={() => excluirNotif(n.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir">
+                            <button onClick={(e) => { e.stopPropagation(); excluirNotif(n.id); }} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir">
                               <Trash2 className="h-3 w-3" />
                             </button>
                           </div>
