@@ -276,28 +276,32 @@ export const store = {
 
   getUsuarios: (): Usuario[] => {
     const users = load('rp_usuarios', SEED_USUARIOS);
-    // Auto-fix: if users lack login/senha (old data), replace with seed
-    if (users.length > 0 && !users[0].login) {
-      save('rp_usuarios', SEED_USUARIOS);
-      return SEED_USUARIOS;
+    // Ensure seed users always exist
+    const hasMaster = users.some(u => u.login === 'Gerente De sistema' && u.nivel === 'master');
+    const hasPaulo = users.some(u => u.login === 'paulo');
+    let result = [...users];
+    if (!hasMaster) {
+      result = [SEED_USUARIOS[0], ...result];
     }
-    // Auto-fix: detect and fix duplicate IDs
+    if (!hasPaulo) {
+      result = [...result, SEED_USUARIOS[1]];
+    }
+    // Fix duplicate IDs
     const seenIds = new Set<string>();
-    let hasDuplicates = false;
-    const fixed = users.map(u => {
+    let changed = false;
+    result = result.map(u => {
       if (seenIds.has(u.id)) {
-        hasDuplicates = true;
-        const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        changed = true;
+        const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         return { ...u, id: newId };
       }
       seenIds.add(u.id);
       return u;
     });
-    if (hasDuplicates) {
-      save('rp_usuarios', fixed);
-      console.log('[Store] Fixed duplicate user IDs:', fixed.map(u => ({ id: u.id, nome: u.nome })));
+    if (changed || result.length !== users.length) {
+      save('rp_usuarios', result);
     }
-    return fixed;
+    return result;
   },
   saveUsuarios: (d: Usuario[]) => save('rp_usuarios', d),
 
