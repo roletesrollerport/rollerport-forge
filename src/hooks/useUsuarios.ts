@@ -26,7 +26,7 @@ function parseUsuario(row: any): UsuarioDB {
     telefone: row.telefone || '',
     whatsapp: row.whatsapp || '',
     login: row.login,
-    senha: row.senha,
+    senha: row.senha || '••••••',
     nivel: row.nivel as NivelAcesso,
     genero: row.genero as Genero | undefined,
     ativo: row.ativo,
@@ -54,13 +54,28 @@ export function useUsuarios() {
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
 
   const saveUsuario = async (u: Partial<UsuarioDB> & { id?: string }) => {
-    const payload = {
+    let senhaToSave = u.senha;
+
+    // Hash password via edge function if it's a new password (not already hashed)
+    if (senhaToSave && !senhaToSave.startsWith('$2') && senhaToSave !== '••••••') {
+      try {
+        const { data, error } = await supabase.functions.invoke('hash-password', {
+          body: { action: 'hash', password: senhaToSave },
+        });
+        if (!error && data?.hash) {
+          senhaToSave = data.hash;
+        }
+      } catch {
+        // If hashing fails, still save (will be auto-migrated on login)
+      }
+    }
+
+    const payload: Record<string, any> = {
       nome: u.nome,
       email: u.email,
       telefone: u.telefone,
       whatsapp: u.whatsapp,
       login: u.login,
-      senha: u.senha,
       nivel: u.nivel,
       genero: u.genero || null,
       ativo: u.ativo,
@@ -68,10 +83,16 @@ export function useUsuarios() {
       permissoes: u.permissoes as any,
     };
 
+    // Only update senha if provided and changed
+    if (senhaToSave && senhaToSave !== '••••••') {
+      payload.senha = senhaToSave;
+    }
+
     if (u.id) {
       await supabase.from('usuarios').update(payload).eq('id', u.id);
     } else {
-      await supabase.from('usuarios').insert(payload);
+      payload.senha = senhaToSave;
+      await supabase.from('usuarios').insert(payload as any);
     }
     await fetchUsuarios();
   };
@@ -82,21 +103,22 @@ export function useUsuarios() {
   };
 
   const login = async (loginStr: string, senha: string): Promise<UsuarioDB | null> => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .ilike('login', loginStr.trim())
-      .eq('senha', senha)
-      .eq('ativo', true)
-      .maybeSingle();
-    if (error || !data) return null;
-    return parseUsuario(data);
+    try {
+      // Use server-side login via edge function (password never compared client-side)
+      const { data, error } = await supabase.functions.invoke('hash-password', {
+        body: { action: 'login', loginStr: loginStr.trim(), password: senha },
+      });
+      if (error || !data?.user) return null;
+      return parseUsuario(data.user);
+    } catch {
+      return null;
+    }
   };
 
   const getById = async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
-      .select('*')
+      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .eq('id', id)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
