@@ -3,12 +3,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2
+  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import type { Usuario, PermissaoModulo } from '@/lib/types';
 import logo from '@/assets/logo.png';
+import ChatWidget from '@/components/ChatWidget';
+import { toast } from 'sonner';
+import { useUsuarios } from '@/hooks/useUsuarios';
 
 const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
   { to: '/', label: 'Início', icon: Home, modulo: 'inicio' },
@@ -29,9 +32,12 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInitialUserId, setChatInitialUserId] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const autoCloseTimer = useRef<NodeJS.Timeout | null>(null);
+  const { usuarios: allUsuarios } = useUsuarios();
 
   const notificacoes = store.getNotificacoes();
   const naoLidas = notificacoes.filter(n => !n.lida).length + unreadChatCount;
@@ -40,13 +46,9 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   useEffect(() => {
     if (showNotif) {
       if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
-      autoCloseTimer.current = setTimeout(() => {
-        setShowNotif(false);
-      }, 5000);
+      autoCloseTimer.current = setTimeout(() => setShowNotif(false), 5000);
     }
-    return () => {
-      if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
-    };
+    return () => { if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current); };
   }, [showNotif]);
 
   // Poll for unread chat messages
@@ -55,14 +57,12 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     const readKey = `rp_chat_read_${currentUser.id}`;
     const lastRead = localStorage.getItem(readKey);
     const lastReadTime = lastRead ? new Date(lastRead).getTime() : 0;
-    
     const { data: recentData } = await supabase
       .from('chat_messages' as any)
       .select('id, sender_id, created_at')
       .neq('sender_id', currentUser.id)
       .eq('deleted_for_all', false)
       .gt('created_at', new Date(lastReadTime).toISOString());
-    
     if (recentData) {
       const uniqueSenders = new Set((recentData as any[]).map(m => m.sender_id));
       setUnreadChatCount(uniqueSenders.size);
@@ -75,15 +75,15 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     return () => clearInterval(interval);
   }, [checkUnreadMessages]);
 
-  // Mark chat as read when navigating to chat
+  // Mark chat as read when chat widget is open or navigating to chat page
   useEffect(() => {
-    if (location.pathname === '/chat' && currentUser?.id) {
+    if ((location.pathname === '/chat' || chatOpen) && currentUser?.id) {
       localStorage.setItem(`rp_chat_read_${currentUser.id}`, new Date().toISOString());
       setUnreadChatCount(0);
     }
-  }, [location.pathname, currentUser?.id]);
+  }, [location.pathname, chatOpen, currentUser?.id]);
 
-  // Realtime subscription for new messages
+  // Realtime subscription for new messages - with toast notifications
   useEffect(() => {
     if (!currentUser?.id) return;
     const channel = supabase
@@ -93,13 +93,38 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         schema: 'public',
         table: 'chat_messages',
       }, (payload: any) => {
-        if (payload.new?.sender_id !== currentUser.id && location.pathname !== '/chat') {
-          setUnreadChatCount(prev => prev + 1);
+        const msg = payload.new;
+        if (msg?.sender_id !== currentUser.id && location.pathname !== '/chat') {
+          if (!chatOpen) {
+            setUnreadChatCount(prev => prev + 1);
+          }
+          // Show toast notification with sender info
+          const sender = allUsuarios.find(u => u.id === msg.sender_id);
+          if (sender) {
+            const preview = msg.message_type === 'text'
+              ? (msg.content?.substring(0, 60) + (msg.content?.length > 60 ? '...' : ''))
+              : msg.message_type === 'audio' ? '🎤 Mensagem de áudio' : `📎 ${msg.file_name || 'Arquivo'}`;
+            toast(
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => {
+                setChatInitialUserId(msg.sender_id);
+                setChatOpen(true);
+              }}>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {sender.foto ? <img src={sender.foto} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-primary" />}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold">{sender.nome}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{preview}</p>
+                </div>
+              </div>,
+              { duration: 5000 }
+            );
+          }
         }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [currentUser?.id, location.pathname]);
+  }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
 
   const isMaster = currentUser.nivel === 'master';
   const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios'];
@@ -119,7 +144,6 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     const hoje = new Date();
     const em3dias = new Date(hoje.getTime() + 3 * 24 * 60 * 60 * 1000);
     const notifs = store.getNotificacoes();
-
     clientes.forEach(c => {
       if (c.aniversarioEmpresa) {
         const aniv = new Date(c.aniversarioEmpresa);
@@ -127,14 +151,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         if (aniv >= hoje && aniv <= em3dias) {
           const jaExiste = notifs.find(n => n.titulo.includes(c.nome) && n.tipo === 'aniversario');
           if (!jaExiste) {
-            notifs.push({
-              id: store.nextId('notif'),
-              tipo: 'aniversario',
-              titulo: `Aniversário: ${c.nome}`,
-              mensagem: `A empresa ${c.nome} faz aniversário em ${c.aniversarioEmpresa}`,
-              lida: false,
-              createdAt: new Date().toISOString(),
-            });
+            notifs.push({ id: store.nextId('notif'), tipo: 'aniversario', titulo: `Aniversário: ${c.nome}`, mensagem: `A empresa ${c.nome} faz aniversário em ${c.aniversarioEmpresa}`, lida: false, createdAt: new Date().toISOString() });
           }
         }
       }
@@ -145,14 +162,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           if (aniv >= hoje && aniv <= em3dias) {
             const jaExiste = notifs.find(n => n.titulo.includes(comp.nome) && n.tipo === 'aniversario');
             if (!jaExiste) {
-              notifs.push({
-                id: store.nextId('notif'),
-                tipo: 'aniversario',
-                titulo: `Aniversário: ${comp.nome}`,
-                mensagem: `O comprador ${comp.nome} (${c.nome}) faz aniversário em ${comp.aniversario}`,
-                lida: false,
-                createdAt: new Date().toISOString(),
-              });
+              notifs.push({ id: store.nextId('notif'), tipo: 'aniversario', titulo: `Aniversário: ${comp.nome}`, mensagem: `O comprador ${comp.nome} (${c.nome}) faz aniversário em ${comp.aniversario}`, lida: false, createdAt: new Date().toISOString() });
             }
           }
         }
@@ -175,6 +185,11 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     const updated = notificacoes.map(x => x.id === n.id ? { ...x, lida: true } : x);
     store.saveNotificacoes(updated);
     setShowNotif(false);
+    // If it's a chat notification, open the chat widget instead of navigating
+    if (n.tipo === 'chat') {
+      setChatOpen(true);
+      return;
+    }
     navigate(getNotifRoute(n.tipo));
   };
 
@@ -183,18 +198,14 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     store.saveNotificacoes(updated);
   };
 
-  const excluirTodas = () => {
-    store.saveNotificacoes([]);
-  };
+  const excluirTodas = () => { store.saveNotificacoes([]); };
 
   const handleBellClick = () => {
     setShowNotif(!showNotif);
-    // Mark all as read when opening
     if (!showNotif && notificacoes.some(n => !n.lida)) {
       const updated = notificacoes.map(n => ({ ...n, lida: true }));
       store.saveNotificacoes(updated);
     }
-    // If chat unread, mark chat as read too
     if (!showNotif && unreadChatCount > 0) {
       localStorage.setItem(`rp_chat_read_${currentUser.id}`, new Date().toISOString());
       setUnreadChatCount(0);
@@ -288,7 +299,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                     {unreadChatCount > 0 && (
                       <div
                         className="p-3 border-b text-sm cursor-pointer hover:bg-muted/50 bg-primary/5"
-                        onClick={() => { setShowNotif(false); navigate('/chat'); }}
+                        onClick={() => { setShowNotif(false); setChatOpen(true); }}
                       >
                         <p className="font-medium text-xs">💬 Novas mensagens no Bate-Papo</p>
                         <p className="text-xs text-muted-foreground">{unreadChatCount} conversa(s) com mensagens novas</p>
@@ -334,6 +345,30 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           {children}
         </main>
       </div>
+
+      {/* Floating chat button */}
+      {!chatOpen && (
+        <button
+          onClick={() => setChatOpen(true)}
+          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
+          title="Abrir Bate-Papo"
+        >
+          <MessageCircle className="h-6 w-6" />
+          {unreadChatCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+              {unreadChatCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Chat Widget */}
+      <ChatWidget
+        isOpen={chatOpen}
+        onToggle={() => setChatOpen(false)}
+        initialUserId={chatInitialUserId}
+        onClearInitialUser={() => setChatInitialUserId(null)}
+      />
     </div>
   );
 }
