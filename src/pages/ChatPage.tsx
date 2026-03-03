@@ -101,11 +101,27 @@ export default function ChatPage() {
   };
 
   // Send file
+  const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'txt', 'csv', 'zip', 'rar'];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const sanitizeFilename = (name: string): string => {
+    return name.replace(/[^a-zA-Z0-9._\-\s]/g, '_').substring(0, 255);
+  };
+
   const sendFile = async (file: globalThis.File) => {
     if (!selectedUser || !currentUser) return;
-    const ext = file.name.split('.').pop();
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+      toast.error('Tipo de arquivo não permitido');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Arquivo muito grande (máx 10MB)');
+      return;
+    }
+    const safeName = sanitizeFilename(file.name);
     const path = `${currentUser.id}/${Date.now()}.${ext}`;
-    toast.info(`Enviando ${file.name}...`);
+    toast.info(`Enviando ${safeName}...`);
     const { error: uploadError } = await supabase.storage.from('chat-files').upload(path, file);
     if (uploadError) { toast.error('Erro ao enviar arquivo'); return; }
     const { data: urlData } = supabase.storage.from('chat-files').getPublicUrl(path);
@@ -115,7 +131,7 @@ export default function ChatPage() {
       content: null,
       message_type: 'file',
       file_url: urlData.publicUrl,
-      file_name: file.name,
+      file_name: sanitizeFilename(file.name),
       file_size: file.size,
     } as any);
     toast.success('Arquivo enviado!');

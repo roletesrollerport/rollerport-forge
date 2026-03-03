@@ -137,7 +137,12 @@ export default function IAPage() {
               }`}>
                 {msg.role === 'assistant' ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown
+                      components={{
+                        a: ({node, ...props}) => <a {...props} rel="noopener noreferrer" target="_blank" />,
+                        img: () => null,
+                      }}
+                    >{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
