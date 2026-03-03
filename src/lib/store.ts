@@ -296,9 +296,9 @@ export const store = {
 
   nextId: (prefix: string): string => {
     const key = `rp_counter_${prefix}`;
-    const n = parseInt(localStorage.getItem(key) || '0') + 1;
+    const n = parseInt(localStorage.getItem(key) || '1000') + 1;
     localStorage.setItem(key, String(n));
-    return String(n);
+    return `${prefix}_${n}`;
   },
   nextNumero: (prefix: string): string => {
     const n = parseInt(localStorage.getItem(`rp_num_${prefix}`) || '0') + 1;
