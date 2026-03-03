@@ -640,9 +640,44 @@ export default function DashboardPage() {
         <p className="page-subtitle">Visão geral do sistema ROLLERPORT{!isMaster ? ` – ${currentUserName}` : ''}</p>
       </div>
 
-      {/* Top stat cards - only Clientes */}
+      {/* Top stat cards - clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={FileText} label="Orçamentos" value={globalOrc.total} color="bg-primary/10 text-primary" onClick={() => navigate('/orcamentos')} />
+        <StatCard icon={ShoppingCart} label="Pedidos" value={globalPed.total} color="bg-secondary/20 text-secondary" onClick={() => navigate('/pedidos')} />
         <StatCard icon={Users} label="Clientes" value={data.clientes.length} color="bg-info/10 text-info" onClick={() => navigate('/clientes')} />
+        <StatCard icon={Factory} label="Ordens de Serviço" value={globalOs.total} color="bg-accent/10 text-accent" onClick={() => navigate('/producao')} />
+      </div>
+
+      {/* Status bars - clickable */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-card rounded-lg border p-5">
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
+          <div className="space-y-3">
+            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/orcamentos?status=RASCUNHO')} />
+            <StatusBar label="Enviado" value={globalOrc.enviado} max={globalOrc.total} color="[&>div]:bg-info" onClick={() => navigate('/orcamentos?status=ENVIADO')} />
+            <StatusBar label="Aguardando" value={globalOrc.aguardando} max={globalOrc.total} color="[&>div]:bg-secondary" onClick={() => navigate('/orcamentos?status=AGUARDANDO')} />
+            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" onClick={() => navigate('/orcamentos?status=APROVADO')} />
+            <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" onClick={() => navigate('/orcamentos?status=REPROVADO')} />
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border p-5">
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
+          <div className="space-y-3">
+            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/pedidos?status=PENDENTE')} />
+            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" onClick={() => navigate('/pedidos?status=CONFIRMADO')} />
+            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" onClick={() => navigate('/pedidos?status=EM_PRODUCAO')} />
+            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" onClick={() => navigate('/pedidos?status=CONCLUIDO')} />
+            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-success" onClick={() => navigate('/pedidos?status=ENTREGUE')} />
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border p-5">
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
+          <div className="space-y-3">
+            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/producao?status=ABERTA')} />
+            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" onClick={() => navigate('/producao?status=EM_ANDAMENTO')} />
+            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" onClick={() => navigate('/producao?status=CONCLUIDA')} />
+          </div>
+        </div>
       </div>
 
       {/* Taxa de Conversão */}
