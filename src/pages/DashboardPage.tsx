@@ -57,6 +57,7 @@ export default function DashboardPage() {
     taxaOrcPedido: 0, pedidosEntregues: 0, totalPedidos: 0,
     orcRascunho: 0, orcEnviado: 0, orcAguardando: 0, orcAprovado: 0, orcReprovado: 0,
     pedPendente: 0, pedConfirmado: 0, pedProducao: 0, pedConcluido: 0, pedEntregue: 0,
+    osAberta: 0, osEmAndamento: 0, osConcluida: 0,
   });
   const [dataLoaded, setDataLoaded] = useState(false);
   const [metas, setMetas] = useState(store.getMetas());
@@ -98,6 +99,9 @@ export default function DashboardPage() {
       pedProducao: ped.filter(p => p.status === 'EM_PRODUCAO').length,
       pedConcluido: ped.filter(p => p.status === 'CONCLUIDO').length,
       pedEntregue: pedidosEntregues,
+      osAberta: os.filter(o => o.status === 'ABERTA').length,
+      osEmAndamento: os.filter(o => o.status === 'EM_ANDAMENTO').length,
+      osConcluida: os.filter(o => o.status === 'CONCLUIDA').length,
     });
     setDataLoaded(true);
   }, []);
@@ -523,9 +527,6 @@ export default function DashboardPage() {
     });
 
     // Status breakdown
-    const statusRascunho = userOrcs.filter((o: any) => o.status === 'RASCUNHO').length;
-    const statusAprovado = userOrcs.filter((o: any) => o.status === 'APROVADO').length;
-    const statusEmProducao = userPeds.filter((p: any) => p.status === 'EM_PRODUCAO').length;
 
     return (
       <Card key={usuario.id} className="hover:shadow-md transition-shadow">
@@ -610,17 +611,38 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Status Summary */}
-          <div className="flex items-center gap-2 flex-wrap text-[10px]">
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-              Rascunho: {statusRascunho}
-            </span>
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">
-              Aprovado: {statusAprovado}
-            </span>
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">
-              Em Produção: {statusEmProducao}
-            </span>
+          {/* Status Orçamentos */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Orçamentos</p>
+            <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+              <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Rascunho: {userOrcs.filter((o: any) => o.status === 'RASCUNHO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-info/10 text-info font-medium">Enviado: {userOrcs.filter((o: any) => o.status === 'ENVIADO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">Aguardando: {userOrcs.filter((o: any) => o.status === 'AGUARDANDO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">Aprovado: {userOrcs.filter((o: any) => o.status === 'APROVADO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium">Reprovado: {userOrcs.filter((o: any) => o.status === 'REPROVADO').length}</span>
+            </div>
+          </div>
+
+          {/* Status Pedidos */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Pedidos</p>
+            <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+              <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Pendente: {userPeds.filter((p: any) => p.status === 'PENDENTE').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-info/10 text-info font-medium">Confirmado: {userPeds.filter((p: any) => p.status === 'CONFIRMADO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">Em Produção: {userPeds.filter((p: any) => p.status === 'EM_PRODUCAO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Concluído: {userPeds.filter((p: any) => p.status === 'CONCLUIDO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">Entregue: {userPeds.filter((p: any) => p.status === 'ENTREGUE').length}</span>
+            </div>
+          </div>
+
+          {/* Status O.S. */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Ordens de Serviço</p>
+            <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+              <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Aberta: {userOS.filter((os: any) => os.status === 'ABERTA').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">Em Andamento: {userOS.filter((os: any) => os.status === 'EM_ANDAMENTO').length}</span>
+              <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">Concluída: {userOS.filter((os: any) => os.status === 'CONCLUIDA').length}</span>
+            </div>
           </div>
         </CardContent>
 
@@ -655,7 +677,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Status bars */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-card rounded-lg border p-5">
           <h2 className="font-semibold mb-4 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
           <div className="space-y-3">
@@ -669,10 +691,19 @@ export default function DashboardPage() {
         <div className="bg-card rounded-lg border p-5">
           <h2 className="font-semibold mb-4 flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
           <div className="space-y-3">
+            <StatusBar label="Pendente" value={data.pedPendente} max={totalPed} color="[&>div]:bg-muted-foreground" />
             <StatusBar label="Confirmado" value={data.pedConfirmado} max={totalPed} color="[&>div]:bg-info" />
             <StatusBar label="Em Produção" value={data.pedProducao} max={totalPed} color="[&>div]:bg-secondary" />
-            <StatusBar label="Pendente" value={data.pedPendente} max={totalPed} color="[&>div]:bg-muted-foreground" />
+            <StatusBar label="Concluído" value={data.pedConcluido} max={totalPed} color="[&>div]:bg-primary" />
             <StatusBar label="Entregue" value={data.pedEntregue} max={totalPed} color="[&>div]:bg-success" />
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border p-5">
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
+          <div className="space-y-3">
+            <StatusBar label="Aberta" value={data.osAberta} max={data.os.length} color="[&>div]:bg-muted-foreground" />
+            <StatusBar label="Em Andamento" value={data.osEmAndamento} max={data.os.length} color="[&>div]:bg-secondary" />
+            <StatusBar label="Concluída" value={data.osConcluida} max={data.os.length} color="[&>div]:bg-success" />
           </div>
         </div>
       </div>
