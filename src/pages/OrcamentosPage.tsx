@@ -456,7 +456,7 @@ export default function OrcamentosPage() {
       const ipiVal = +(vliq * taxaIPI).toFixed(2);
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
-        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo}x${ir.paredeTubo}mm Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` Enc: ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`,
+        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`,
         ncm: ir.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
         icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ir.valorPorPeca,
         valorTotal: ir.valorTotal, valorIPI: +(ir.valorTotal + ipiVal * ir.quantidade).toFixed(2),
@@ -965,7 +965,7 @@ export default function OrcamentosPage() {
                 <Input placeholder="Ex: RC-102-250" value={codigoRolete} onChange={e => setCodigoRolete(e.target.value)} />
               </div>
               <div>
-                <label className="text-xs text-primary font-medium">Código Externo</label>
+                <label className="text-xs text-primary font-medium">Código do Cliente</label>
                 <Input placeholder="Código do cliente" value={(roleteItem as any).codigoExterno || ''} onChange={e => updateRoleteField({ codigoExterno: e.target.value } as any)} />
               </div>
               <div>
@@ -1032,8 +1032,8 @@ export default function OrcamentosPage() {
                   <div className="flex items-center gap-3">
                     <Settings2 className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="font-medium text-sm">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo} Tubo:{item.comprimentoTubo}mm Eixo:ø{item.diametroEixo} {item.comprimentoEixo}mm</p>
-                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorPorPeca)}{item.tipoEncaixe ? ` • Enc: ${item.tipoEncaixe}` : ''}{item.especificacaoRevestimento ? ` • Rev: ${item.especificacaoRevestimento}` : ''}</p>
+                      <p className="font-medium text-sm">Rolete {item.tipoRolete} - Tubo ø{item.diametroTubo} Comp.{item.comprimentoTubo}mm - Eixo ø{item.diametroEixo} Comp.{item.comprimentoEixo}mm{item.tipoEncaixe ? ` - Enc: ${item.tipoEncaixe}` : ''}{item.medidaFresado ? ` ${item.medidaFresado}` : ''}{item.especificacaoRevestimento ? ` - Rev: ${item.especificacaoRevestimento}` : ''}</p>
+                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorPorPeca)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
