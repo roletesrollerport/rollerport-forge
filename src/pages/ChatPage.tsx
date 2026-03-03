@@ -50,7 +50,14 @@ export default function ChatPage() {
   const currentUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = currentUser?.nivel === 'master';
   const otherUsers = usuarios.filter(u => u.id !== loggedUserId);
-  console.log('[Chat] currentUser:', currentUser?.nome, '| otherUsers:', otherUsers.map(u => u.nome));
+
+  // Get file URL (supports both legacy public URLs and storage paths)
+  const getFileUrl = (fileUrl: string | null): string => {
+    if (!fileUrl) return '';
+    if (fileUrl.startsWith('http')) return fileUrl;
+    const { data } = supabase.storage.from('chat-files').getPublicUrl(fileUrl);
+    return data?.publicUrl || fileUrl;
+  };
 
   // Load messages for conversation
   const loadMessages = useCallback(async () => {
@@ -124,13 +131,14 @@ export default function ChatPage() {
     toast.info(`Enviando ${safeName}...`);
     const { error: uploadError } = await supabase.storage.from('chat-files').upload(path, file);
     if (uploadError) { toast.error('Erro ao enviar arquivo'); return; }
-    const { data: urlData } = supabase.storage.from('chat-files').getPublicUrl(path);
+    // Use the storage path as reference instead of public URL
+    const fileRef = path;
     await supabase.from('chat_messages' as any).insert({
       sender_id: currentUser.id,
       receiver_id: selectedUser.id,
       content: null,
       message_type: 'file',
-      file_url: urlData.publicUrl,
+      file_url: fileRef,
       file_name: sanitizeFilename(file.name),
       file_size: file.size,
     } as any);
@@ -156,13 +164,14 @@ export default function ChatPage() {
         const path = `${currentUser!.id}/audio_${Date.now()}.webm`;
         const { error: uploadError } = await supabase.storage.from('chat-files').upload(path, blob);
         if (uploadError) { toast.error('Erro ao enviar áudio'); return; }
-        const { data: urlData } = supabase.storage.from('chat-files').getPublicUrl(path);
+        // Use storage path reference
+        const fileRef = path;
         await supabase.from('chat_messages' as any).insert({
           sender_id: currentUser!.id,
           receiver_id: selectedUser!.id,
           content: null,
           message_type: 'audio',
-          file_url: urlData.publicUrl,
+          file_url: fileRef,
           audio_duration: recordingTime,
         } as any);
       };
@@ -389,7 +398,7 @@ export default function ChatPage() {
                   <div className="bg-muted rounded-lg px-3 py-2 text-sm max-w-[80%]">
                     {msg.message_type === 'text' && <p>{msg.content}</p>}
                     {msg.message_type === 'file' && (
-                      <a href={msg.file_url!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline">
+                      <a href={getFileUrl(msg.file_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline">
                         {getFileIcon(msg.file_name || '')} {msg.file_name}
                       </a>
                     )}
@@ -462,7 +471,7 @@ export default function ChatPage() {
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     ) : msg.message_type === 'audio' ? (
                       <div className="flex items-center gap-3 min-w-[180px]">
-                        <button onClick={() => toggleAudio(msg.id, msg.file_url!)} className={`h-8 w-8 rounded-full flex items-center justify-center ${isMine ? 'bg-primary-foreground/20' : 'bg-primary/10'}`}>
+                        <button onClick={() => toggleAudio(msg.id, getFileUrl(msg.file_url))} className={`h-8 w-8 rounded-full flex items-center justify-center ${isMine ? 'bg-primary-foreground/20' : 'bg-primary/10'}`}>
                           {playingAudio === msg.id ? <Pause className={`h-4 w-4 ${isMine ? 'text-primary-foreground' : 'text-primary'}`} /> : <Play className={`h-4 w-4 ${isMine ? 'text-primary-foreground' : 'text-primary'}`} />}
                         </button>
                         <div className="flex-1">
@@ -475,7 +484,7 @@ export default function ChatPage() {
                         </div>
                       </div>
                     ) : msg.message_type === 'file' ? (
-                      <a href={msg.file_url!} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 ${isMine ? 'text-primary-foreground' : ''}`}>
+                      <a href={getFileUrl(msg.file_url)} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 ${isMine ? 'text-primary-foreground' : ''}`}>
                         {getFileIcon(msg.file_name || '')}
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{msg.file_name}</p>
