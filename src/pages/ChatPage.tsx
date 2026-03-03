@@ -44,6 +44,7 @@ export default function ChatPage() {
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
   const loggedUserId = localStorage.getItem('rp_logged_user');
+  const sessionToken = localStorage.getItem('rp_session_token');
 
   const usuarios = dbUsuarios;
 
@@ -94,15 +95,18 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Send text message
+  // Send text message (via edge function - server enforces sender_id)
   const sendTextMessage = async () => {
-    if (!input.trim() || !selectedUser || !currentUser) return;
-    const { error } = await supabase.from('chat_messages' as any).insert({
-      sender_id: currentUser.id,
-      receiver_id: selectedUser.id,
-      content: input.trim(),
-      message_type: 'text',
-    } as any);
+    if (!input.trim() || !selectedUser || !currentUser || !sessionToken) return;
+    const { error } = await supabase.functions.invoke('chat-api', {
+      body: {
+        action: 'send_message',
+        sessionToken,
+        receiver_id: selectedUser.id,
+        content: input.trim(),
+        message_type: 'text',
+      },
+    });
     if (error) { toast.error('Erro ao enviar mensagem'); return; }
     setInput('');
   };
@@ -116,7 +120,7 @@ export default function ChatPage() {
   };
 
   const sendFile = async (file: globalThis.File) => {
-    if (!selectedUser || !currentUser) return;
+    if (!selectedUser || !currentUser || !sessionToken) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
       toast.error('Tipo de arquivo não permitido');
@@ -131,17 +135,19 @@ export default function ChatPage() {
     toast.info(`Enviando ${safeName}...`);
     const { error: uploadError } = await supabase.storage.from('chat-files').upload(path, file);
     if (uploadError) { toast.error('Erro ao enviar arquivo'); return; }
-    // Use the storage path as reference instead of public URL
-    const fileRef = path;
-    await supabase.from('chat_messages' as any).insert({
-      sender_id: currentUser.id,
-      receiver_id: selectedUser.id,
-      content: null,
-      message_type: 'file',
-      file_url: fileRef,
-      file_name: sanitizeFilename(file.name),
-      file_size: file.size,
-    } as any);
+    // Use edge function for insert (server enforces sender_id)
+    const { error } = await supabase.functions.invoke('chat-api', {
+      body: {
+        action: 'send_message',
+        sessionToken,
+        receiver_id: selectedUser.id,
+        message_type: 'file',
+        file_url: path,
+        file_name: sanitizeFilename(file.name),
+        file_size: file.size,
+      },
+    });
+    if (error) { toast.error('Erro ao registrar arquivo'); return; }
     toast.success('Arquivo enviado!');
   };
 
@@ -164,16 +170,17 @@ export default function ChatPage() {
         const path = `${currentUser!.id}/audio_${Date.now()}.webm`;
         const { error: uploadError } = await supabase.storage.from('chat-files').upload(path, blob);
         if (uploadError) { toast.error('Erro ao enviar áudio'); return; }
-        // Use storage path reference
-        const fileRef = path;
-        await supabase.from('chat_messages' as any).insert({
-          sender_id: currentUser!.id,
-          receiver_id: selectedUser!.id,
-          content: null,
-          message_type: 'audio',
-          file_url: fileRef,
-          audio_duration: recordingTime,
-        } as any);
+        // Use edge function for insert (server enforces sender_id)
+        await supabase.functions.invoke('chat-api', {
+          body: {
+            action: 'send_message',
+            sessionToken,
+            receiver_id: selectedUser!.id,
+            message_type: 'audio',
+            file_url: path,
+            audio_duration: recordingTime,
+          },
+        });
       };
       mediaRecorder.start();
       setIsRecording(true);
@@ -187,23 +194,18 @@ export default function ChatPage() {
     setIsRecording(false);
   };
 
-  // Delete message
+  // Delete message (via edge function)
   const deleteMessage = async (msg: ChatMessage, forAll: boolean) => {
-    if (!currentUser) return;
-    if (forAll) {
-      await supabase.from('chat_messages' as any).update({
-        deleted_for_all: true,
-        deleted_at: new Date().toISOString(),
-        deleted_by: currentUser.id,
-      } as any).eq('id', msg.id);
-    } else {
-      // Delete only for sender
-      await supabase.from('chat_messages' as any).update({
-        deleted_for_sender: true,
-        deleted_at: new Date().toISOString(),
-        deleted_by: currentUser.id,
-      } as any).eq('id', msg.id);
-    }
+    if (!currentUser || !sessionToken) return;
+    const { error } = await supabase.functions.invoke('chat-api', {
+      body: {
+        action: 'delete_message',
+        sessionToken,
+        message_id: msg.id,
+        for_all: forAll,
+      },
+    });
+    if (error) { toast.error('Erro ao apagar mensagem'); return; }
     loadMessages();
   };
 

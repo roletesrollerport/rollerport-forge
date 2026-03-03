@@ -102,14 +102,14 @@ export function useUsuarios() {
     await fetchUsuarios();
   };
 
-  const login = async (loginStr: string, senha: string): Promise<UsuarioDB | null> => {
+  const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; sessionToken: string } | null> => {
     try {
       // Use server-side login via edge function (password never compared client-side)
       const { data, error } = await supabase.functions.invoke('hash-password', {
         body: { action: 'login', loginStr: loginStr.trim(), password: senha },
       });
-      if (error || !data?.user) return null;
-      return parseUsuario(data.user);
+      if (error || !data?.user || !data?.sessionToken) return null;
+      return { user: parseUsuario(data.user), sessionToken: data.sessionToken };
     } catch {
       return null;
     }

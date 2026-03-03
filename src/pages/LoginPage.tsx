@@ -7,7 +7,7 @@ import { Lock, User, Loader2 } from 'lucide-react';
 import { useUsuarios } from '@/hooks/useUsuarios';
 
 interface Props {
-  onLogin: (userId: string) => void;
+  onLogin: (userId: string, sessionToken: string) => void;
 }
 
 export default function LoginPage({ onLogin }: Props) {
@@ -24,10 +24,10 @@ export default function LoginPage({ onLogin }: Props) {
     }
     setLoading(true);
     try {
-      const user = await doLogin(login.trim(), senha);
-      if (user) {
-        onLogin(user.id);
-        toast.success(`Bem-vindo, ${user.nome}!`);
+      const result = await doLogin(login.trim(), senha);
+      if (result) {
+        onLogin(result.user.id, result.sessionToken);
+        toast.success(`Bem-vindo, ${result.user.nome}!`);
       } else {
         toast.error('Login ou senha incorretos!');
       }

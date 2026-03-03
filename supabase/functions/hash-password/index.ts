@@ -93,9 +93,26 @@ serve(async (req) => {
         });
       }
 
-      // Return user without senha
+      // Create a session token
+      const sessionToken = crypto.randomUUID() + '-' + crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+
+      await supabaseAdmin.from("sessions").insert({
+        user_id: user.id,
+        token: sessionToken,
+        expires_at: expiresAt,
+      });
+
+      // Clean up expired sessions for this user
+      await supabaseAdmin
+        .from("sessions")
+        .delete()
+        .eq("user_id", user.id)
+        .lt("expires_at", new Date().toISOString());
+
+      // Return user without senha, plus session token
       const { senha: _, ...safeUser } = user;
-      return new Response(JSON.stringify({ user: safeUser }), {
+      return new Response(JSON.stringify({ user: safeUser, sessionToken }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

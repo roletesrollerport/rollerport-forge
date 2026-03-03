@@ -49,7 +49,7 @@ export default function IAPage() {
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })), mode: 'ia', userId: localStorage.getItem('rp_logged_user') }),
+        body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })), mode: 'ia', sessionToken: localStorage.getItem('rp_session_token') }),
       });
 
       if (!resp.ok || !resp.body) {
