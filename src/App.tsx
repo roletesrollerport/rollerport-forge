@@ -37,7 +37,6 @@ function AppContent() {
         body: { action: 'validate_session', sessionToken },
       }).then(({ data, error }) => {
         if (error || !data?.valid || data?.user_id !== loggedUserId) {
-          // Invalid session - force re-login
           localStorage.removeItem('rp_logged_user');
           localStorage.removeItem('rp_session_token');
           setLoggedUserId(null);
@@ -45,7 +44,6 @@ function AppContent() {
           setChecking(false);
           return;
         }
-        // Session valid, load user data
         getById(loggedUserId).then(user => {
           if (user) {
             setCurrentUser(user);
@@ -63,6 +61,41 @@ function AppContent() {
     }
   }, [loggedUserId]);
 
+  // Heartbeat: update last_seen every 60s while logged in
+  useEffect(() => {
+    if (!loggedUserId) return;
+    const updateLastSeen = () => {
+      supabase
+        .from('usuarios' as any)
+        .update({ last_seen: new Date().toISOString() } as any)
+        .eq('id', loggedUserId)
+        .then(() => {});
+    };
+    updateLastSeen();
+    const interval = setInterval(updateLastSeen, 60000);
+
+    // On tab close / navigate away, delete session
+    const handleUnload = () => {
+      const token = localStorage.getItem('rp_session_token');
+      if (token) {
+        const blob = new Blob(
+          [JSON.stringify({ action: 'logout', sessionToken: token })],
+          { type: 'application/json' }
+        );
+        navigator.sendBeacon(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hash-password`,
+          blob
+        );
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, [loggedUserId]);
+
   const handleLogin = (userId: string, token: string) => {
     localStorage.setItem('rp_logged_user', userId);
     localStorage.setItem('rp_session_token', token);
@@ -70,7 +103,13 @@ function AppContent() {
     setSessionToken(token);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem('rp_session_token');
+    if (token) {
+      await supabase.functions.invoke('hash-password', {
+        body: { action: 'logout', sessionToken: token },
+      }).catch(() => {});
+    }
     localStorage.removeItem('rp_logged_user');
     localStorage.removeItem('rp_session_token');
     setLoggedUserId(null);
