@@ -52,12 +52,38 @@ export default function ChatPage() {
   const isMaster = currentUser?.nivel === 'master';
   const otherUsers = usuarios.filter(u => u.id !== loggedUserId);
 
-  // Get file URL (supports both legacy public URLs and storage paths)
+  // Signed URL cache
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  const resolveFileUrl = useCallback(async (fileUrl: string | null): Promise<string> => {
+    if (!fileUrl) return '';
+    if (fileUrl.startsWith('http')) return fileUrl;
+    if (signedUrls[fileUrl]) return signedUrls[fileUrl];
+    try {
+      const { data } = await supabase.functions.invoke('chat-api', {
+        body: { action: 'get_signed_url', sessionToken, file_path: fileUrl },
+      });
+      if (data?.url) {
+        setSignedUrls(prev => ({ ...prev, [fileUrl]: data.url }));
+        return data.url;
+      }
+    } catch {}
+    return fileUrl;
+  }, [sessionToken, signedUrls]);
+
+  // Resolve URLs for visible messages
+  useEffect(() => {
+    const toResolve = messages.filter(m => 
+      (m.message_type === 'file' || m.message_type === 'audio') && 
+      m.file_url && !m.file_url.startsWith('http') && !signedUrls[m.file_url]
+    );
+    toResolve.forEach(m => resolveFileUrl(m.file_url));
+  }, [messages, signedUrls, resolveFileUrl]);
+
   const getFileUrl = (fileUrl: string | null): string => {
     if (!fileUrl) return '';
     if (fileUrl.startsWith('http')) return fileUrl;
-    const { data } = supabase.storage.from('chat-files').getPublicUrl(fileUrl);
-    return data?.publicUrl || fileUrl;
+    return signedUrls[fileUrl] || '#';
   };
 
   // Load messages for conversation
@@ -133,7 +159,20 @@ export default function ChatPage() {
     const safeName = sanitizeFilename(file.name);
     const path = `${currentUser.id}/${Date.now()}.${ext}`;
     toast.info(`Enviando ${safeName}...`);
-    const { error: uploadError } = await supabase.storage.from('chat-files').upload(path, file);
+
+    // Convert file to base64 for edge function upload
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+    const { error: uploadError } = await supabase.functions.invoke('chat-api', {
+      body: {
+        action: 'upload_file',
+        sessionToken,
+        file_base64: base64,
+        file_path: path,
+        content_type: file.type,
+      },
+    });
     if (uploadError) { toast.error('Erro ao enviar arquivo'); return; }
     // Use edge function for insert (server enforces sender_id)
     const { error } = await supabase.functions.invoke('chat-api', {
@@ -168,7 +207,18 @@ export default function ChatPage() {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         if (blob.size < 1000) return; // too short
         const path = `${currentUser!.id}/audio_${Date.now()}.webm`;
-        const { error: uploadError } = await supabase.storage.from('chat-files').upload(path, blob);
+        // Convert blob to base64 for edge function upload
+        const arrayBuffer = await blob.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const { error: uploadError } = await supabase.functions.invoke('chat-api', {
+          body: {
+            action: 'upload_file',
+            sessionToken,
+            file_base64: base64,
+            file_path: path,
+            content_type: 'audio/webm',
+          },
+        });
         if (uploadError) { toast.error('Erro ao enviar áudio'); return; }
         // Use edge function for insert (server enforces sender_id)
         await supabase.functions.invoke('chat-api', {

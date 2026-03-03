@@ -159,8 +159,65 @@ serve(async (req) => {
     }
 
     if (action === "validate_session") {
-      // Return user info for session validation
       return new Response(JSON.stringify({ user_id: userId, valid: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "upload_file") {
+      const { file_base64, file_path, content_type } = params;
+      if (!file_base64 || !file_path) {
+        return new Response(JSON.stringify({ error: "Missing file data" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Enforce user can only upload to their own folder
+      if (!file_path.startsWith(`${userId}/`)) {
+        return new Response(JSON.stringify({ error: "Cannot upload to other user's folder" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const binaryStr = atob(file_base64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from("chat-files")
+        .upload(file_path, bytes.buffer, { contentType: content_type || "application/octet-stream" });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        return new Response(JSON.stringify({ error: "Upload failed" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, path: file_path }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "get_signed_url") {
+      const { file_path } = params;
+      if (!file_path) {
+        return new Response(JSON.stringify({ error: "Missing file_path" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: signedData, error: signedError } = await supabaseAdmin.storage
+        .from("chat-files")
+        .createSignedUrl(file_path, 3600); // 1 hour expiry
+
+      if (signedError) {
+        return new Response(JSON.stringify({ error: "Failed to generate URL" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ url: signedData.signedUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
