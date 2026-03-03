@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,34 +25,56 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const [loggedUserId, setLoggedUserId] = useState<string | null>(() => localStorage.getItem('rp_logged_user'));
+  const [sessionToken, setSessionToken] = useState<string | null>(() => localStorage.getItem('rp_session_token'));
   const [currentUser, setCurrentUser] = useState<UsuarioDB | null>(null);
   const [checking, setChecking] = useState(true);
   const { getById } = useUsuarios();
 
   useEffect(() => {
-    if (loggedUserId) {
-      getById(loggedUserId).then(user => {
-        if (user) {
-          setCurrentUser(user);
-        } else {
+    if (loggedUserId && sessionToken) {
+      // Validate session server-side
+      supabase.functions.invoke('chat-api', {
+        body: { action: 'validate_session', sessionToken },
+      }).then(({ data, error }) => {
+        if (error || !data?.valid || data?.user_id !== loggedUserId) {
+          // Invalid session - force re-login
           localStorage.removeItem('rp_logged_user');
+          localStorage.removeItem('rp_session_token');
           setLoggedUserId(null);
+          setSessionToken(null);
+          setChecking(false);
+          return;
         }
-        setChecking(false);
+        // Session valid, load user data
+        getById(loggedUserId).then(user => {
+          if (user) {
+            setCurrentUser(user);
+          } else {
+            localStorage.removeItem('rp_logged_user');
+            localStorage.removeItem('rp_session_token');
+            setLoggedUserId(null);
+            setSessionToken(null);
+          }
+          setChecking(false);
+        });
       });
     } else {
       setChecking(false);
     }
   }, [loggedUserId]);
 
-  const handleLogin = (userId: string) => {
+  const handleLogin = (userId: string, token: string) => {
     localStorage.setItem('rp_logged_user', userId);
+    localStorage.setItem('rp_session_token', token);
     setLoggedUserId(userId);
+    setSessionToken(token);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('rp_logged_user');
+    localStorage.removeItem('rp_session_token');
     setLoggedUserId(null);
+    setSessionToken(null);
     setCurrentUser(null);
   };
 

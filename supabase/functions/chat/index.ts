@@ -10,26 +10,40 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Validate that the request comes from an active user
-    const { messages, mode, userId } = await req.json();
+    // Validate that the request comes from an active user via session token
+    const { messages, mode, sessionToken } = await req.json();
 
-    if (!userId || typeof userId !== "string") {
-      return new Response(JSON.stringify({ error: "Unauthorized: missing user ID" }), {
+    if (!sessionToken || typeof sessionToken !== "string") {
+      return new Response(JSON.stringify({ error: "Unauthorized: missing session token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Verify user exists and is active in the database
+    // Verify session exists and is valid
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const { data: session, error: sessionError } = await supabaseAdmin
+      .from("sessions")
+      .select("user_id, expires_at")
+      .eq("token", sessionToken)
+      .maybeSingle();
+
+    if (sessionError || !session || new Date(session.expires_at) < new Date()) {
+      return new Response(JSON.stringify({ error: "Unauthorized: invalid or expired session" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify user exists and is active
     const { data: user, error: userError } = await supabaseAdmin
       .from("usuarios")
       .select("id, ativo")
-      .eq("id", userId)
+      .eq("id", session.user_id)
       .eq("ativo", true)
       .maybeSingle();
 
