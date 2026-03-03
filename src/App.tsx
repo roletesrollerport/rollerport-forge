@@ -61,20 +61,18 @@ function AppContent() {
     }
   }, [loggedUserId]);
 
-  // Heartbeat: update last_seen every 60s while logged in
+  // Heartbeat: update last_seen every 60s while logged in (via edge function)
   useEffect(() => {
-    if (!loggedUserId) return;
+    if (!loggedUserId || !sessionToken) return;
     const updateLastSeen = () => {
-      supabase
-        .from('usuarios' as any)
-        .update({ last_seen: new Date().toISOString() } as any)
-        .eq('id', loggedUserId)
-        .then(() => {});
+      supabase.functions.invoke('chat-api', {
+        body: { action: 'heartbeat', sessionToken },
+      }).catch(() => {});
     };
     updateLastSeen();
     const interval = setInterval(updateLastSeen, 60000);
 
-    // On tab close / navigate away, delete session
+    // On tab close / navigate away, try to clean up session
     const handleUnload = () => {
       const token = localStorage.getItem('rp_session_token');
       if (token) {
@@ -94,7 +92,7 @@ function AppContent() {
       clearInterval(interval);
       window.removeEventListener('beforeunload', handleUnload);
     };
-  }, [loggedUserId]);
+  }, [loggedUserId, sessionToken]);
 
   const handleLogin = (userId: string, token: string) => {
     localStorage.setItem('rp_logged_user', userId);
