@@ -14,7 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          audio_duration: number | null
+          content: string | null
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_for_all: boolean
+          deleted_for_sender: boolean
+          file_name: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          message_type: string
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          audio_duration?: number | null
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_for_all?: boolean
+          deleted_for_sender?: boolean
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          message_type?: string
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          audio_duration?: number | null
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_for_all?: boolean
+          deleted_for_sender?: boolean
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          message_type?: string
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
