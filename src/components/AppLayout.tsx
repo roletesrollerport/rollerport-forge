@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
@@ -6,6 +6,7 @@ import {
   Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2
 } from 'lucide-react';
 import { store } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
 import type { Usuario, PermissaoModulo } from '@/lib/types';
 import logo from '@/assets/logo.png';
 
@@ -28,11 +29,72 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [viewNotif, setViewNotif] = useState<string | null>(null);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
 
   const notificacoes = store.getNotificacoes();
-  const naoLidas = notificacoes.filter(n => !n.lida).length;
+  const naoLidas = notificacoes.filter(n => !n.lida).length + unreadChatCount;
+
+  // Poll for unread chat messages
+  const checkUnreadMessages = useCallback(async () => {
+    if (!currentUser?.id) return;
+    const { data, error } = await supabase
+      .from('chat_messages' as any)
+      .select('id, sender_id')
+      .neq('sender_id', currentUser.id)
+      .eq('deleted_for_all', false);
+    if (!error && data) {
+      // Count unique senders with messages (simple unread indicator)
+      const readKey = `rp_chat_read_${currentUser.id}`;
+      const lastRead = localStorage.getItem(readKey);
+      const lastReadTime = lastRead ? new Date(lastRead).getTime() : 0;
+      
+      const { data: recentData } = await supabase
+        .from('chat_messages' as any)
+        .select('id, sender_id, created_at')
+        .neq('sender_id', currentUser.id)
+        .eq('deleted_for_all', false)
+        .gt('created_at', new Date(lastReadTime).toISOString());
+      
+      if (recentData) {
+        const uniqueSenders = new Set((recentData as any[]).map(m => m.sender_id));
+        setUnreadChatCount(uniqueSenders.size);
+      }
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    checkUnreadMessages();
+    const interval = setInterval(checkUnreadMessages, 5000);
+    return () => clearInterval(interval);
+  }, [checkUnreadMessages]);
+
+  // Mark chat as read when navigating to chat
+  useEffect(() => {
+    if (location.pathname === '/chat' && currentUser?.id) {
+      localStorage.setItem(`rp_chat_read_${currentUser.id}`, new Date().toISOString());
+      setUnreadChatCount(0);
+    }
+  }, [location.pathname, currentUser?.id]);
+
+  // Realtime subscription for new messages
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const channel = supabase
+      .channel('chat-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+      }, (payload: any) => {
+        if (payload.new?.sender_id !== currentUser.id && location.pathname !== '/chat') {
+          setUnreadChatCount(prev => prev + 1);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUser?.id, location.pathname]);
 
   const isMaster = currentUser.nivel === 'master';
   // If no permissions set, default to all modules (backwards compatibility)
@@ -165,7 +227,12 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                 `}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span className="flex-1">{item.label}</span>}
+                {!collapsed && item.modulo === 'chat' && unreadChatCount > 0 && (
+                  <span className="h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                    {unreadChatCount}
+                  </span>
+                )}
               </Link>
             );
           })}

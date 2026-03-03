@@ -35,8 +35,8 @@ function calcItem(item: ItemOrcamento): ItemOrcamento {
   // Formula: Tubo * compTubo + Eixo * compEixo + Encaixe + Conjunto
   const custoTubo = tubo ? (item.comprimentoTubo / 1000) * tubo.valorMetro : 0;
   const custoEixo = eixo ? (item.comprimentoEixo / 1000) * eixo.valorMetro : 0;
-  const custoConj = conj ? conj.valor * 2 : 0;
-  const custoEnc = enc ? enc.preco * 2 : 0;
+  const custoConj = conj ? conj.valor : 0;
+  const custoEnc = enc ? enc.preco : 0;
 
   // Revestimento: Spiraflex = valor * comprimentoEixo; Anéis = valor * quantidade
   let custoRev = 0;
@@ -541,20 +541,20 @@ export default function OrcamentosPage() {
           <table className="w-full text-[9px] border-collapse">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border p-1 text-center">Item</th>
-                <th className="border p-1 text-center">Qtd</th>
-                <th className="border p-1 text-center">Código</th>
-                <th className="border p-1 text-center">Cód. Externo</th>
-                <th className="border p-1 text-left" style={{minWidth: '220px'}}>Descrição do Produto</th>
-                <th className="border p-1 text-right">Vlr Unitário</th>
-                <th className="border p-1 text-center">NCM</th>
-                <th className="border p-1 text-right">Vlr Líquido</th>
-                <th className="border p-1 text-right">PIS</th>
-                <th className="border p-1 text-right">Cofins</th>
-                <th className="border p-1 text-right">ICMS Origem</th>
-                <th className="border p-1 text-right">ICMS Destino</th>
-                <th className="border p-1 text-right">Vlr Total</th>
-                <th className="border p-1 text-right">Vlr c/ IPI</th>
+                <th className="border p-1 text-center whitespace-nowrap">Item</th>
+                <th className="border p-1 text-center whitespace-nowrap">Qtd</th>
+                <th className="border p-1 text-center whitespace-nowrap">Código</th>
+                <th className="border p-1 text-center whitespace-nowrap">Cód. Cliente</th>
+                <th className="border p-1 text-left whitespace-nowrap" style={{minWidth: '180px'}}>Descrição</th>
+                <th className="border p-1 text-right whitespace-nowrap">Vlr Unit.</th>
+                <th className="border p-1 text-center whitespace-nowrap">NCM</th>
+                <th className="border p-1 text-right whitespace-nowrap">Vlr Líq.</th>
+                <th className="border p-1 text-right whitespace-nowrap">PIS</th>
+                <th className="border p-1 text-right whitespace-nowrap">Cofins</th>
+                <th className="border p-1 text-right whitespace-nowrap">ICMS Orig.</th>
+                <th className="border p-1 text-right whitespace-nowrap">ICMS Dest.</th>
+                <th className="border p-1 text-right whitespace-nowrap">Vlr Total</th>
+                <th className="border p-1 text-right whitespace-nowrap">Vlr c/ IPI</th>
               </tr>
             </thead>
             <tbody>
