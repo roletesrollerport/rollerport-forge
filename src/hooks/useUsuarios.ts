@@ -54,51 +54,47 @@ export function useUsuarios() {
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
 
   const saveUsuario = async (u: Partial<UsuarioDB> & { id?: string }) => {
-    let senhaToSave = u.senha;
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
 
-    // Hash password via edge function if it's a new password (not already hashed)
-    if (senhaToSave && !senhaToSave.startsWith('$2') && senhaToSave !== '••••••') {
-      try {
-        const { data, error } = await supabase.functions.invoke('hash-password', {
-          body: { action: 'hash', password: senhaToSave },
-        });
-        if (!error && data?.hash) {
-          senhaToSave = data.hash;
-        }
-      } catch {
-        // If hashing fails, still save (will be auto-migrated on login)
-      }
-    }
+    const { error } = await supabase.functions.invoke('user-api', {
+      body: {
+        action: 'save_user',
+        sessionToken,
+        userData: {
+          id: u.id || undefined,
+          nome: u.nome,
+          email: u.email,
+          telefone: u.telefone,
+          whatsapp: u.whatsapp,
+          login: u.login,
+          senha: u.senha,
+          nivel: u.nivel,
+          genero: u.genero || null,
+          ativo: u.ativo,
+          foto: u.foto || null,
+          permissoes: u.permissoes,
+        },
+      },
+    });
 
-    const payload: Record<string, any> = {
-      nome: u.nome,
-      email: u.email,
-      telefone: u.telefone,
-      whatsapp: u.whatsapp,
-      login: u.login,
-      nivel: u.nivel,
-      genero: u.genero || null,
-      ativo: u.ativo,
-      foto: u.foto || null,
-      permissoes: u.permissoes as any,
-    };
-
-    // Only update senha if provided and changed
-    if (senhaToSave && senhaToSave !== '••••••') {
-      payload.senha = senhaToSave;
-    }
-
-    if (u.id) {
-      await supabase.from('usuarios').update(payload).eq('id', u.id);
-    } else {
-      payload.senha = senhaToSave;
-      await supabase.from('usuarios').insert(payload as any);
-    }
+    if (error) throw error;
     await fetchUsuarios();
   };
 
   const deleteUsuario = async (id: string) => {
-    await supabase.from('usuarios').delete().eq('id', id);
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
+
+    const { error } = await supabase.functions.invoke('user-api', {
+      body: {
+        action: 'delete_user',
+        sessionToken,
+        userId: id,
+      },
+    });
+
+    if (error) throw error;
     await fetchUsuarios();
   };
 
