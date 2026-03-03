@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { hash, compare } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import { hashSync, compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +21,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const hashed = await hash(password);
+      const hashed = hashSync(password);
       return new Response(JSON.stringify({ hash: hashed }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -35,7 +35,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const valid = await compare(password, hashedPassword);
+      const valid = compareSync(password, hashedPassword);
       return new Response(JSON.stringify({ valid }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -72,13 +72,13 @@ serve(async (req) => {
       // Check if password is hashed (bcrypt hashes start with $2)
       let valid = false;
       if (user.senha.startsWith("$2")) {
-        valid = await compare(password, user.senha);
+        valid = compareSync(password, user.senha);
       } else {
         // Legacy plaintext comparison (for migration period)
         valid = user.senha === password;
         if (valid) {
           // Auto-migrate: hash the plaintext password
-          const hashed = await hash(password);
+          const hashed = hashSync(password);
           await supabaseAdmin
             .from("usuarios")
             .update({ senha: hashed })
