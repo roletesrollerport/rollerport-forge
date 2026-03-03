@@ -17,7 +17,9 @@ export default function LoginPage({ onLogin }: Props) {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const usuarios = store.getUsuarios();
-    const user = usuarios.find(u => u.login === login && u.senha === senha && u.ativo);
+    console.log('[Login] Todos os usuários:', usuarios.map(u => ({ id: u.id, login: u.login, senha: u.senha, nome: u.nome, ativo: u.ativo })));
+    console.log('[Login] Tentando login com:', { login, senha });
+    const user = usuarios.find(u => u.login.trim() === login.trim() && u.senha === senha && u.ativo);
     if (user) {
       onLogin(user.id);
       toast.success(`Bem-vindo, ${user.nome}!`);
