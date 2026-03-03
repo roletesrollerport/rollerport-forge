@@ -13,13 +13,30 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
-  Eye, Printer, Download, Target, Save, Edit, ArrowLeft, Trash2, X,
-  User, Phone, Mail, ClipboardList, Loader2
+  Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
+  ClipboardList
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
+/* ------------------------------------------------------------------ */
+/*  Clickable status chip                                              */
+/* ------------------------------------------------------------------ */
+function StatusChip({ label, count, colorClass, onClick }: { label: string; count: number; colorClass: string; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2 py-1 rounded text-[11px] font-semibold transition-all hover:scale-105 hover:shadow-sm ${colorClass} ${onClick ? 'cursor-pointer' : ''}`}
+    >
+      {label}: {count}
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Top-level stat card (Orçamentos / Pedidos / Clientes / O.S.)       */
+/* ------------------------------------------------------------------ */
 function StatCard({ icon: Icon, label, value, color, onClick }: { icon: any; label: string; value: string | number; color: string; onClick?: () => void }) {
   return (
     <div
@@ -37,14 +54,17 @@ function StatCard({ icon: Icon, label, value, color, onClick }: { icon: any; lab
   );
 }
 
-function StatusBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+/* ------------------------------------------------------------------ */
+/*  Status progress bar                                                */
+/* ------------------------------------------------------------------ */
+function StatusBar({ label, value, max, color, onClick }: { label: string; value: number; max: number; color: string; onClick?: () => void }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
-    <div className="flex items-center gap-3 text-xs">
-      <span className="w-28 text-muted-foreground truncate">{label}</span>
+    <button onClick={onClick} className="flex items-center gap-3 text-xs w-full hover:bg-muted/30 rounded px-1 py-0.5 transition-colors">
+      <span className="w-28 text-muted-foreground truncate text-left">{label}</span>
       <div className="flex-1"><Progress value={pct} className={`h-2 ${color}`} /></div>
       <span className="w-8 text-right font-mono font-medium">{value}</span>
-    </div>
+    </button>
   );
 }
 
@@ -54,10 +74,6 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [data, setData] = useState({
     orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[],
-    taxaOrcPedido: 0, pedidosEntregues: 0, totalPedidos: 0,
-    orcRascunho: 0, orcEnviado: 0, orcAguardando: 0, orcAprovado: 0, orcReprovado: 0,
-    pedPendente: 0, pedConfirmado: 0, pedProducao: 0, pedConcluido: 0, pedEntregue: 0,
-    osAberta: 0, osEmAndamento: 0, osConcluida: 0,
   });
   const [dataLoaded, setDataLoaded] = useState(false);
   const [metas, setMetas] = useState(store.getMetas());
@@ -66,94 +82,109 @@ export default function DashboardPage() {
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
 
-  // Fetch real users from database
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
-
-  // Current logged-in user
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';
-
-  // Real-time online presence from context (shared with AppLayout)
   const { onlineUserIds } = usePresenceContext();
 
+  /* ---------------------------------------------------------------- */
+  /*  Data loading from store (backed by localStorage ↔ Supabase)     */
+  /* ---------------------------------------------------------------- */
   const loadDashboardData = useCallback(() => {
-    const orc = store.getOrcamentos();
-    const ped = store.getPedidos();
-    const cli = store.getClientes();
-    const os = store.getOrdensServico();
-    const aprovados = orc.filter(o => o.status === 'APROVADO').length;
-    const taxaOrcPedido = orc.length > 0 ? ((aprovados / orc.length) * 100) : 0;
-    const pedidosEntregues = ped.filter(p => p.status === 'ENTREGUE').length;
     setData({
-      orcamentos: orc, pedidos: ped, clientes: cli, os,
-      taxaOrcPedido: +taxaOrcPedido.toFixed(1), pedidosEntregues, totalPedidos: ped.length,
-      orcRascunho: orc.filter(o => o.status === 'RASCUNHO').length,
-      orcEnviado: orc.filter(o => o.status === 'ENVIADO').length,
-      orcAguardando: orc.filter(o => o.status === 'AGUARDANDO').length,
-      orcAprovado: aprovados,
-      orcReprovado: orc.filter(o => o.status === 'REPROVADO').length,
-      pedPendente: ped.filter(p => p.status === 'PENDENTE').length,
-      pedConfirmado: ped.filter(p => p.status === 'CONFIRMADO').length,
-      pedProducao: ped.filter(p => p.status === 'EM_PRODUCAO').length,
-      pedConcluido: ped.filter(p => p.status === 'CONCLUIDO').length,
-      pedEntregue: pedidosEntregues,
-      osAberta: os.filter(o => o.status === 'ABERTA').length,
-      osEmAndamento: os.filter(o => o.status === 'EM_ANDAMENTO').length,
-      osConcluida: os.filter(o => o.status === 'CONCLUIDA').length,
+      orcamentos: store.getOrcamentos(),
+      pedidos: store.getPedidos(),
+      clientes: store.getClientes(),
+      os: store.getOrdensServico(),
     });
+    setMetas(store.getMetas());
     setDataLoaded(true);
   }, []);
 
-  // Load on mount + on realtime sync events + on tab focus
+  /* ---------------------------------------------------------------- */
+  /*  Realtime subscriptions + event listeners                        */
+  /* ---------------------------------------------------------------- */
   useEffect(() => {
     loadDashboardData();
-    const handleVisibility = () => { if (document.visibilityState === 'visible') loadDashboardData(); };
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('rp-data-synced', loadDashboardData);
+
+    // Listen for local sync events
+    const handleSync = () => loadDashboardData();
+    window.addEventListener('rp-data-synced', handleSync);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadDashboardData();
+    });
+
+    // Realtime subscriptions for instant updates
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, handleSync)
+      .subscribe();
+
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('rp-data-synced', loadDashboardData);
+      window.removeEventListener('rp-data-synced', handleSync);
+      supabase.removeChannel(channel);
     };
   }, [loadDashboardData]);
 
-  const totalOrc = data.orcamentos.length;
-  const totalPed = data.pedidos.length;
-  const vendedores = dbUsuarios.filter(u => u.nivel === 'vendedor' || u.nivel === 'master' || u.nivel === 'admin');
+  /* ---------------------------------------------------------------- */
+  /*  Derived counts                                                   */
+  /* ---------------------------------------------------------------- */
+  const countByStatus = (items: any[], field: string, status: string) => items.filter(i => i[field] === status).length;
 
-  // Filter data per user when not master
-  const userOrcamentos = isMaster ? data.orcamentos : data.orcamentos.filter((o: any) => o.vendedor === currentUserName);
-  const userPedidos = isMaster ? data.pedidos : data.pedidos.filter((p: any) => {
-    const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-    return (orc as any)?.vendedor === currentUserName;
+  const getOrcStats = (orcs: any[]) => ({
+    total: orcs.length,
+    rascunho: countByStatus(orcs, 'status', 'RASCUNHO'),
+    enviado: countByStatus(orcs, 'status', 'ENVIADO'),
+    aguardando: countByStatus(orcs, 'status', 'AGUARDANDO'),
+    aprovado: countByStatus(orcs, 'status', 'APROVADO'),
+    reprovado: countByStatus(orcs, 'status', 'REPROVADO'),
   });
 
-  const vendedorStats = (filterVendor?: string) => {
-    const list = filterVendor ? vendedores.filter(v => v.nome === filterVendor) : vendedores;
-    return list.map(v => {
-      const orcVendedor = data.orcamentos.filter((o: any) => o.vendedor === v.nome);
-      const pedVendedor = data.pedidos.filter((p: any) => {
-        const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-        return (orc as any)?.vendedor === v.nome;
-      });
-      const totalVendido = pedVendedor.reduce((s: number, p: any) => s + p.valorTotal, 0);
-      const meta = metas.find(m => m.vendedor === v.nome);
-      const naoFecharam = orcVendedor.filter((o: any) => o.status === 'REPROVADO' || o.status === 'RASCUNHO').length;
-      const conversao = orcVendedor.length > 0 ? ((orcVendedor.filter((o: any) => o.status === 'APROVADO').length / orcVendedor.length) * 100) : 0;
-      const generoLabel = v.genero === 'F' ? 'Vendedora' : 'Vendedor';
-      return {
-        id: v.id, nome: v.nome, generoLabel, clientesCadastrados: data.clientes.length,
-        orcFeitos: orcVendedor.length,
-        conversaoPedido: orcVendedor.filter((o: any) => o.status === 'APROVADO').length,
-        naoFecharam, totalVendido, percentualConversao: +conversao.toFixed(1),
-        metaMensal: meta?.metaMensal || 0,
-      };
-    });
-  };
+  const getPedStats = (peds: any[]) => ({
+    total: peds.length,
+    pendente: countByStatus(peds, 'status', 'PENDENTE'),
+    confirmado: countByStatus(peds, 'status', 'CONFIRMADO'),
+    producao: countByStatus(peds, 'status', 'EM_PRODUCAO'),
+    concluido: countByStatus(peds, 'status', 'CONCLUIDO'),
+    entregue: countByStatus(peds, 'status', 'ENTREGUE'),
+  });
 
-  const allVendorStats = vendedorStats();
+  const getOsStats = (osList: any[]) => ({
+    total: osList.length,
+    aberta: countByStatus(osList, 'status', 'ABERTA'),
+    emAndamento: countByStatus(osList, 'status', 'EM_ANDAMENTO'),
+    concluida: countByStatus(osList, 'status', 'CONCLUIDA'),
+  });
 
+  // Per-user data helpers
+  const getUserOrcs = (nome: string) => data.orcamentos.filter((o: any) => o.vendedor === nome);
+  const getUserPeds = (nome: string) => data.pedidos.filter((p: any) => {
+    const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
+    return (orc as any)?.vendedor === nome;
+  });
+  const getUserOS = (nome: string) => data.os.filter((os: any) => {
+    const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
+    if (!ped) return false;
+    const orc = data.orcamentos.find((o: any) => o.id === (ped as any).orcamentoId);
+    return (orc as any)?.vendedor === nome;
+  });
+
+  // Global stats
+  const globalOrc = getOrcStats(isMaster ? data.orcamentos : getUserOrcs(currentUserName));
+  const globalPed = getPedStats(isMaster ? data.pedidos : getUserPeds(currentUserName));
+  const globalOs = getOsStats(isMaster ? data.os : getUserOS(currentUserName));
+
+  const taxaConversao = globalOrc.total > 0 ? +((globalOrc.aprovado / globalOrc.total) * 100).toFixed(1) : 0;
+
+  /* ---------------------------------------------------------------- */
+  /*  Meta helpers                                                     */
+  /* ---------------------------------------------------------------- */
   const saveMeta = (vendedorNome: string, valor: number) => {
     const existing = metas.find(m => m.vendedor === vendedorNome);
     let updated;
@@ -165,27 +196,30 @@ export default function DashboardPage() {
   const deleteOrcamento = (id: string) => {
     const updated = data.orcamentos.filter((o: any) => o.id !== id);
     store.saveOrcamentos(updated);
-    setData(prev => ({ ...prev, orcamentos: updated }));
+    loadDashboardData();
     toast.success('Orçamento excluído!');
   };
 
   const deletePedido = (id: string) => {
     const updated = data.pedidos.filter((p: any) => p.id !== id);
     store.savePedidos(updated);
-    setData(prev => ({ ...prev, pedidos: updated }));
+    loadDashboardData();
     toast.success('Pedido excluído!');
   };
 
-  // ========== VENDOR DETAIL/PRINT VIEW ==========
+  /* ================================================================ */
+  /*  VENDOR DETAIL / PRINT VIEW                                       */
+  /* ================================================================ */
   if ((dashView === 'vendor-detail' || dashView === 'vendor-print') && selectedVendor) {
-    const vs = allVendorStats.find(v => v.nome === selectedVendor);
-    if (!vs) return null;
-    const metaPct = vs.metaMensal > 0 ? Math.min((vs.totalVendido / vs.metaMensal) * 100, 100) : 0;
-    const vendorOrcs = data.orcamentos.filter((o: any) => o.vendedor === selectedVendor);
-    const vendorPeds = data.pedidos.filter((p: any) => {
-      const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-      return (orc as any)?.vendedor === selectedVendor;
-    });
+    const userOrcs = getUserOrcs(selectedVendor);
+    const userPeds = getUserPeds(selectedVendor);
+    const orcS = getOrcStats(userOrcs);
+    const pedS = getPedStats(userPeds);
+    const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
+    const meta = metas.find(m => m.vendedor === selectedVendor);
+    const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    const conversao = orcS.total > 0 ? ((orcS.aprovado / orcS.total) * 100).toFixed(1) : '0';
+
     return (
       <div>
         <div className="flex gap-2 mb-4 print:hidden">
@@ -198,20 +232,18 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="bg-card border rounded-lg p-6 max-w-4xl mx-auto print:border-0 print:shadow-none">
-          <h2 className="text-xl font-bold mb-6">{vs.generoLabel}: {vs.nome}</h2>
+          <h2 className="text-xl font-bold mb-6">Vendedor: {selectedVendor}</h2>
           <div className="grid grid-cols-2 gap-4 text-sm mb-6">
-            <div className="border rounded p-3"><span className="text-muted-foreground">Clientes Cadastrados:</span> <strong>{vs.clientesCadastrados}</strong></div>
-            <div className="border rounded p-3"><span className="text-muted-foreground">Orçamentos Feitos:</span> <strong>{vs.orcFeitos}</strong></div>
-            <div className="border rounded p-3"><span className="text-muted-foreground">Convertidos em Pedido:</span> <strong className="text-success">{vs.conversaoPedido}</strong></div>
-            <div className="border rounded p-3"><span className="text-muted-foreground">Não Fecharam:</span> <strong className="text-destructive">{vs.naoFecharam}</strong></div>
-            <div className="border rounded p-3"><span className="text-muted-foreground">Total Vendido:</span> <strong>{fmt(vs.totalVendido)}</strong></div>
-            <div className="border rounded p-3"><span className="text-muted-foreground">% Conversão:</span> <strong>{vs.percentualConversao}%</strong></div>
-            <div className="border rounded p-3"><span className="text-muted-foreground">Meta Mensal:</span> <strong>{vs.metaMensal > 0 ? fmt(vs.metaMensal) : 'Não definida'}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">Orçamentos:</span> <strong>{orcS.total}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">Aprovados:</span> <strong className="text-success">{orcS.aprovado}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">Pedidos:</span> <strong>{pedS.total}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">Total Vendido:</span> <strong>{fmt(totalVendido)}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">% Conversão:</span> <strong>{conversao}%</strong></div>
             <div className="border rounded p-3">
-              <span className="text-muted-foreground">Progresso:</span>
-              {vs.metaMensal > 0 ? (
+              <span className="text-muted-foreground">Meta:</span>
+              {meta && meta.metaMensal > 0 ? (
                 <div className="flex items-center gap-2 mt-1"><Progress value={metaPct} className="h-3 flex-1" /><strong>{metaPct.toFixed(0)}%</strong></div>
-              ) : <strong> -</strong>}
+              ) : <strong> Não definida</strong>}
             </div>
           </div>
 
@@ -223,7 +255,7 @@ export default function DashboardPage() {
               {isMaster && <th className="p-2 w-20 print:hidden">Ações</th>}
             </tr></thead>
             <tbody>
-              {vendorOrcs.map((o: any) => (
+              {userOrcs.map((o: any) => (
                 <tr key={o.id} className="border-b hover:bg-muted/30">
                   <td className="p-2 font-mono">{o.numero}</td><td className="p-2">{o.clienteNome}</td>
                   <td className="p-2">{o.dataOrcamento || o.createdAt}</td>
@@ -232,14 +264,14 @@ export default function DashboardPage() {
                   {isMaster && (
                     <td className="p-2 print:hidden">
                       <div className="flex gap-1">
-                        <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Ver/Editar"><Eye className="h-3 w-3" /></button>
+                        <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
                         <button onClick={() => deleteOrcamento(o.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
                       </div>
                     </td>
                   )}
                 </tr>
               ))}
-              {vendorOrcs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhum orçamento.</td></tr>}
+              {userOrcs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhum orçamento.</td></tr>}
             </tbody>
           </table>
 
@@ -251,7 +283,7 @@ export default function DashboardPage() {
               {isMaster && <th className="p-2 w-20 print:hidden">Ações</th>}
             </tr></thead>
             <tbody>
-              {vendorPeds.map((p: any) => (
+              {userPeds.map((p: any) => (
                 <tr key={p.id} className="border-b hover:bg-muted/30">
                   <td className="p-2 font-mono">{p.numero}</td><td className="p-2">{p.clienteNome}</td>
                   <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
@@ -259,14 +291,14 @@ export default function DashboardPage() {
                   {isMaster && (
                     <td className="p-2 print:hidden">
                       <div className="flex gap-1">
-                        <button onClick={() => navigate('/pedidos')} className="p-1 hover:bg-muted rounded" title="Ver/Editar"><Eye className="h-3 w-3" /></button>
+                        <button onClick={() => navigate('/pedidos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
                         <button onClick={() => deletePedido(p.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
                       </div>
                     </td>
                   )}
                 </tr>
               ))}
-              {vendorPeds.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
+              {userPeds.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -277,31 +309,22 @@ export default function DashboardPage() {
     );
   }
 
-  // ========== REPORT DETAIL (per vendor or all) ==========
-  if ((dashView === 'report-detail' || dashView === 'report-print')) {
-    const filterVendor = selectedReportVendor;
-    const reportOrcs = filterVendor ? data.orcamentos.filter((o: any) => o.vendedor === filterVendor) : (isMaster ? data.orcamentos : userOrcamentos);
-    const reportPeds = filterVendor ? data.pedidos.filter((p: any) => {
-      const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-      return (orc as any)?.vendedor === filterVendor;
-    }) : (isMaster ? data.pedidos : userPedidos);
-    const reportOS = isMaster ? data.os : data.os.filter((os: any) => {
-      const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
-      if (!ped) return false;
-      const orc = data.orcamentos.find((o: any) => o.id === (ped as any).orcamentoId);
-      return (orc as any)?.vendedor === currentUserName;
-    });
+  /* ================================================================ */
+  /*  REPORT DETAIL                                                    */
+  /* ================================================================ */
+  if (dashView === 'report-detail' || dashView === 'report-print') {
+    const fv = selectedReportVendor;
+    const reportOrcs = fv ? getUserOrcs(fv) : (isMaster ? data.orcamentos : getUserOrcs(currentUserName));
+    const reportPeds = fv ? getUserPeds(fv) : (isMaster ? data.pedidos : getUserPeds(currentUserName));
+    const reportOS = fv ? getUserOS(fv) : (isMaster ? data.os : getUserOS(currentUserName));
+    const vendedores = dbUsuarios.filter(u => u.nivel !== 'master' && u.ativo);
 
     return (
       <div>
         <div className="flex gap-2 mb-4 print:hidden">
           <Button variant="outline" onClick={() => { setDashView('main'); setSelectedReportVendor(null); }} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
-          {dashView === 'report-detail' && (
-            <Button variant="outline" onClick={() => setDashView('report-print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
-          )}
-          {dashView === 'report-print' && (
-            <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
-          )}
+          {dashView === 'report-detail' && <Button variant="outline" onClick={() => setDashView('report-print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>}
+          {dashView === 'report-print' && <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>}
           {isMaster && (
             <select value={selectedReportVendor || ''} onChange={e => setSelectedReportVendor(e.target.value || null)}
               className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm">
@@ -311,7 +334,7 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none space-y-6">
-          <h2 className="text-xl font-bold">Relatório Comercial {filterVendor ? `- ${filterVendor}` : '- Todos'}</h2>
+          <h2 className="text-xl font-bold">Relatório Comercial {fv ? `- ${fv}` : '- Todos'}</h2>
 
           <div>
             <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Orçamentos ({reportOrcs.length})</h3>
@@ -320,7 +343,6 @@ export default function DashboardPage() {
                 <thead><tr className="border-b bg-muted/50">
                   <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th><th className="text-left p-2">Vendedor</th>
                   <th className="text-left p-2">Data</th><th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
-                  <th className="p-2 w-24 print:hidden">Ações</th>
                 </tr></thead>
                 <tbody>
                   {reportOrcs.map((o: any) => (
@@ -329,13 +351,6 @@ export default function DashboardPage() {
                       <td className="p-2">{o.dataOrcamento || o.createdAt}</td>
                       <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
                       <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
-                      <td className="p-2 print:hidden">
-                        <div className="flex gap-1">
-                          <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
-                          <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Editar"><Edit className="h-3 w-3" /></button>
-                          {isMaster && <button onClick={() => deleteOrcamento(o.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>}
-                        </div>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -350,7 +365,6 @@ export default function DashboardPage() {
                 <thead><tr className="border-b bg-muted/50">
                   <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th>
                   <th className="text-left p-2">Entrega</th><th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
-                  <th className="p-2 w-24 print:hidden">Ações</th>
                 </tr></thead>
                 <tbody>
                   {reportPeds.map((p: any) => (
@@ -359,13 +373,6 @@ export default function DashboardPage() {
                       <td className="p-2">{p.dataEntrega}</td>
                       <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
                       <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{p.status}</span></td>
-                      <td className="p-2 print:hidden">
-                        <div className="flex gap-1">
-                          <button onClick={() => navigate('/pedidos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
-                          <button onClick={() => navigate('/pedidos')} className="p-1 hover:bg-muted rounded" title="Editar"><Edit className="h-3 w-3" /></button>
-                          {isMaster && <button onClick={() => deletePedido(p.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>}
-                        </div>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -373,46 +380,19 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {(isMaster || reportOS.length > 0) && (
-            <div>
-              <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Ordens de Serviço ({reportOS.length})</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead><tr className="border-b bg-muted/50">
-                    <th className="text-left p-2">O.S.</th><th className="text-left p-2">Empresa</th><th className="text-left p-2">Pedido</th>
-                    <th className="text-left p-2">Status</th>
-                    <th className="p-2 w-20 print:hidden">Ações</th>
-                  </tr></thead>
-                  <tbody>
-                    {reportOS.map((os: any) => (
-                      <tr key={os.id} className="border-b hover:bg-muted/30">
-                        <td className="p-2 font-mono">{os.numero}</td><td className="p-2">{os.empresa}</td><td className="p-2">{os.pedidoNumero}</td>
-                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
-                        <td className="p-2 print:hidden">
-                          <button onClick={() => navigate('/producao')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           <div>
-            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Users className="h-4 w-4 text-destructive" /> Tentativas de Interação (Não Fecharam)</h3>
+            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Ordens de Serviço ({reportOS.length})</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th><th className="text-left p-2">Vendedor</th>
-                  <th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
+                  <th className="text-left p-2">O.S.</th><th className="text-left p-2">Empresa</th><th className="text-left p-2">Pedido</th>
+                  <th className="text-left p-2">Status</th>
                 </tr></thead>
                 <tbody>
-                  {reportOrcs.filter((o: any) => o.status === 'REPROVADO' || o.status === 'ENVIADO' || o.status === 'AGUARDANDO').map((o: any) => (
-                    <tr key={o.id} className="border-b hover:bg-muted/30">
-                      <td className="p-2 font-mono">{o.numero}</td><td className="p-2">{o.clienteNome}</td><td className="p-2">{o.vendedor}</td>
-                      <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
-                      <td className="p-2"><span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-destructive/10 text-destructive">{o.status}</span></td>
+                  {reportOS.map((os: any) => (
+                    <tr key={os.id} className="border-b hover:bg-muted/30">
+                      <td className="p-2 font-mono">{os.numero}</td><td className="p-2">{os.empresa}</td><td className="p-2">{os.pedidoNumero}</td>
+                      <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -427,29 +407,32 @@ export default function DashboardPage() {
     );
   }
 
-  // ========== CONVERSION DETAIL ==========
+  /* ================================================================ */
+  /*  CONVERSION DETAIL                                                */
+  /* ================================================================ */
   if (dashView === 'conversion-detail' || dashView === 'conversion-print') {
-    const convData = allVendorStats.map(v => {
-      const orcV = data.orcamentos.filter((o: any) => o.vendedor === v.nome);
+    const vendedores = dbUsuarios.filter(u => u.ativo && u.nivel !== 'master');
+    const convData = vendedores.map(v => {
+      const orcV = getUserOrcs(v.nome);
+      const pedV = getUserPeds(v.nome);
+      const totalVendido = pedV.reduce((s: number, p: any) => s + p.valorTotal, 0);
+      const conv = orcV.length > 0 ? ((orcV.filter((o: any) => o.status === 'APROVADO').length / orcV.length) * 100) : 0;
       return {
-        ...v,
-        orcAprovados: orcV.filter((o: any) => o.status === 'APROVADO').length,
-        orcReprovados: orcV.filter((o: any) => o.status === 'REPROVADO').length,
-        orcEnviados: orcV.filter((o: any) => o.status === 'ENVIADO').length,
-        orcAguardando: orcV.filter((o: any) => o.status === 'AGUARDANDO').length,
-        orcRascunho: orcV.filter((o: any) => o.status === 'RASCUNHO').length,
+        nome: v.nome, orcTotal: orcV.length,
+        aprovados: countByStatus(orcV, 'status', 'APROVADO'),
+        reprovados: countByStatus(orcV, 'status', 'REPROVADO'),
+        enviados: countByStatus(orcV, 'status', 'ENVIADO'),
+        aguardando: countByStatus(orcV, 'status', 'AGUARDANDO'),
+        rascunho: countByStatus(orcV, 'status', 'RASCUNHO'),
+        conversao: +conv.toFixed(1), totalVendido,
       };
     });
     return (
       <div>
         <div className="flex gap-2 mb-4 print:hidden">
           <Button variant="outline" onClick={() => setDashView('main')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
-          {dashView === 'conversion-detail' && (
-            <Button variant="outline" onClick={() => setDashView('conversion-print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
-          )}
-          {dashView === 'conversion-print' && (
-            <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
-          )}
+          {dashView === 'conversion-detail' && <Button variant="outline" onClick={() => setDashView('conversion-print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>}
+          {dashView === 'conversion-print' && <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>}
         </div>
         <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none space-y-6">
           <h2 className="text-xl font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Relatório de Taxa de Conversão</h2>
@@ -457,21 +440,20 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="border rounded-lg p-4">
               <p className="text-sm text-muted-foreground">Orçamento → Pedido</p>
-              <p className="text-3xl font-bold text-primary">{data.taxaOrcPedido}%</p>
-              <p className="text-xs text-muted-foreground">{data.orcAprovado} de {totalOrc}</p>
+              <p className="text-3xl font-bold text-primary">{taxaConversao}%</p>
+              <p className="text-xs text-muted-foreground">{globalOrc.aprovado} de {globalOrc.total}</p>
             </div>
             <div className="border rounded-lg p-4">
               <p className="text-sm text-muted-foreground">Pedidos Entregues</p>
-              <p className="text-3xl font-bold text-primary">{totalPed > 0 ? ((data.pedidosEntregues / totalPed) * 100).toFixed(1) : 0}%</p>
-              <p className="text-xs text-muted-foreground">{data.pedidosEntregues} de {totalPed}</p>
+              <p className="text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
+              <p className="text-xs text-muted-foreground">{globalPed.entregue} de {globalPed.total}</p>
             </div>
             <div className="border rounded-lg p-4">
               <p className="text-sm text-muted-foreground">O.S. Ativas</p>
-              <p className="text-3xl font-bold text-primary">{data.os.length}</p>
+              <p className="text-3xl font-bold text-primary">{globalOs.total}</p>
             </div>
           </div>
 
-          <h3 className="font-semibold text-sm">Conversão por {vendedores.some(v => v.genero === 'F') ? 'Vendedor(a)' : 'Vendedor'}</h3>
           <table className="w-full text-xs">
             <thead><tr className="border-b bg-muted/50">
               <th className="text-left p-2">Nome</th><th className="text-center p-2">Orçamentos</th>
@@ -484,13 +466,13 @@ export default function DashboardPage() {
               {convData.map((v, i) => (
                 <tr key={i} className="border-b hover:bg-muted/30">
                   <td className="p-2 font-medium">{v.nome}</td>
-                  <td className="p-2 text-center">{v.orcFeitos}</td>
-                  <td className="p-2 text-center text-success font-medium">{v.orcAprovados}</td>
-                  <td className="p-2 text-center text-destructive">{v.orcReprovados}</td>
-                  <td className="p-2 text-center">{v.orcEnviados}</td>
-                  <td className="p-2 text-center">{v.orcAguardando}</td>
-                  <td className="p-2 text-center">{v.orcRascunho}</td>
-                  <td className="p-2 text-center"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${v.percentualConversao >= 50 ? 'bg-success/10 text-success' : v.percentualConversao >= 25 ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>{v.percentualConversao}%</span></td>
+                  <td className="p-2 text-center">{v.orcTotal}</td>
+                  <td className="p-2 text-center text-success font-medium">{v.aprovados}</td>
+                  <td className="p-2 text-center text-destructive">{v.reprovados}</td>
+                  <td className="p-2 text-center">{v.enviados}</td>
+                  <td className="p-2 text-center">{v.aguardando}</td>
+                  <td className="p-2 text-center">{v.rascunho}</td>
+                  <td className="p-2 text-center"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${v.conversao >= 50 ? 'bg-success/10 text-success' : v.conversao >= 25 ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>{v.conversao}%</span></td>
                   <td className="p-2 text-right font-mono">{fmt(v.totalVendido)}</td>
                 </tr>
               ))}
@@ -504,32 +486,25 @@ export default function DashboardPage() {
     );
   }
 
-  // ========== MAIN DASHBOARD ==========
-
-  // Build enhanced user card component
-  const renderUserCard = (usuario: any) => {
-    const isVendedor = usuario.nivel === 'vendedor' || usuario.nivel === 'master' || usuario.nivel === 'admin';
+  /* ================================================================ */
+  /*  USER CARD COMPONENT (used for both Master and Common views)      */
+  /* ================================================================ */
+  const renderUserCard = (usuario: any, fullWidth = false) => {
     const isOnline = onlineUserIds.has(usuario.id);
-    const vs = isVendedor ? allVendorStats.find(v => v.nome === usuario.nome) : null;
-    const metaPct = vs && vs.metaMensal > 0 ? Math.min((vs.totalVendido / vs.metaMensal) * 100, 100) : 0;
-
-    // Per-user stats
-    const userOrcs = data.orcamentos.filter((o: any) => o.vendedor === usuario.nome);
-    const userPeds = data.pedidos.filter((p: any) => {
-      const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-      return (orc as any)?.vendedor === usuario.nome;
-    });
-    const userOS = data.os.filter((os: any) => {
-      const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
-      if (!ped) return false;
-      const orc = data.orcamentos.find((o: any) => o.id === (ped as any).orcamentoId);
-      return (orc as any)?.vendedor === usuario.nome;
-    });
-
-    // Status breakdown
+    const userOrcs = getUserOrcs(usuario.nome);
+    const userPeds = getUserPeds(usuario.nome);
+    const userOS = getUserOS(usuario.nome);
+    const orcS = getOrcStats(userOrcs);
+    const pedS = getPedStats(userPeds);
+    const osS = getOsStats(userOS);
+    const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
+    const meta = metas.find(m => m.vendedor === usuario.nome);
+    const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    const vParam = encodeURIComponent(usuario.nome);
 
     return (
-      <Card key={usuario.id} className="hover:shadow-md transition-shadow">
+      <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full' : ''}`}>
+        {/* Header: Avatar + Name + Online */}
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -539,13 +514,12 @@ export default function DashboardPage() {
                   {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              {isOnline && (
+              {isOnline ? (
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-success border-2 border-card"></span>
                 </span>
-              )}
-              {!isOnline && (
+              ) : (
                 <span className="absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-4 w-4 bg-muted-foreground/40 border-2 border-card"></span>
               )}
             </div>
@@ -561,87 +535,85 @@ export default function DashboardPage() {
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-3 pt-0">
-          {/* Individual Stats - clickable */}
+        <CardContent className="space-y-4 pt-0">
+          {/* Top counters - clickable */}
           <div className="grid grid-cols-3 gap-2 text-center">
-            <button onClick={() => navigate(`/orcamentos?vendedor=${encodeURIComponent(usuario.nome)}`)} className="rounded-lg bg-primary/5 hover:bg-primary/10 p-2 transition-colors">
-              <FileText className="h-3.5 w-3.5 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold text-primary">{userOrcs.length}</p>
+            <button onClick={() => navigate(`/orcamentos?vendedor=${vParam}`)} className="rounded-lg bg-primary/5 hover:bg-primary/10 p-2.5 transition-colors">
+              <FileText className="h-4 w-4 mx-auto mb-1 text-primary" />
+              <p className="text-xl font-bold text-primary">{orcS.total}</p>
               <p className="text-[10px] text-muted-foreground">Orçamentos</p>
             </button>
-            <button onClick={() => navigate(`/pedidos?vendedor=${encodeURIComponent(usuario.nome)}`)} className="rounded-lg bg-secondary/5 hover:bg-secondary/10 p-2 transition-colors">
-              <ShoppingCart className="h-3.5 w-3.5 mx-auto mb-1 text-secondary" />
-              <p className="text-lg font-bold text-secondary">{userPeds.length}</p>
+            <button onClick={() => navigate(`/pedidos?vendedor=${vParam}`)} className="rounded-lg bg-secondary/5 hover:bg-secondary/10 p-2.5 transition-colors">
+              <ShoppingCart className="h-4 w-4 mx-auto mb-1 text-secondary" />
+              <p className="text-xl font-bold text-secondary">{pedS.total}</p>
               <p className="text-[10px] text-muted-foreground">Pedidos</p>
             </button>
-            <button onClick={() => navigate(`/producao?vendedor=${encodeURIComponent(usuario.nome)}`)} className="rounded-lg bg-accent/5 hover:bg-accent/10 p-2 transition-colors">
-              <ClipboardList className="h-3.5 w-3.5 mx-auto mb-1 text-accent" />
-              <p className="text-lg font-bold text-accent">{userOS.length}</p>
+            <button onClick={() => navigate(`/producao?vendedor=${vParam}`)} className="rounded-lg bg-accent/5 hover:bg-accent/10 p-2.5 transition-colors">
+              <ClipboardList className="h-4 w-4 mx-auto mb-1 text-accent" />
+              <p className="text-xl font-bold text-accent">{osS.total}</p>
               <p className="text-[10px] text-muted-foreground">O.S.</p>
             </button>
           </div>
 
           {/* Meta do Mês */}
-          {vs && (
-            <div className="text-xs">
-              <div className="flex justify-between mb-1">
-                <span className="text-muted-foreground font-medium">Meta do Mês</span>
-                {isMaster && editingMeta?.vendedor === usuario.nome ? (
-                  <div className="flex items-center gap-1">
-                    <Input type="number" step="0.01" className="h-5 w-20 text-[10px] px-1" value={editingMeta.valor || ''} onChange={e => setEditingMeta({ ...editingMeta, valor: +e.target.value })} autoFocus />
-                    <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3 w-3" /></button>
-                    <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <strong>{vs.metaMensal > 0 ? fmt(vs.metaMensal) : 'Não definida'}</strong>
-                    {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: vs.metaMensal })} className="text-muted-foreground hover:text-primary"><Edit className="h-3 w-3" /></button>}
-                  </div>
-                )}
-              </div>
-              {vs.metaMensal > 0 && (
+          <div className="text-xs">
+            <div className="flex justify-between mb-1">
+              <span className="text-muted-foreground font-medium">Meta do Mês</span>
+              {isMaster && editingMeta?.vendedor === usuario.nome ? (
+                <div className="flex items-center gap-1">
+                  <Input type="number" step="0.01" className="h-5 w-20 text-[10px] px-1" value={editingMeta.valor || ''} onChange={e => setEditingMeta({ ...editingMeta, valor: +e.target.value })} autoFocus />
+                  <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3 w-3" /></button>
+                  <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <strong>{meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}</strong>
+                  {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3 w-3" /></button>}
+                </div>
+              )}
+            </div>
+            {meta && meta.metaMensal > 0 && (
+              <>
                 <div className="flex items-center gap-2">
                   <Progress value={metaPct} className="h-2 flex-1" />
                   <span className="text-[10px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
                 </div>
-              )}
-              {vs.metaMensal > 0 && (
-                <p className="text-[10px] text-muted-foreground mt-1">{fmt(vs.totalVendido)} de {fmt(vs.metaMensal)}</p>
-              )}
-            </div>
-          )}
+                <p className="text-[10px] text-muted-foreground mt-1">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
+              </>
+            )}
+          </div>
 
-          {/* Status Orçamentos */}
+          {/* Orçamentos status - all clickable */}
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Orçamentos</p>
-            <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
-              <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Rascunho: {userOrcs.filter((o: any) => o.status === 'RASCUNHO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-info/10 text-info font-medium">Enviado: {userOrcs.filter((o: any) => o.status === 'ENVIADO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">Aguardando: {userOrcs.filter((o: any) => o.status === 'AGUARDANDO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">Aprovado: {userOrcs.filter((o: any) => o.status === 'APROVADO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium">Reprovado: {userOrcs.filter((o: any) => o.status === 'REPROVADO').length}</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <StatusChip label="Rascunho" count={orcS.rascunho} colorClass="bg-muted text-muted-foreground" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=RASCUNHO`)} />
+              <StatusChip label="Enviado" count={orcS.enviado} colorClass="bg-info/10 text-info" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=ENVIADO`)} />
+              <StatusChip label="Aguardando" count={orcS.aguardando} colorClass="bg-secondary/10 text-secondary" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=AGUARDANDO`)} />
+              <StatusChip label="Aprovado" count={orcS.aprovado} colorClass="bg-success/10 text-success" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=APROVADO`)} />
+              <StatusChip label="Reprovado" count={orcS.reprovado} colorClass="bg-destructive/10 text-destructive" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=REPROVADO`)} />
             </div>
           </div>
 
-          {/* Status Pedidos */}
+          {/* Pedidos status - all clickable */}
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Pedidos</p>
-            <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
-              <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Pendente: {userPeds.filter((p: any) => p.status === 'PENDENTE').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-info/10 text-info font-medium">Confirmado: {userPeds.filter((p: any) => p.status === 'CONFIRMADO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">Em Produção: {userPeds.filter((p: any) => p.status === 'EM_PRODUCAO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Concluído: {userPeds.filter((p: any) => p.status === 'CONCLUIDO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">Entregue: {userPeds.filter((p: any) => p.status === 'ENTREGUE').length}</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <StatusChip label="Pendente" count={pedS.pendente} colorClass="bg-muted text-muted-foreground" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=PENDENTE`)} />
+              <StatusChip label="Confirmado" count={pedS.confirmado} colorClass="bg-info/10 text-info" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=CONFIRMADO`)} />
+              <StatusChip label="Em Produção" count={pedS.producao} colorClass="bg-secondary/10 text-secondary" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=EM_PRODUCAO`)} />
+              <StatusChip label="Concluído" count={pedS.concluido} colorClass="bg-primary/10 text-primary" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=CONCLUIDO`)} />
+              <StatusChip label="Entregue" count={pedS.entregue} colorClass="bg-success/10 text-success" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=ENTREGUE`)} />
             </div>
           </div>
 
-          {/* Status O.S. */}
+          {/* O.S. status - all clickable */}
           <div className="space-y-1.5">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Ordens de Serviço</p>
-            <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
-              <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Aberta: {userOS.filter((os: any) => os.status === 'ABERTA').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-medium">Em Andamento: {userOS.filter((os: any) => os.status === 'EM_ANDAMENTO').length}</span>
-              <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-medium">Concluída: {userOS.filter((os: any) => os.status === 'CONCLUIDA').length}</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <StatusChip label="Aberta" count={osS.aberta} colorClass="bg-muted text-muted-foreground" onClick={() => navigate(`/producao?vendedor=${vParam}&status=ABERTA`)} />
+              <StatusChip label="Em Andamento" count={osS.emAndamento} colorClass="bg-secondary/10 text-secondary" onClick={() => navigate(`/producao?vendedor=${vParam}&status=EM_ANDAMENTO`)} />
+              <StatusChip label="Concluída" count={osS.concluida} colorClass="bg-success/10 text-success" onClick={() => navigate(`/producao?vendedor=${vParam}&status=CONCLUIDA`)} />
             </div>
           </div>
         </CardContent>
@@ -658,9 +630,9 @@ export default function DashboardPage() {
     );
   };
 
-  // For vendedor: show only their own card
-  const myVendorStats = allVendorStats.find(v => v.nome === currentUserName);
-
+  /* ================================================================ */
+  /*  MAIN DASHBOARD VIEW                                              */
+  /* ================================================================ */
   return (
     <div className="space-y-6">
       <div>
@@ -668,42 +640,42 @@ export default function DashboardPage() {
         <p className="page-subtitle">Visão geral do sistema ROLLERPORT{!isMaster ? ` – ${currentUserName}` : ''}</p>
       </div>
 
-      {/* Clickable stat cards */}
+      {/* Top stat cards - clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={FileText} label="Orçamentos" value={isMaster ? totalOrc : userOrcamentos.length} color="bg-primary/10 text-primary" onClick={() => navigate('/orcamentos')} />
-        <StatCard icon={ShoppingCart} label="Pedidos" value={isMaster ? totalPed : userPedidos.length} color="bg-secondary/20 text-secondary" onClick={() => navigate('/pedidos')} />
+        <StatCard icon={FileText} label="Orçamentos" value={globalOrc.total} color="bg-primary/10 text-primary" onClick={() => navigate('/orcamentos')} />
+        <StatCard icon={ShoppingCart} label="Pedidos" value={globalPed.total} color="bg-secondary/20 text-secondary" onClick={() => navigate('/pedidos')} />
         <StatCard icon={Users} label="Clientes" value={data.clientes.length} color="bg-info/10 text-info" onClick={() => navigate('/clientes')} />
-        <StatCard icon={Factory} label="Ordens de Serviço" value={data.os.length} color="bg-accent/10 text-accent" onClick={() => navigate('/producao')} />
+        <StatCard icon={Factory} label="Ordens de Serviço" value={globalOs.total} color="bg-accent/10 text-accent" onClick={() => navigate('/producao')} />
       </div>
 
-      {/* Status bars */}
+      {/* Status bars - clickable */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-card rounded-lg border p-5">
           <h2 className="font-semibold mb-4 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
           <div className="space-y-3">
-            <StatusBar label="Rascunho" value={data.orcRascunho} max={totalOrc} color="[&>div]:bg-muted-foreground" />
-            <StatusBar label="Enviado" value={data.orcEnviado} max={totalOrc} color="[&>div]:bg-info" />
-            <StatusBar label="Aguardando" value={data.orcAguardando} max={totalOrc} color="[&>div]:bg-secondary" />
-            <StatusBar label="Aprovado" value={data.orcAprovado} max={totalOrc} color="[&>div]:bg-success" />
-            <StatusBar label="Cancelado" value={data.orcReprovado} max={totalOrc} color="[&>div]:bg-destructive" />
+            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/orcamentos?status=RASCUNHO')} />
+            <StatusBar label="Enviado" value={globalOrc.enviado} max={globalOrc.total} color="[&>div]:bg-info" onClick={() => navigate('/orcamentos?status=ENVIADO')} />
+            <StatusBar label="Aguardando" value={globalOrc.aguardando} max={globalOrc.total} color="[&>div]:bg-secondary" onClick={() => navigate('/orcamentos?status=AGUARDANDO')} />
+            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" onClick={() => navigate('/orcamentos?status=APROVADO')} />
+            <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" onClick={() => navigate('/orcamentos?status=REPROVADO')} />
           </div>
         </div>
         <div className="bg-card rounded-lg border p-5">
           <h2 className="font-semibold mb-4 flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
           <div className="space-y-3">
-            <StatusBar label="Pendente" value={data.pedPendente} max={totalPed} color="[&>div]:bg-muted-foreground" />
-            <StatusBar label="Confirmado" value={data.pedConfirmado} max={totalPed} color="[&>div]:bg-info" />
-            <StatusBar label="Em Produção" value={data.pedProducao} max={totalPed} color="[&>div]:bg-secondary" />
-            <StatusBar label="Concluído" value={data.pedConcluido} max={totalPed} color="[&>div]:bg-primary" />
-            <StatusBar label="Entregue" value={data.pedEntregue} max={totalPed} color="[&>div]:bg-success" />
+            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/pedidos?status=PENDENTE')} />
+            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" onClick={() => navigate('/pedidos?status=CONFIRMADO')} />
+            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" onClick={() => navigate('/pedidos?status=EM_PRODUCAO')} />
+            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" onClick={() => navigate('/pedidos?status=CONCLUIDO')} />
+            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-success" onClick={() => navigate('/pedidos?status=ENTREGUE')} />
           </div>
         </div>
         <div className="bg-card rounded-lg border p-5">
           <h2 className="font-semibold mb-4 flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
           <div className="space-y-3">
-            <StatusBar label="Aberta" value={data.osAberta} max={data.os.length} color="[&>div]:bg-muted-foreground" />
-            <StatusBar label="Em Andamento" value={data.osEmAndamento} max={data.os.length} color="[&>div]:bg-secondary" />
-            <StatusBar label="Concluída" value={data.osConcluida} max={data.os.length} color="[&>div]:bg-success" />
+            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/producao?status=ABERTA')} />
+            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" onClick={() => navigate('/producao?status=EM_ANDAMENTO')} />
+            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" onClick={() => navigate('/producao?status=CONCLUIDA')} />
           </div>
         </div>
       </div>
@@ -717,23 +689,23 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="text-center p-4 rounded-lg bg-muted/30">
             <div className="flex items-center justify-center gap-2 mb-2"><CheckCircle className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Orçamento → Pedido</span></div>
-            <p className="text-3xl font-bold text-primary">{data.taxaOrcPedido}%</p>
-            <p className="text-xs text-muted-foreground mt-1">{totalOrc > 0 ? `${data.orcAprovado} aprovados de ${totalOrc}` : 'Nenhum orçamento'}</p>
+            <p className="text-3xl font-bold text-primary">{taxaConversao}%</p>
+            <p className="text-xs text-muted-foreground mt-1">{globalOrc.aprovado} aprovados de {globalOrc.total}</p>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted/30">
             <div className="flex items-center justify-center gap-2 mb-2"><Truck className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Pedidos Entregues</span></div>
-            <p className="text-3xl font-bold text-primary">{totalPed > 0 ? ((data.pedidosEntregues / totalPed) * 100).toFixed(1) : 0}%</p>
-            <p className="text-xs text-muted-foreground mt-1">{data.pedidosEntregues} de {totalPed} pedidos</p>
+            <p className="text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
+            <p className="text-xs text-muted-foreground mt-1">{globalPed.entregue} de {globalPed.total} pedidos</p>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted/30">
             <div className="flex items-center justify-center gap-2 mb-2"><Factory className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">O.S. Ativas</span></div>
-            <p className="text-3xl font-bold text-primary">{data.os.length}</p>
+            <p className="text-3xl font-bold text-primary">{globalOs.total}</p>
             <p className="text-xs text-muted-foreground mt-1">Ordens em andamento</p>
           </div>
         </div>
       </div>
 
-      {/* User Cards Grid */}
+      {/* User Cards */}
       {isMaster ? (
         <div>
           <h2 className="font-semibold mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Vendedores</h2>
@@ -741,24 +713,8 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3].map(i => (
                 <Card key={i} className="animate-pulse">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-16" />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    <div className="grid grid-cols-3 gap-2">
-                      <Skeleton className="h-16 rounded-lg" />
-                      <Skeleton className="h-16 rounded-lg" />
-                      <Skeleton className="h-16 rounded-lg" />
-                    </div>
-                    <Skeleton className="h-3 w-full" />
-                    <Skeleton className="h-2 w-full" />
-                  </CardContent>
+                  <CardHeader className="pb-3"><div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-16" /></div></div></CardHeader>
+                  <CardContent className="space-y-3 pt-0"><div className="grid grid-cols-3 gap-2"><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /></div></CardContent>
                 </Card>
               ))}
             </div>
@@ -768,11 +724,11 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      ) : myVendorStats ? (
+      ) : currentUser ? (
         <div>
           <h2 className="font-semibold mb-4 flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Minha Performance</h2>
-          <div className="max-w-md">
-            {currentUser && renderUserCard(currentUser)}
+          <div className="grid grid-cols-1">
+            {renderUserCard(currentUser, true)}
           </div>
         </div>
       ) : null}
