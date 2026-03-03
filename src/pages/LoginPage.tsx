@@ -19,6 +19,12 @@ export default function LoginPage({ onLogin }: Props) {
     const usuarios = store.getUsuarios();
     console.log('[Login] Todos os usuários:', JSON.stringify(usuarios.map(u => ({ id: u.id, login: u.login, senha: u.senha, nome: u.nome, ativo: u.ativo }))));
     console.log('[Login] Tentando:', JSON.stringify({ login: login.trim(), senha }));
+    // Debug: compare char by char
+    usuarios.forEach(u => {
+      const loginMatch = u.login.trim().toLowerCase() === login.trim().toLowerCase();
+      const senhaMatch = u.senha === senha;
+      console.log(`[Login] User "${u.nome}": login="${u.login}" match=${loginMatch}, senha="${u.senha}" vs "${senha}" match=${senhaMatch}`);
+    });
     const user = usuarios.find(u => 
       u.login.trim().toLowerCase() === login.trim().toLowerCase() && 
       u.senha === senha && 
