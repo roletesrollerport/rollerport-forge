@@ -50,7 +50,7 @@ export default function ChatPage() {
 
   const currentUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = currentUser?.nivel === 'master';
-  const otherUsers = usuarios.filter(u => u.id !== currentUser?.id && u.ativo);
+  const otherUsers = usuarios.filter(u => u.id !== currentUser?.id);
 
   // Load messages for conversation
   const loadMessages = useCallback(async () => {
