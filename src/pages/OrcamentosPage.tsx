@@ -135,7 +135,12 @@ export default function OrcamentosPage() {
   const paredesTubo = (diam: number) => [...new Set(tubos.filter(t => t.diametro === diam).map(t => t.parede))].sort((a, b) => a - b);
   const diametrosEixo = eixos.map(e => e.diametro);
 
-  useEffect(() => { setOrcamentos(store.getOrcamentos()); }, []);
+  useEffect(() => {
+    const load = () => setOrcamentos(store.getOrcamentos());
+    load();
+    window.addEventListener('rp-data-synced', load);
+    return () => window.removeEventListener('rp-data-synced', load);
+  }, []);
 
   // Restore draft from session on mount
   useEffect(() => {

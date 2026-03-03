@@ -22,7 +22,12 @@ export default function ClientesPage() {
   const [editing, setEditing] = useState<Cliente>(emptyCliente());
   const [viewCliente, setViewCliente] = useState<Cliente | null>(null);
 
-  useEffect(() => { setClientes(store.getClientes()); }, []);
+  useEffect(() => {
+    const load = () => setClientes(store.getClientes());
+    load();
+    window.addEventListener('rp-data-synced', load);
+    return () => window.removeEventListener('rp-data-synced', load);
+  }, []);
 
   const orcamentos = store.getOrcamentos();
   const pedidos = store.getPedidos();

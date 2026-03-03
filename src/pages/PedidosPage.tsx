@@ -158,7 +158,12 @@ export default function PedidosPage() {
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
 
-  useEffect(() => { setPedidos(store.getPedidos()); setOrcamentos(store.getOrcamentos()); }, []);
+  useEffect(() => {
+    const load = () => { setPedidos(store.getPedidos()); setOrcamentos(store.getOrcamentos()); };
+    load();
+    window.addEventListener('rp-data-synced', load);
+    return () => window.removeEventListener('rp-data-synced', load);
+  }, []);
 
   // Comprehensive search helper
   const matchesSearch = (text: string, s: string) => text?.toLowerCase().includes(s.toLowerCase());
