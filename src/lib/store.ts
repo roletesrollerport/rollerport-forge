@@ -275,33 +275,7 @@ export const store = {
   saveEstoque: (d: ItemEstoque[]) => save('rp_estoque', d),
 
   getUsuarios: (): Usuario[] => {
-    const users = load('rp_usuarios', SEED_USUARIOS);
-    // Ensure seed users always exist
-    const hasMaster = users.some(u => u.login === 'Gerente De sistema' && u.nivel === 'master');
-    const hasPaulo = users.some(u => u.login === 'paulo');
-    let result = [...users];
-    if (!hasMaster) {
-      result = [SEED_USUARIOS[0], ...result];
-    }
-    if (!hasPaulo) {
-      result = [...result, SEED_USUARIOS[1]];
-    }
-    // Fix duplicate IDs
-    const seenIds = new Set<string>();
-    let changed = false;
-    result = result.map(u => {
-      if (seenIds.has(u.id)) {
-        changed = true;
-        const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        return { ...u, id: newId };
-      }
-      seenIds.add(u.id);
-      return u;
-    });
-    if (changed || result.length !== users.length) {
-      save('rp_usuarios', result);
-    }
-    return result;
+    return load('rp_usuarios', SEED_USUARIOS);
   },
   saveUsuarios: (d: Usuario[]) => save('rp_usuarios', d),
 
