@@ -48,13 +48,15 @@ export default function ChatPage() {
 
   useEffect(() => {
     const allUsers = store.getUsuarios();
-    console.log('[Chat] Loaded users:', allUsers.length, 'Logged ID:', loggedUserId);
+    console.log('[Chat] Todos os usuários:', JSON.stringify(allUsers.map(u => ({ id: u.id, nome: u.nome, login: u.login }))));
+    console.log('[Chat] Logged ID:', loggedUserId);
     setUsuarios(allUsers);
   }, []);
 
   const currentUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = currentUser?.nivel === 'master';
   const otherUsers = usuarios.filter(u => u.id !== loggedUserId);
+  console.log('[Chat] currentUser:', currentUser?.nome, '| otherUsers:', otherUsers.map(u => u.nome));
 
   // Load messages for conversation
   const loadMessages = useCallback(async () => {
