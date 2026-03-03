@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { store } from '@/lib/store';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, Loader2 } from 'lucide-react';
+import { useUsuarios } from '@/hooks/useUsuarios';
 
 interface Props {
   onLogin: (userId: string) => void;
@@ -13,36 +13,28 @@ interface Props {
 export default function LoginPage({ onLogin }: Props) {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login: doLogin } = useUsuarios();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const usuarios = store.getUsuarios();
-    console.log('[Login] Todos os usuários:', JSON.stringify(usuarios.map(u => ({ id: u.id, login: u.login, senha: u.senha, nome: u.nome, ativo: u.ativo }))));
-    console.log('[Login] Tentando:', JSON.stringify({ login: login.trim(), senha }));
-    // Debug: compare char by char
-    usuarios.forEach(u => {
-      const loginMatch = u.login.trim().toLowerCase() === login.trim().toLowerCase();
-      const senhaMatch = u.senha === senha;
-      console.log(`[Login] User "${u.nome}": login="${u.login}" match=${loginMatch}, senha="${u.senha}" vs "${senha}" match=${senhaMatch}`);
-    });
-    const user = usuarios.find(u => 
-      u.login.trim().toLowerCase() === login.trim().toLowerCase() && 
-      u.senha === senha && 
-      u.ativo
-    );
-    if (user) {
-      onLogin(user.id);
-      toast.success(`Bem-vindo, ${user.nome}!`);
-    } else {
-      // Show more helpful error
-      const byLogin = usuarios.find(u => u.login.trim().toLowerCase() === login.trim().toLowerCase());
-      if (byLogin && byLogin.senha !== senha) {
-        toast.error('Senha incorreta!');
-      } else if (byLogin && !byLogin.ativo) {
-        toast.error('Usuário inativo!');
+    if (!login.trim() || !senha) {
+      toast.error('Preencha login e senha!');
+      return;
+    }
+    setLoading(true);
+    try {
+      const user = await doLogin(login.trim(), senha);
+      if (user) {
+        onLogin(user.id);
+        toast.success(`Bem-vindo, ${user.nome}!`);
       } else {
-        toast.error('Login não encontrado! Verifique o nome de usuário.');
+        toast.error('Login ou senha incorretos!');
       }
+    } catch {
+      toast.error('Erro ao conectar. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,7 +61,10 @@ export default function LoginPage({ onLogin }: Props) {
               <Input type="password" placeholder="Sua senha" value={senha} onChange={e => setSenha(e.target.value)} className="pl-10" />
             </div>
           </div>
-          <Button type="submit" className="w-full">Entrar</Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Entrar
+          </Button>
         </form>
       </div>
     </div>

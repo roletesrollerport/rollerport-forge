@@ -18,12 +18,31 @@ import ChatPage from "./pages/ChatPage";
 import IAPage from "./pages/IAPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
-import { store } from "./lib/store";
+import { useUsuarios, type UsuarioDB } from "./hooks/useUsuarios";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+function AppContent() {
   const [loggedUserId, setLoggedUserId] = useState<string | null>(() => localStorage.getItem('rp_logged_user'));
+  const [currentUser, setCurrentUser] = useState<UsuarioDB | null>(null);
+  const [checking, setChecking] = useState(true);
+  const { getById } = useUsuarios();
+
+  useEffect(() => {
+    if (loggedUserId) {
+      getById(loggedUserId).then(user => {
+        if (user) {
+          setCurrentUser(user);
+        } else {
+          localStorage.removeItem('rp_logged_user');
+          setLoggedUserId(null);
+        }
+        setChecking(false);
+      });
+    } else {
+      setChecking(false);
+    }
+  }, [loggedUserId]);
 
   const handleLogin = (userId: string) => {
     localStorage.setItem('rp_logged_user', userId);
@@ -33,49 +52,63 @@ const App = () => {
   const handleLogout = () => {
     localStorage.removeItem('rp_logged_user');
     setLoggedUserId(null);
+    setCurrentUser(null);
   };
 
-  if (!loggedUserId) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <LoginPage onLogin={handleLogin} />
-        </TooltipProvider>
-      </QueryClientProvider>
-    );
+  if (checking) {
+    return <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">Carregando...</div>;
   }
 
-  const currentUser = store.getUsuarios().find(u => u.id === loggedUserId);
-  if (!currentUser) {
-    handleLogout();
-    return null;
+  if (!loggedUserId || !currentUser) {
+    return <LoginPage onLogin={handleLogin} />;
   }
 
+  // Map UsuarioDB to the shape AppLayout expects
+  const userForLayout = {
+    id: currentUser.id,
+    nome: currentUser.nome,
+    email: currentUser.email,
+    telefone: currentUser.telefone,
+    whatsapp: currentUser.whatsapp,
+    login: currentUser.login,
+    senha: currentUser.senha,
+    nivel: currentUser.nivel,
+    genero: currentUser.genero,
+    ativo: currentUser.ativo,
+    foto: currentUser.foto,
+    permissoes: currentUser.permissoes,
+    createdAt: currentUser.created_at,
+  };
+
+  return (
+    <BrowserRouter>
+      <AppLayout currentUser={userForLayout} onLogout={handleLogout}>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/custos" element={<CustosPage />} />
+          <Route path="/clientes" element={<ClientesPage />} />
+          <Route path="/produtos" element={<ProdutosPage />} />
+          <Route path="/orcamentos" element={<OrcamentosPage />} />
+          <Route path="/pedidos" element={<PedidosPage />} />
+          <Route path="/producao" element={<ProducaoPage />} />
+          <Route path="/estoque" element={<EstoquePage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/ia" element={<IAPage />} />
+          <Route path="/usuarios" element={<UsuariosPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AppLayout>
+    </BrowserRouter>
+  );
+}
+
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-            <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/custos" element={<CustosPage />} />
-              <Route path="/clientes" element={<ClientesPage />} />
-              <Route path="/produtos" element={<ProdutosPage />} />
-              <Route path="/orcamentos" element={<OrcamentosPage />} />
-              <Route path="/pedidos" element={<PedidosPage />} />
-              <Route path="/producao" element={<ProducaoPage />} />
-              <Route path="/estoque" element={<EstoquePage />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/ia" element={<IAPage />} />
-              <Route path="/usuarios" element={<UsuariosPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AppLayout>
-        </BrowserRouter>
+        <AppContent />
       </TooltipProvider>
     </QueryClientProvider>
   );
