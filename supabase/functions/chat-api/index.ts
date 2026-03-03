@@ -159,7 +159,16 @@ serve(async (req) => {
     }
 
     if (action === "validate_session") {
+      // Also update last_seen on session validation
+      await supabaseAdmin.from("usuarios").update({ last_seen: new Date().toISOString() }).eq("id", userId);
       return new Response(JSON.stringify({ user_id: userId, valid: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "heartbeat") {
+      await supabaseAdmin.from("usuarios").update({ last_seen: new Date().toISOString() }).eq("id", userId);
+      return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
