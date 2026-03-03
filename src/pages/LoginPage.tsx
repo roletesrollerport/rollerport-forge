@@ -17,14 +17,26 @@ export default function LoginPage({ onLogin }: Props) {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const usuarios = store.getUsuarios();
-    console.log('[Login] Todos os usuários:', usuarios.map(u => ({ id: u.id, login: u.login, senha: u.senha, nome: u.nome, ativo: u.ativo })));
-    console.log('[Login] Tentando login com:', { login, senha });
-    const user = usuarios.find(u => u.login.trim() === login.trim() && u.senha === senha && u.ativo);
+    console.log('[Login] Todos os usuários:', JSON.stringify(usuarios.map(u => ({ id: u.id, login: u.login, senha: u.senha, nome: u.nome, ativo: u.ativo }))));
+    console.log('[Login] Tentando:', JSON.stringify({ login: login.trim(), senha }));
+    const user = usuarios.find(u => 
+      u.login.trim().toLowerCase() === login.trim().toLowerCase() && 
+      u.senha === senha && 
+      u.ativo
+    );
     if (user) {
       onLogin(user.id);
       toast.success(`Bem-vindo, ${user.nome}!`);
     } else {
-      toast.error('Login ou senha inválidos, ou usuário inativo.');
+      // Show more helpful error
+      const byLogin = usuarios.find(u => u.login.trim().toLowerCase() === login.trim().toLowerCase());
+      if (byLogin && byLogin.senha !== senha) {
+        toast.error('Senha incorreta!');
+      } else if (byLogin && !byLogin.ativo) {
+        toast.error('Usuário inativo!');
+      } else {
+        toast.error('Login não encontrado! Verifique o nome de usuário.');
+      }
     }
   };
 
