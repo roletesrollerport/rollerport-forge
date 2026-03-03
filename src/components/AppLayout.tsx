@@ -12,6 +12,7 @@ import logo from '@/assets/logo.png';
 import ChatWidget from '@/components/ChatWidget';
 import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
+import { usePresence } from '@/hooks/usePresence';
 
 const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
   { to: '/', label: 'Início', icon: Home, modulo: 'inicio' },
@@ -38,6 +39,8 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const navigate = useNavigate();
   const autoCloseTimer = useRef<NodeJS.Timeout | null>(null);
   const { usuarios: allUsuarios } = useUsuarios();
+  // Track presence for the current user (broadcasts to all subscribers)
+  usePresence(currentUser?.id || null);
 
   const notificacoes = store.getNotificacoes();
   const naoLidas = notificacoes.filter(n => !n.lida).length + unreadChatCount;

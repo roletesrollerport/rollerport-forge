@@ -3,16 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios } from '@/hooks/useUsuarios';
+import { usePresence } from '@/hooks/usePresence';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Download, Target, Save, Edit, ArrowLeft, Trash2, X,
-  User, Phone, Mail, ClipboardList
+  User, Phone, Mail, ClipboardList, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -56,59 +58,24 @@ export default function DashboardPage() {
     orcRascunho: 0, orcEnviado: 0, orcAguardando: 0, orcAprovado: 0, orcReprovado: 0,
     pedPendente: 0, pedConfirmado: 0, pedProducao: 0, pedConcluido: 0, pedEntregue: 0,
   });
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [metas, setMetas] = useState(store.getMetas());
   const [editingMeta, setEditingMeta] = useState<{ vendedor: string; valor: number } | null>(null);
   const [dashView, setDashView] = useState<DashView>('main');
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
-  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   // Fetch real users from database
-  const { usuarios: dbUsuarios } = useUsuarios();
+  const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
 
   // Current logged-in user
-  const currentUser = (() => {
-    const loggedIn = localStorage.getItem('rp_logged_user');
-    if (loggedIn) {
-      return dbUsuarios.find(u => u.id === loggedIn) || null;
-    }
-    return dbUsuarios.find(u => u.nivel === 'master') || null;
-  })();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';
 
-  // Check which users have active sessions + realtime
-  useEffect(() => {
-    const checkOnline = async () => {
-      const now = new Date().toISOString();
-      const { data: sessions } = await supabase
-        .from('sessions')
-        .select('user_id')
-        .gt('expires_at', now);
-      if (sessions) {
-        setOnlineUserIds(new Set(sessions.map((s: any) => s.user_id)));
-      }
-    };
-    checkOnline();
-    const interval = setInterval(checkOnline, 30000);
-
-    // Realtime subscription for sessions changes
-    const channel = supabase
-      .channel('sessions-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'sessions',
-      }, () => {
-        checkOnline();
-      })
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Real-time online presence
+  const { onlineUserIds } = usePresence(loggedUserId);
 
   useEffect(() => {
     const orc = store.getOrcamentos();
@@ -132,6 +99,7 @@ export default function DashboardPage() {
       pedConcluido: ped.filter(p => p.status === 'CONCLUIDO').length,
       pedEntregue: pedidosEntregues,
     });
+    setDataLoaded(true);
   }, []);
 
   const totalOrc = data.orcamentos.length;
@@ -722,13 +690,40 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* User Cards Grid - replaces Relatórios Comerciais */}
+      {/* User Cards Grid */}
       {isMaster ? (
         <div>
           <h2 className="font-semibold mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Vendedores</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))}
-          </div>
+          {usersLoading || !dataLoaded ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map(i => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    <div className="grid grid-cols-3 gap-2">
+                      <Skeleton className="h-16 rounded-lg" />
+                      <Skeleton className="h-16 rounded-lg" />
+                      <Skeleton className="h-16 rounded-lg" />
+                    </div>
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-2 w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))}
+            </div>
+          )}
         </div>
       ) : myVendorStats ? (
         <div>
