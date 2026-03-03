@@ -29,7 +29,12 @@ export default function ProdutosPage() {
     createdAt: new Date().toISOString().split('T')[0],
   });
 
-  useEffect(() => { setProdutos(store.getProdutos()); }, []);
+  useEffect(() => {
+    const load = () => setProdutos(store.getProdutos());
+    load();
+    window.addEventListener('rp-data-synced', load);
+    return () => window.removeEventListener('rp-data-synced', load);
+  }, []);
 
   const filtered = produtos.filter(p =>
     p.nome.toLowerCase().includes(search.toLowerCase()) ||

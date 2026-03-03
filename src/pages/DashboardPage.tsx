@@ -102,20 +102,15 @@ export default function DashboardPage() {
     setDataLoaded(true);
   }, []);
 
-  // Load on mount + auto-refresh every 5s + on tab focus
+  // Load on mount + on realtime sync events + on tab focus
   useEffect(() => {
     loadDashboardData();
-    const interval = setInterval(loadDashboardData, 5000);
     const handleVisibility = () => { if (document.visibilityState === 'visible') loadDashboardData(); };
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key?.startsWith('rp_')) loadDashboardData();
-    };
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('storage', handleStorage);
+    window.addEventListener('rp-data-synced', loadDashboardData);
     return () => {
-      clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('rp-data-synced', loadDashboardData);
     };
   }, [loadDashboardData]);
 

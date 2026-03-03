@@ -13,6 +13,8 @@ function load<T>(key: string, fallback: T): T {
 
 function save<T>(key: string, data: T) {
   localStorage.setItem(key, JSON.stringify(data));
+  // Dispatch event so the sync layer can push to DB
+  window.dispatchEvent(new CustomEvent('rp-store-save', { detail: { key } }));
 }
 
 // ===== Complete seed data from spreadsheet =====

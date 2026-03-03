@@ -24,7 +24,12 @@ export default function ProducaoPage() {
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
 
-  useEffect(() => { setOrdens(store.getOrdensServico()); }, []);
+  useEffect(() => {
+    const load = () => setOrdens(store.getOrdensServico());
+    load();
+    window.addEventListener('rp-data-synced', load);
+    return () => window.removeEventListener('rp-data-synced', load);
+  }, []);
 
   const saveOrdens = (updated: OrdemServico[]) => { store.saveOrdensServico(updated); setOrdens(updated); };
 

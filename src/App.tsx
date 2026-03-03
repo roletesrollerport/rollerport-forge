@@ -20,6 +20,7 @@ import IAPage from "./pages/IAPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import { useUsuarios, type UsuarioDB } from "./hooks/useUsuarios";
+import { useDataSync } from "./hooks/useDataSync";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,9 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState<UsuarioDB | null>(null);
   const [checking, setChecking] = useState(true);
   const { getById } = useUsuarios();
+  
+  // Initialize bidirectional data sync with database
+  useDataSync();
 
   useEffect(() => {
     if (loggedUserId && sessionToken) {

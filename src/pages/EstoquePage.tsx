@@ -39,12 +39,17 @@ export default function EstoquePage() {
   const [imgPreview, setImgPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    let data = store.getEstoque();
-    if (data.length === 0) {
-      data = buildDefaultEstoque();
-      store.saveEstoque(data);
-    }
-    setItens(data);
+    const load = () => {
+      let data = store.getEstoque();
+      if (data.length === 0) {
+        data = buildDefaultEstoque();
+        store.saveEstoque(data);
+      }
+      setItens(data);
+    };
+    load();
+    window.addEventListener('rp-data-synced', load);
+    return () => window.removeEventListener('rp-data-synced', load);
   }, []);
 
   const filtered = itens.filter(i =>
