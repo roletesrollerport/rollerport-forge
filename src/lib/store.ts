@@ -281,7 +281,23 @@ export const store = {
       save('rp_usuarios', SEED_USUARIOS);
       return SEED_USUARIOS;
     }
-    return users;
+    // Auto-fix: detect and fix duplicate IDs
+    const seenIds = new Set<string>();
+    let hasDuplicates = false;
+    const fixed = users.map(u => {
+      if (seenIds.has(u.id)) {
+        hasDuplicates = true;
+        const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        return { ...u, id: newId };
+      }
+      seenIds.add(u.id);
+      return u;
+    });
+    if (hasDuplicates) {
+      save('rp_usuarios', fixed);
+      console.log('[Store] Fixed duplicate user IDs:', fixed.map(u => ({ id: u.id, nome: u.nome })));
+    }
+    return fixed;
   },
   saveUsuarios: (d: Usuario[]) => save('rp_usuarios', d),
 
