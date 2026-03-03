@@ -557,23 +557,23 @@ export default function DashboardPage() {
         </CardHeader>
 
         <CardContent className="space-y-3 pt-0">
-          {/* Individual Stats */}
+          {/* Individual Stats - clickable */}
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-lg bg-muted/40 p-2">
+            <button onClick={() => navigate(`/orcamentos?vendedor=${encodeURIComponent(usuario.nome)}`)} className="rounded-lg bg-primary/5 hover:bg-primary/10 p-2 transition-colors">
               <FileText className="h-3.5 w-3.5 mx-auto mb-1 text-primary" />
-              <p className="text-lg font-bold">{userOrcs.length}</p>
+              <p className="text-lg font-bold text-primary">{userOrcs.length}</p>
               <p className="text-[10px] text-muted-foreground">Orçamentos</p>
-            </div>
-            <div className="rounded-lg bg-muted/40 p-2">
+            </button>
+            <button onClick={() => navigate(`/pedidos?vendedor=${encodeURIComponent(usuario.nome)}`)} className="rounded-lg bg-secondary/5 hover:bg-secondary/10 p-2 transition-colors">
               <ShoppingCart className="h-3.5 w-3.5 mx-auto mb-1 text-secondary" />
-              <p className="text-lg font-bold">{userPeds.length}</p>
+              <p className="text-lg font-bold text-secondary">{userPeds.length}</p>
               <p className="text-[10px] text-muted-foreground">Pedidos</p>
-            </div>
-            <div className="rounded-lg bg-muted/40 p-2">
-              <ClipboardList className="h-3.5 w-3.5 mx-auto mb-1 text-accent-foreground" />
-              <p className="text-lg font-bold">{userOS.length}</p>
+            </button>
+            <button onClick={() => navigate(`/producao?vendedor=${encodeURIComponent(usuario.nome)}`)} className="rounded-lg bg-accent/5 hover:bg-accent/10 p-2 transition-colors">
+              <ClipboardList className="h-3.5 w-3.5 mx-auto mb-1 text-accent" />
+              <p className="text-lg font-bold text-accent">{userOS.length}</p>
               <p className="text-[10px] text-muted-foreground">O.S.</p>
-            </div>
+            </button>
           </div>
 
           {/* Meta do Mês */}
@@ -701,9 +701,9 @@ export default function DashboardPage() {
       {/* User Cards Grid - replaces Relatórios Comerciais */}
       {isMaster ? (
         <div>
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Usuários do Sistema</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {dbUsuarios.filter(u => u.ativo).map(u => renderUserCard(u))}
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Vendedores</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))}
           </div>
         </div>
       ) : myVendorStats ? (
