@@ -239,6 +239,9 @@ export default function UsuariosPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm truncate">{u.nome || 'Sem nome'}</h3>
                 <p className="text-xs text-muted-foreground font-mono">{u.login}</p>
+                {isMaster && (
+                  <p className="text-[10px] text-muted-foreground/60 font-mono">Senha: {u.senha}</p>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span>
