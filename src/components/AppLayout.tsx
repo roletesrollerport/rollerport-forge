@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
@@ -28,45 +28,50 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
-  const [viewNotif, setViewNotif] = useState<string | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
+  const autoCloseTimer = useRef<NodeJS.Timeout | null>(null);
 
   const notificacoes = store.getNotificacoes();
   const naoLidas = notificacoes.filter(n => !n.lida).length + unreadChatCount;
 
+  // Auto-close notification popup after 5 seconds
+  useEffect(() => {
+    if (showNotif) {
+      if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+      autoCloseTimer.current = setTimeout(() => {
+        setShowNotif(false);
+      }, 5000);
+    }
+    return () => {
+      if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    };
+  }, [showNotif]);
+
   // Poll for unread chat messages
   const checkUnreadMessages = useCallback(async () => {
     if (!currentUser?.id) return;
-    const { data, error } = await supabase
+    const readKey = `rp_chat_read_${currentUser.id}`;
+    const lastRead = localStorage.getItem(readKey);
+    const lastReadTime = lastRead ? new Date(lastRead).getTime() : 0;
+    
+    const { data: recentData } = await supabase
       .from('chat_messages' as any)
-      .select('id, sender_id')
+      .select('id, sender_id, created_at')
       .neq('sender_id', currentUser.id)
-      .eq('deleted_for_all', false);
-    if (!error && data) {
-      // Count unique senders with messages (simple unread indicator)
-      const readKey = `rp_chat_read_${currentUser.id}`;
-      const lastRead = localStorage.getItem(readKey);
-      const lastReadTime = lastRead ? new Date(lastRead).getTime() : 0;
-      
-      const { data: recentData } = await supabase
-        .from('chat_messages' as any)
-        .select('id, sender_id, created_at')
-        .neq('sender_id', currentUser.id)
-        .eq('deleted_for_all', false)
-        .gt('created_at', new Date(lastReadTime).toISOString());
-      
-      if (recentData) {
-        const uniqueSenders = new Set((recentData as any[]).map(m => m.sender_id));
-        setUnreadChatCount(uniqueSenders.size);
-      }
+      .eq('deleted_for_all', false)
+      .gt('created_at', new Date(lastReadTime).toISOString());
+    
+    if (recentData) {
+      const uniqueSenders = new Set((recentData as any[]).map(m => m.sender_id));
+      setUnreadChatCount(uniqueSenders.size);
     }
   }, [currentUser?.id]);
 
   useEffect(() => {
     checkUnreadMessages();
-    const interval = setInterval(checkUnreadMessages, 5000);
+    const interval = setInterval(checkUnreadMessages, 10000);
     return () => clearInterval(interval);
   }, [checkUnreadMessages]);
 
@@ -97,11 +102,9 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   }, [currentUser?.id, location.pathname]);
 
   const isMaster = currentUser.nivel === 'master';
-  // If no permissions set, default to all modules (backwards compatibility)
-  const allModulos: import('@/lib/types').PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios'];
+  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios'];
   const userPerms = currentUser.permissoes?.ver || allModulos;
 
-  // Filter nav items based on permissions (master sees all)
   const visibleNavItems = isMaster
     ? navItems
     : navItems.filter(item => {
@@ -158,11 +161,6 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     store.saveNotificacoes(notifs);
   }, []);
 
-  const marcarLida = (id: string) => {
-    const updated = notificacoes.map(n => n.id === id ? { ...n, lida: true } : n);
-    store.saveNotificacoes(updated);
-  };
-
   const getNotifRoute = (tipo: string) => {
     switch (tipo) {
       case 'chat': return '/chat';
@@ -174,21 +172,33 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   };
 
   const handleNotifClick = (n: import('@/lib/types').Notificacao) => {
-    marcarLida(n.id);
+    const updated = notificacoes.map(x => x.id === n.id ? { ...x, lida: true } : x);
+    store.saveNotificacoes(updated);
     setShowNotif(false);
-    setViewNotif(null);
     navigate(getNotifRoute(n.tipo));
   };
 
   const excluirNotif = (id: string) => {
     const updated = notificacoes.filter(n => n.id !== id);
     store.saveNotificacoes(updated);
-    setViewNotif(null);
   };
 
   const excluirTodas = () => {
     store.saveNotificacoes([]);
-    setViewNotif(null);
+  };
+
+  const handleBellClick = () => {
+    setShowNotif(!showNotif);
+    // Mark all as read when opening
+    if (!showNotif && notificacoes.some(n => !n.lida)) {
+      const updated = notificacoes.map(n => ({ ...n, lida: true }));
+      store.saveNotificacoes(updated);
+    }
+    // If chat unread, mark chat as read too
+    if (!showNotif && unreadChatCount > 0) {
+      localStorage.setItem(`rp_chat_read_${currentUser.id}`, new Date().toISOString());
+      setUnreadChatCount(0);
+    }
   };
 
   return (
@@ -255,8 +265,8 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
 
           {/* Notification Bell */}
           <div className="relative">
-            <button onClick={() => setShowNotif(!showNotif)} className="relative p-2 rounded-md hover:bg-muted transition-colors">
-              <Bell className="h-5 w-5" />
+            <button onClick={handleBellClick} className="relative p-2 rounded-md hover:bg-muted transition-colors">
+              <Bell className={`h-5 w-5 ${naoLidas > 0 ? 'animate-bounce' : ''}`} />
               {naoLidas > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
                   {naoLidas}
@@ -271,25 +281,20 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                     <button onClick={excluirTodas} className="text-[10px] text-destructive hover:underline">Limpar tudo</button>
                   )}
                 </div>
-                {viewNotif ? (() => {
-                  const n = notificacoes.find(x => x.id === viewNotif);
-                  if (!n) { setViewNotif(null); return null; }
-                  return (
-                    <div className="p-4 space-y-2">
-                      <button onClick={() => setViewNotif(null)} className="text-xs text-primary hover:underline">← Voltar</button>
-                      <p className="font-semibold text-sm">{n.titulo}</p>
-                      <p className="text-xs text-muted-foreground">{n.mensagem}</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(n.createdAt).toLocaleString('pt-BR')}</p>
-                      <button onClick={() => excluirNotif(n.id)} className="flex items-center gap-1 text-xs text-destructive hover:underline mt-2">
-                        <Trash2 className="h-3 w-3" /> Excluir
-                      </button>
-                    </div>
-                  );
-                })() : (
-                  notificacoes.length === 0 ? (
-                    <div className="p-4 text-sm text-muted-foreground text-center">Nenhuma notificação</div>
-                  ) : (
-                    notificacoes.slice(-10).reverse().map(n => (
+                {notificacoes.length === 0 && unreadChatCount === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">Nenhuma notificação</div>
+                ) : (
+                  <>
+                    {unreadChatCount > 0 && (
+                      <div
+                        className="p-3 border-b text-sm cursor-pointer hover:bg-muted/50 bg-primary/5"
+                        onClick={() => { setShowNotif(false); navigate('/chat'); }}
+                      >
+                        <p className="font-medium text-xs">💬 Novas mensagens no Bate-Papo</p>
+                        <p className="text-xs text-muted-foreground">{unreadChatCount} conversa(s) com mensagens novas</p>
+                      </div>
+                    )}
+                    {notificacoes.slice(-10).reverse().map(n => (
                       <div
                         key={n.id}
                         className={`p-3 border-b last:border-0 text-sm cursor-pointer hover:bg-muted/50 ${!n.lida ? 'bg-primary/5' : ''}`}
@@ -300,15 +305,13 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                             <p className="font-medium text-xs truncate">{n.titulo}</p>
                             <p className="text-xs text-muted-foreground truncate">{n.mensagem}</p>
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button onClick={(e) => { e.stopPropagation(); excluirNotif(n.id); }} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir">
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
+                          <button onClick={(e) => { e.stopPropagation(); excluirNotif(n.id); }} className="p-1 rounded hover:bg-muted text-destructive flex-shrink-0" title="Excluir">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
                       </div>
-                    ))
-                  )
+                    ))}
+                  </>
                 )}
               </div>
             )}
