@@ -94,9 +94,13 @@ export default function OrcamentosPage() {
   const [roleteItem, setRoleteItem] = useState<ItemOrcamento>(emptyItem());
   const [codigoRolete, setCodigoRolete] = useState('');
 
-  // Cadastro rápido cliente
+  // Cadastro rápido cliente (completo igual à tela de clientes)
   const [showCadCliente, setShowCadCliente] = useState(false);
-  const [cadCliente, setCadCliente] = useState({ nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '' });
+  const [cadCliente, setCadCliente] = useState<Omit<Cliente, 'id' | 'createdAt'>>({
+    nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+    compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
+    aniversarioEmpresa: '', redesSociais: '',
+  });
 
   // Cadastro rápido comprador
   const [showCadComprador, setShowCadComprador] = useState(false);
@@ -140,6 +144,40 @@ export default function OrcamentosPage() {
 
   useEffect(() => { setOrcamentos(store.getOrcamentos()); }, []);
 
+  // Restore draft from session on mount
+  useEffect(() => {
+    try {
+      const draft = localStorage.getItem('orc_draft');
+      if (draft) {
+        const d = JSON.parse(draft);
+        if (d.clienteId || d.itensRolete?.length || d.itensProduto?.length) {
+          setClienteId(d.clienteId || '');
+          setClienteSearch(d.clienteSearch || '');
+          setTipoFrete(d.tipoFrete || 'FOB');
+          setCondicaoPagamento(d.condicaoPagamento || '');
+          setVendedor(d.vendedor || '');
+          setDataOrcamento(d.dataOrcamento || new Date().toLocaleDateString('pt-BR'));
+          setPrevisaoEntrega(d.previsaoEntrega || '');
+          setObservacao(d.observacao || '');
+          setCompradorSelecionado(d.compradorSelecionado || '');
+          setItensRolete(d.itensRolete || []);
+          setItensProduto(d.itensProduto || []);
+          setPrazoPagamento(d.prazoPagamento || '');
+          if (d.editingOrc) setEditingOrc(d.editingOrc);
+          setView('form');
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Autosave draft to localStorage on every change when in form view
+  useEffect(() => {
+    if (view === 'form') {
+      const draft = { clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc };
+      localStorage.setItem('orc_draft', JSON.stringify(draft));
+    }
+  }, [view, clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc]);
+
   // Autosave as draft every 10 seconds when in form view
   const autosaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
@@ -182,6 +220,7 @@ export default function OrcamentosPage() {
     setItensRolete([]); setItensProduto([]);
     setEditingOrc(null); setShowProdutoSearch(false);
     setShowRoleteForm(false); setSelectedProduto(null);
+    localStorage.removeItem('orc_draft');
   };
 
   const openNew = () => { resetForm(); setView('form'); };
@@ -279,8 +318,24 @@ export default function OrcamentosPage() {
 
   // Insert rolete into orçamento
   const insertRolete = () => {
-    const calculated = calcItem({ ...roleteItem, id: store.nextId('item') });
+    const calculated = calcItem({ ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete });
     setItensRolete([...itensRolete, calculated]);
+    // Salvar rolete como produto na lista de produtos
+    const novoProduto: Produto = {
+      id: store.nextId('prod'),
+      codigo: codigoRolete || `${calculated.tipoRolete}-${calculated.diametroTubo}`,
+      nome: `Rolete ${calculated.tipoRolete} ø${calculated.diametroTubo}x${calculated.paredeTubo} T:${calculated.comprimentoTubo}mm E:ø${calculated.diametroEixo} ${calculated.comprimentoEixo}mm`,
+      tipo: calculated.tipoRolete,
+      medidas: `Tubo ø${calculated.diametroTubo}x${calculated.paredeTubo} Comp.${calculated.comprimentoTubo}mm | Eixo ø${calculated.diametroEixo} Comp.${calculated.comprimentoEixo}mm`,
+      descricao: `${calculated.tipoEncaixe ? `Enc: ${calculated.tipoEncaixe} ${calculated.medidaFresado || ''}` : ''} ${calculated.especificacaoRevestimento ? `Rev: ${calculated.especificacaoRevestimento}` : ''}`.trim(),
+      valor: calculated.valorPorPeca,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    const existingProds = store.getProdutos();
+    // Não duplicar se já existir com mesmo código
+    if (!existingProds.some(p => p.codigo === novoProduto.codigo && p.tipo === novoProduto.tipo)) {
+      store.saveProdutos([...existingProds, novoProduto]);
+    }
     setShowRoleteForm(false);
     setRoleteItem(emptyItem());
     setCodigoRolete('');
@@ -294,14 +349,19 @@ export default function OrcamentosPage() {
   const salvarCliente = () => {
     const id = store.nextId('cli');
     const novo: Cliente = {
-      ...cadCliente, id, contato: cadCliente.nome,
-      compradores: [], createdAt: new Date().toISOString().split('T')[0],
+      ...cadCliente, id, contato: cadCliente.compradores?.[0]?.nome || cadCliente.nome,
+      compradores: cadCliente.compradores || [],
+      createdAt: new Date().toISOString().split('T')[0],
     };
     const all = [...clientes, novo];
     store.saveClientes(all);
     setClienteId(id); setClienteSearch(cadCliente.nome);
     setShowCadCliente(false);
-    setCadCliente({ nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '' });
+    setCadCliente({
+      nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+      compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
+      aniversarioEmpresa: '', redesSociais: '',
+    });
     toast.success('Cliente cadastrado!');
   };
 
@@ -828,7 +888,10 @@ export default function OrcamentosPage() {
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Tubo (mm)</label>
-                <Input type="number" value={roleteItem.comprimentoTubo || ''} onChange={e => updateRoleteField({ comprimentoTubo: e.target.value ? +e.target.value : '' as any })} />
+                <div className="relative">
+                  <Input type="number" value={roleteItem.comprimentoTubo || ''} onChange={e => updateRoleteField({ comprimentoTubo: e.target.value ? +e.target.value : '' as any })} className="pr-10" />
+                  {roleteItem.comprimentoTubo ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{roleteItem.comprimentoTubo} mm</span> : null}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Diâmetro do Eixo</label>
@@ -840,7 +903,10 @@ export default function OrcamentosPage() {
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Eixo (mm)</label>
-                <Input type="number" value={roleteItem.comprimentoEixo || ''} onChange={e => updateRoleteField({ comprimentoEixo: e.target.value ? +e.target.value : '' as any })} />
+                <div className="relative">
+                  <Input type="number" value={roleteItem.comprimentoEixo || ''} onChange={e => updateRoleteField({ comprimentoEixo: e.target.value ? +e.target.value : '' as any })} className="pr-10" />
+                  {roleteItem.comprimentoEixo ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{roleteItem.comprimentoEixo} mm</span> : null}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Tipo do Encaixe</label>
@@ -997,19 +1063,46 @@ export default function OrcamentosPage() {
         {/* ===== Quick register modals ===== */}
         {showCadCliente && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
-            <div className="bg-card rounded-lg border p-6 w-full max-w-md space-y-3">
-              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar Cliente</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
-              <Input placeholder="Nome" value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} />
-              <Input placeholder="CNPJ" value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: e.target.value })} />
-              <Input placeholder="E-mail" value={cadCliente.email} onChange={e => setCadCliente({ ...cadCliente, email: e.target.value })} />
-              <Input placeholder="Telefone" value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: e.target.value })} />
-              <Input placeholder="WhatsApp" value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: e.target.value })} />
-              <Input placeholder="Endereço" value={cadCliente.endereco} onChange={e => setCadCliente({ ...cadCliente, endereco: e.target.value })} />
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="Cidade" value={cadCliente.cidade} onChange={e => setCadCliente({ ...cadCliente, cidade: e.target.value })} />
-                <Input placeholder="Estado" value={cadCliente.estado} onChange={e => setCadCliente({ ...cadCliente, estado: e.target.value })} />
+            <div className="bg-card rounded-lg border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-3">
+              <div className="flex justify-between"><h3 className="font-semibold text-lg">Cadastrar Cliente</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={cadCliente.email} onChange={e => setCadCliente({ ...cadCliente, email: e.target.value })} /></div>
+                <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={cadCliente.endereco} onChange={e => setCadCliente({ ...cadCliente, endereco: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={cadCliente.cidade} onChange={e => setCadCliente({ ...cadCliente, cidade: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Estado</label><Input value={cadCliente.estado} onChange={e => setCadCliente({ ...cadCliente, estado: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Aniversário da Empresa</label><Input type="date" value={cadCliente.aniversarioEmpresa || ''} onChange={e => setCadCliente({ ...cadCliente, aniversarioEmpresa: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={cadCliente.redesSociais || ''} onChange={e => setCadCliente({ ...cadCliente, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
               </div>
-              <Button onClick={salvarCliente} className="w-full">Salvar</Button>
+              {/* Compradores */}
+              <div className="border-t pt-3 mt-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-sm">Compradores</h4>
+                  <Button variant="outline" size="sm" onClick={() => setCadCliente({ ...cadCliente, compradores: [...cadCliente.compradores, { nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }] })} className="gap-1"><Plus className="h-3.5 w-3.5" /> Adicionar</Button>
+                </div>
+                {cadCliente.compradores.map((comp, idx) => (
+                  <div key={idx} className="border rounded-lg p-3 mb-2 bg-muted/20">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-medium text-muted-foreground">Comprador {idx + 1}</span>
+                      {cadCliente.compradores.length > 1 && (
+                        <button onClick={() => setCadCliente({ ...cadCliente, compradores: cadCliente.compradores.filter((_, i) => i !== idx) })} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><label className="text-xs text-muted-foreground">Nome</label><Input value={comp.nome} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], nome: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
+                      <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={comp.telefone} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], telefone: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
+                      <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={comp.email} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], email: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
+                      <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={comp.whatsapp} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], whatsapp: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
+                      <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={comp.aniversario || ''} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], aniversario: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
+                      <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={comp.redesSociais || ''} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], redesSociais: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} placeholder="Instagram..." /></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button onClick={salvarCliente} className="w-full">Salvar Cliente</Button>
             </div>
           </div>
         )}
