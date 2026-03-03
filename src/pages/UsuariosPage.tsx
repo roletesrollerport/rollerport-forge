@@ -54,7 +54,7 @@ export default function UsuariosPage() {
   const isMaster = loggedUser?.nivel === 'master';
 
   const handleSave = async () => {
-    if (!editing.login || !editing.senha) { toast.error('Login e senha são obrigatórios!'); return; }
+    if (!editing.login || (!editing.id && !editing.senha)) { toast.error('Login e senha são obrigatórios!'); return; }
     const perms = editing.nivel === 'master'
       ? { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] }
       : editing.permissoes;
@@ -121,7 +121,7 @@ export default function UsuariosPage() {
       telefone: u.telefone,
       whatsapp: u.whatsapp,
       login: u.login,
-      senha: u.senha,
+      senha: '',
       nivel: u.nivel,
       ativo: u.ativo,
       foto: u.foto,
@@ -184,7 +184,7 @@ export default function UsuariosPage() {
                     <div>
                       <label className="text-xs text-muted-foreground">Senha</label>
                       <div className="relative">
-                        <Input type={showSenha ? 'text' : 'password'} value={editing.senha} onChange={e => setEditing({ ...editing, senha: e.target.value })} placeholder="Senha" />
+                        <Input type={showSenha ? 'text' : 'password'} value={editing.senha} onChange={e => setEditing({ ...editing, senha: e.target.value })} placeholder={editing.id ? 'Deixe vazio para manter' : 'Senha'} />
                         <button type="button" onClick={() => setShowSenha(!showSenha)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                           {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
