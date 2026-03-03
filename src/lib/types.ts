@@ -212,6 +212,13 @@ export interface ItemEstoque {
 export type NivelAcesso = 'master' | 'admin' | 'vendedor' | 'producao' | 'estoque';
 export type Genero = 'M' | 'F';
 
+export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'ia' | 'usuarios';
+
+export interface PermissoesUsuario {
+  ver: PermissaoModulo[];
+  editar: PermissaoModulo[];
+}
+
 export interface Usuario {
   id: string;
   nome: string;
@@ -224,6 +231,7 @@ export interface Usuario {
   genero?: Genero;
   ativo: boolean;
   foto?: string;
+  permissoes?: PermissoesUsuario;
   createdAt: string;
 }
 

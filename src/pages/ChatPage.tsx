@@ -26,8 +26,9 @@ export default function ChatPage() {
 
   useEffect(() => { setUsuarios(store.getUsuarios()); }, []);
 
-  const currentUser = usuarios.find(u => u.nivel === 'master') || usuarios[0];
-  const chatKey = selectedUser ? `${currentUser?.id}_${selectedUser.id}` : '';
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = usuarios.find(u => u.id === loggedUserId) || usuarios[0];
+  const chatKey = selectedUser ? [currentUser?.id, selectedUser.id].sort().join('_') : '';
   const messages = allMessages[chatKey] || [];
 
   useEffect(() => {
@@ -40,7 +41,12 @@ export default function ChatPage() {
     setAllMessages(prev => ({ ...prev, [chatKey]: msgs }));
   };
 
-  const otherUsers = usuarios.filter(u => u.id !== currentUser?.id && u.ativo);
+  // All active users except the current one (master sees everyone, others see everyone except master)
+  const otherUsers = usuarios.filter(u => {
+    if (u.id === currentUser?.id) return false;
+    if (!u.ativo) return false;
+    return true;
+  });
 
   const getUnread = (userId: string) => {
     const key = `${currentUser?.id}_${userId}`;
