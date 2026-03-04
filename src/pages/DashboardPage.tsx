@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,9 +90,14 @@ export default function DashboardPage() {
   const { onlineUserIds } = usePresenceContext();
 
   /* ---------------------------------------------------------------- */
-  /*  Data loading - Direct from Supabase DB (avoids localStorage race)*/
+  /*  Data loading - Direct from Supabase DB with debounce             */
   /* ---------------------------------------------------------------- */
-  const loadDashboardData = useCallback(async () => {
+  const loadingRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const doLoadFromDb = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     try {
       const [orcRes, pedRes, cliRes, osRes, metRes] = await Promise.all([
         supabase.from('orcamentos').select('*'),
@@ -102,24 +107,24 @@ export default function DashboardPage() {
         supabase.from('metas_vendedores').select('*'),
       ]);
 
+      const orcData = (orcRes.data || []).map((r: any) => r.data);
+      const pedData = (pedRes.data || []).map((r: any) => r.data);
+      const cliData = (cliRes.data || []).map((r: any) => r.data);
+      const osData = (osRes.data || []).map((r: any) => r.data);
+
+      // Use DB data, but fallback to localStorage for seed data not yet synced
       setData({
-        orcamentos: (orcRes.data || []).map((r: any) => r.data),
-        pedidos: (pedRes.data || []).map((r: any) => r.data),
-        clientes: (cliRes.data || []).map((r: any) => r.data),
-        os: (osRes.data || []).map((r: any) => r.data),
+        orcamentos: orcData,
+        pedidos: pedData,
+        clientes: cliData.length > 0 ? cliData : store.getClientes(),
+        os: osData,
       });
 
       const metasFromDb = (metRes.data || []).map((r: any) => r.data);
-      if (metasFromDb.length > 0) {
-        setMetas(metasFromDb);
-      } else {
-        setMetas(store.getMetas());
-      }
-
+      setMetas(metasFromDb.length > 0 ? metasFromDb : store.getMetas());
       setDataLoaded(true);
     } catch (err) {
       console.error('[Dashboard] Error loading data:', err);
-      // Fallback to localStorage
       setData({
         orcamentos: store.getOrcamentos(),
         pedidos: store.getPedidos(),
@@ -128,20 +133,29 @@ export default function DashboardPage() {
       });
       setMetas(store.getMetas());
       setDataLoaded(true);
+    } finally {
+      loadingRef.current = false;
     }
   }, []);
+
+  // Debounced version to avoid rapid-fire reloads
+  const loadDashboardData = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doLoadFromDb(), 300);
+  }, [doLoadFromDb]);
 
   /* ---------------------------------------------------------------- */
   /*  Realtime: direct DB subscriptions for instant cross-machine sync */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
-    loadDashboardData();
+    // Initial load without debounce
+    doLoadFromDb();
 
     const handleSync = () => loadDashboardData();
 
     // Realtime subscriptions for instant updates across browsers
     const channel = supabase
-      .channel('dashboard-rt-v3')
+      .channel('dashboard-rt-v4')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, handleSync)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, handleSync)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleSync)
@@ -149,17 +163,17 @@ export default function DashboardPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, handleSync)
       .subscribe();
 
-    // Also listen for local saves
+    // Listen for local saves (user creates data on this machine)
     window.addEventListener('rp-store-save', handleSync);
     window.addEventListener('rp-data-synced', handleSync);
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') loadDashboardData();
+      if (document.visibilityState === 'visible') doLoadFromDb();
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Periodic refresh every 10s as safety net
-    const interval = setInterval(() => loadDashboardData(), 10000);
+    // Periodic refresh every 15s as safety net
+    const interval = setInterval(() => doLoadFromDb(), 15000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -167,8 +181,9 @@ export default function DashboardPage() {
       window.removeEventListener('rp-data-synced', handleSync);
       document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(interval);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [loadDashboardData]);
+  }, [doLoadFromDb, loadDashboardData]);
 
   /* ---------------------------------------------------------------- */
   /*  Derived counts                                                   */
