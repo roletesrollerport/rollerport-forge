@@ -104,29 +104,38 @@ export default function DashboardPage() {
   }, []);
 
   /* ---------------------------------------------------------------- */
-  /*  Realtime: rely on useDataSync + periodic refresh                 */
+  /*  Realtime: DB subscriptions + sync events + periodic refresh      */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
     loadDashboardData();
 
-    // Listen for sync events from useDataSync (which handles realtime DB pulls)
     const handleSync = () => loadDashboardData();
     window.addEventListener('rp-data-synced', handleSync);
     window.addEventListener('storage', handleSync);
 
-    // Reload on tab focus
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') loadDashboardData();
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Periodic refresh every 5 seconds to catch any missed updates
+    // Direct Supabase realtime for instant cross-machine updates
+    const channel = supabase
+      .channel('dashboard-realtime-v2')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, handleSync)
+      .subscribe();
+
+    // Periodic fallback every 5s
     const interval = setInterval(() => loadDashboardData(), 5000);
 
     return () => {
       window.removeEventListener('rp-data-synced', handleSync);
       window.removeEventListener('storage', handleSync);
       document.removeEventListener('visibilitychange', handleVisibility);
+      supabase.removeChannel(channel);
       clearInterval(interval);
     };
   }, [loadDashboardData]);
@@ -161,17 +170,18 @@ export default function DashboardPage() {
     concluida: countByStatus(osList, 'status', 'CONCLUIDA'),
   });
 
-  // Per-user data helpers
-  const getUserOrcs = (nome: string) => data.orcamentos.filter((o: any) => o.vendedor === nome);
+  // Per-user data helpers (case-insensitive + trimmed matching)
+  const nameMatch = (a: string, b: string) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+  const getUserOrcs = (nome: string) => data.orcamentos.filter((o: any) => nameMatch(o.vendedor, nome));
   const getUserPeds = (nome: string) => data.pedidos.filter((p: any) => {
     const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-    return (orc as any)?.vendedor === nome;
+    return nameMatch((orc as any)?.vendedor, nome);
   });
   const getUserOS = (nome: string) => data.os.filter((os: any) => {
     const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
     if (!ped) return false;
     const orc = data.orcamentos.find((o: any) => o.id === (ped as any).orcamentoId);
-    return (orc as any)?.vendedor === nome;
+    return nameMatch((orc as any)?.vendedor, nome);
   });
 
   // Global stats
@@ -552,15 +562,17 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Botões - Ver Relatório e Imprimir */}
-          <div className="flex gap-2 pt-1">
-            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
-              <Eye className="h-3.5 w-3.5" /> Ver Relatório
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
-              <Printer className="h-3.5 w-3.5" /> Imprimir
-            </Button>
-          </div>
+          {/* Botões - Ver Relatório e Imprimir (Master vê todos, comum só o próprio) */}
+          {(isMaster || usuario.id === loggedUserId) && (
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+                <Eye className="h-3.5 w-3.5" /> Ver Relatório
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+                <Printer className="h-3.5 w-3.5" /> Imprimir
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
