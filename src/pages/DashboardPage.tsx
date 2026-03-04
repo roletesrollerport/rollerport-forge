@@ -104,12 +104,16 @@ export default function DashboardPage() {
   }, []);
 
   /* ---------------------------------------------------------------- */
-  /*  Realtime: DB subscriptions + sync events + periodic refresh      */
+  /*  Realtime: rely on useDataSync events (avoids race conditions)    */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
     loadDashboardData();
 
-    const handleSync = () => loadDashboardData();
+    // useDataSync pulls from DB and fires this event when localStorage is ready
+    const handleSync = () => {
+      // Small delay to ensure localStorage is fully written
+      setTimeout(() => loadDashboardData(), 100);
+    };
     window.addEventListener('rp-data-synced', handleSync);
     window.addEventListener('storage', handleSync);
 
@@ -118,24 +122,13 @@ export default function DashboardPage() {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Direct Supabase realtime for instant cross-machine updates
-    const channel = supabase
-      .channel('dashboard-realtime-v2')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, handleSync)
-      .subscribe();
-
-    // Periodic fallback every 5s
-    const interval = setInterval(() => loadDashboardData(), 5000);
+    // Periodic fallback every 3s (reads localStorage which useDataSync keeps fresh)
+    const interval = setInterval(() => loadDashboardData(), 3000);
 
     return () => {
       window.removeEventListener('rp-data-synced', handleSync);
       window.removeEventListener('storage', handleSync);
       document.removeEventListener('visibilitychange', handleVisibility);
-      supabase.removeChannel(channel);
       clearInterval(interval);
     };
   }, [loadDashboardData]);
