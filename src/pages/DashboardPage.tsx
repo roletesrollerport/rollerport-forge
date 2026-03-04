@@ -90,41 +90,39 @@ export default function DashboardPage() {
   const { onlineUserIds } = usePresenceContext();
 
   /* ---------------------------------------------------------------- */
-  /*  Data loading - Direct from Supabase DB with debounce             */
+  /*  Data loading - Direct from Supabase DB only                      */
   /* ---------------------------------------------------------------- */
   const loadingRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const doLoadFromDb = useCallback(async () => {
     if (loadingRef.current) return;
     loadingRef.current = true;
     try {
       const [orcRes, pedRes, cliRes, osRes, metRes] = await Promise.all([
-        supabase.from('orcamentos').select('*'),
-        supabase.from('pedidos').select('*'),
-        supabase.from('clientes').select('*'),
-        supabase.from('ordens_servico').select('*'),
-        supabase.from('metas_vendedores').select('*'),
+        supabase.from('orcamentos').select('data'),
+        supabase.from('pedidos').select('data'),
+        supabase.from('clientes').select('data'),
+        supabase.from('ordens_servico').select('data'),
+        supabase.from('metas_vendedores').select('data'),
       ]);
 
       const orcData = (orcRes.data || []).map((r: any) => r.data);
       const pedData = (pedRes.data || []).map((r: any) => r.data);
       const cliData = (cliRes.data || []).map((r: any) => r.data);
       const osData = (osRes.data || []).map((r: any) => r.data);
+      const metData = (metRes.data || []).map((r: any) => r.data);
 
-      // Use DB data, but fallback to localStorage for seed data not yet synced
+      // Fallback: if DB clientes is empty, use local seed
       setData({
         orcamentos: orcData,
         pedidos: pedData,
         clientes: cliData.length > 0 ? cliData : store.getClientes(),
         os: osData,
       });
-
-      const metasFromDb = (metRes.data || []).map((r: any) => r.data);
-      setMetas(metasFromDb.length > 0 ? metasFromDb : store.getMetas());
+      setMetas(metData.length > 0 ? metData : store.getMetas());
       setDataLoaded(true);
     } catch (err) {
-      console.error('[Dashboard] Error loading data:', err);
+      console.error('[Dashboard] DB load error, using localStorage:', err);
       setData({
         orcamentos: store.getOrcamentos(),
         pedidos: store.getPedidos(),
@@ -138,52 +136,35 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Debounced version to avoid rapid-fire reloads
-  const loadDashboardData = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doLoadFromDb(), 300);
-  }, [doLoadFromDb]);
-
   /* ---------------------------------------------------------------- */
-  /*  Realtime: direct DB subscriptions for instant cross-machine sync */
+  /*  Realtime: ONLY DB subscriptions + periodic (no localStorage)     */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
-    // Initial load without debounce
     doLoadFromDb();
 
-    const handleSync = () => loadDashboardData();
-
-    // Realtime subscriptions for instant updates across browsers
+    // Realtime subscriptions — fires AFTER data is committed to DB
     const channel = supabase
-      .channel('dashboard-rt-v4')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, handleSync)
+      .channel('dashboard-rt-v5')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, () => doLoadFromDb())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => doLoadFromDb())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, () => doLoadFromDb())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => doLoadFromDb())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, () => doLoadFromDb())
       .subscribe();
 
-    // Listen for local saves (user creates data on this machine)
-    window.addEventListener('rp-store-save', handleSync);
-    window.addEventListener('rp-data-synced', handleSync);
+    // Periodic safety net
+    const interval = setInterval(() => doLoadFromDb(), 10000);
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') doLoadFromDb();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    // Periodic refresh every 15s as safety net
-    const interval = setInterval(() => doLoadFromDb(), 15000);
+    // Reload on tab focus
+    const handleVis = () => { if (document.visibilityState === 'visible') doLoadFromDb(); };
+    document.addEventListener('visibilitychange', handleVis);
 
     return () => {
       supabase.removeChannel(channel);
-      window.removeEventListener('rp-store-save', handleSync);
-      window.removeEventListener('rp-data-synced', handleSync);
-      document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(interval);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      document.removeEventListener('visibilitychange', handleVis);
     };
-  }, [doLoadFromDb, loadDashboardData]);
+  }, [doLoadFromDb]);
 
   /* ---------------------------------------------------------------- */
   /*  Derived counts                                                   */
@@ -215,8 +196,14 @@ export default function DashboardPage() {
     concluida: countByStatus(osList, 'status', 'CONCLUIDA'),
   });
 
-  // Per-user data helpers (case-insensitive + trimmed matching)
-  const nameMatch = (a: string, b: string) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+  // Per-user data helpers (fuzzy matching: "karen" matches "Karen Ferreira")
+  const nameMatch = (vendedorField: string, userName: string) => {
+    const a = (vendedorField || '').trim().toLowerCase();
+    const b = (userName || '').trim().toLowerCase();
+    if (!a || !b) return false;
+    // Exact match, or one contains the other, or first name match
+    return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+  };
   const getUserOrcs = (nome: string) => data.orcamentos.filter((o: any) => nameMatch(o.vendedor, nome));
   const getUserPeds = (nome: string) => data.pedidos.filter((p: any) => {
     const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
@@ -250,14 +237,14 @@ export default function DashboardPage() {
   const deleteOrcamento = (id: string) => {
     const updated = data.orcamentos.filter((o: any) => o.id !== id);
     store.saveOrcamentos(updated);
-    loadDashboardData();
+    doLoadFromDb();
     toast.success('Orçamento excluído!');
   };
 
   const deletePedido = (id: string) => {
     const updated = data.pedidos.filter((p: any) => p.id !== id);
     store.savePedidos(updated);
-    loadDashboardData();
+    doLoadFromDb();
     toast.success('Pedido excluído!');
   };
 
