@@ -553,15 +553,17 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-2 pt-1">
-            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
-              <Eye className="h-3.5 w-3.5" /> Ver Relatório
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
-              <Printer className="h-3.5 w-3.5" /> Imprimir
-            </Button>
-          </div>
+          {/* Botões - somente para Master */}
+          {isMaster && (
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+                <Eye className="h-3.5 w-3.5" /> Ver Relatório
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+                <Printer className="h-3.5 w-3.5" /> Imprimir
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -666,32 +668,28 @@ export default function DashboardPage() {
       <div className="h-8" />
 
       {/* Cards dos Usuários */}
-      {isMaster ? (
-        <div>
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Vendedores</h2>
-          {usersLoading || !dataLoaded ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map(i => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader className="pb-3"><div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-16" /></div></div></CardHeader>
-                  <CardContent className="space-y-3 pt-0"><div className="grid grid-cols-3 gap-2"><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /></div></CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))}
-            </div>
-          )}
-        </div>
-      ) : currentUser ? (
-        <div>
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Minha Performance</h2>
-          <div className="grid grid-cols-1">
-            {renderUserCard(currentUser, true)}
+      <div>
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <Users className="h-4 w-4 text-primary" /> {isMaster ? 'Vendedores' : 'Minha Performance'}
+        </h2>
+        {usersLoading || !dataLoaded ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader className="pb-3"><div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-16" /></div></div></CardHeader>
+                <CardContent className="space-y-3 pt-0"><div className="grid grid-cols-3 gap-2"><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /></div></CardContent>
+              </Card>
+            ))}
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {isMaster
+              ? dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))
+              : currentUser ? [renderUserCard(currentUser)] : null
+            }
+          </div>
+        )}
+      </div>
     </div>
   );
 }
