@@ -93,9 +93,10 @@ export default function DashboardPage() {
   /*  Data loading - Direct from Supabase DB only                      */
   /* ---------------------------------------------------------------- */
   const loadingRef = useRef(false);
+  const suppressReloadRef = useRef(false);
 
   const doLoadFromDb = useCallback(async () => {
-    if (loadingRef.current) return;
+    if (loadingRef.current || suppressReloadRef.current) return;
     loadingRef.current = true;
     try {
       const [orcRes, pedRes, cliRes, osRes, metRes] = await Promise.all([
@@ -144,7 +145,7 @@ export default function DashboardPage() {
 
     // Realtime subscriptions — fires AFTER data is committed to DB
     const channel = supabase
-      .channel('dashboard-rt-v5')
+      .channel('dashboard-rt-v6')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, () => doLoadFromDb())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => doLoadFromDb())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, () => doLoadFromDb())
@@ -152,8 +153,23 @@ export default function DashboardPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, () => doLoadFromDb())
       .subscribe();
 
-    // Periodic safety net
-    const interval = setInterval(() => doLoadFromDb(), 10000);
+    // Also listen for local store save events (same browser, immediate update)
+    const handleLocalSave = () => {
+      // For local saves, bypass suppress and load from localStorage directly
+      setData({
+        orcamentos: store.getOrcamentos(),
+        pedidos: store.getPedidos(),
+        clientes: store.getClientes(),
+        os: store.getOrdensServico(),
+      });
+      setMetas(store.getMetas());
+      setDataLoaded(true);
+    };
+    window.addEventListener('rp-store-save', handleLocalSave);
+    window.addEventListener('rp-data-synced', handleLocalSave);
+
+    // Periodic safety net (5s)
+    const interval = setInterval(() => doLoadFromDb(), 5000);
 
     // Reload on tab focus
     const handleVis = () => { if (document.visibilityState === 'visible') doLoadFromDb(); };
@@ -163,6 +179,8 @@ export default function DashboardPage() {
       supabase.removeChannel(channel);
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVis);
+      window.removeEventListener('rp-store-save', handleLocalSave);
+      window.removeEventListener('rp-data-synced', handleLocalSave);
     };
   }, [doLoadFromDb]);
 
@@ -226,25 +244,50 @@ export default function DashboardPage() {
   /* ---------------------------------------------------------------- */
   /*  Meta helpers                                                     */
   /* ---------------------------------------------------------------- */
-  const saveMeta = (vendedorNome: string, valor: number) => {
+  const saveMeta = async (vendedorNome: string, valor: number) => {
     const existing = metas.find(m => m.vendedor === vendedorNome);
     let updated;
     if (existing) { updated = metas.map(m => m.vendedor === vendedorNome ? { ...m, metaMensal: valor } : m); }
     else { updated = [...metas, { vendedor: vendedorNome, metaMensal: valor }]; }
-    store.saveMetas(updated); setMetas(updated); setEditingMeta(null); toast.success('Meta salva!');
+    
+    // Update UI immediately
+    setMetas(updated); 
+    setEditingMeta(null);
+    
+    // Suppress realtime reload to prevent reverting
+    suppressReloadRef.current = true;
+    
+    // Write directly to Supabase (skip localStorage middleman)
+    const metaData = { vendedor: vendedorNome, metaMensal: valor };
+    await supabase
+      .from('metas_vendedores')
+      .upsert({ vendedor: vendedorNome, data: metaData, updated_at: new Date().toISOString() } as any, { onConflict: 'vendedor' });
+    
+    // Also update localStorage for consistency
+    store.saveMetas(updated);
+    
+    // Allow reloads again after a delay
+    setTimeout(() => { suppressReloadRef.current = false; }, 3000);
+    toast.success('Meta salva!');
   };
 
-  const deleteOrcamento = (id: string) => {
+  const deleteOrcamento = async (id: string) => {
     const updated = data.orcamentos.filter((o: any) => o.id !== id);
+    setData(prev => ({ ...prev, orcamentos: updated }));
+    suppressReloadRef.current = true;
+    await supabase.from('orcamentos').delete().eq('id', id);
     store.saveOrcamentos(updated);
-    doLoadFromDb();
+    setTimeout(() => { suppressReloadRef.current = false; }, 3000);
     toast.success('Orçamento excluído!');
   };
 
-  const deletePedido = (id: string) => {
+  const deletePedido = async (id: string) => {
     const updated = data.pedidos.filter((p: any) => p.id !== id);
+    setData(prev => ({ ...prev, pedidos: updated }));
+    suppressReloadRef.current = true;
+    await supabase.from('pedidos').delete().eq('id', id);
     store.savePedidos(updated);
-    doLoadFromDb();
+    setTimeout(() => { suppressReloadRef.current = false; }, 3000);
     toast.success('Pedido excluído!');
   };
 
