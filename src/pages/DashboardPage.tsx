@@ -104,31 +104,30 @@ export default function DashboardPage() {
   }, []);
 
   /* ---------------------------------------------------------------- */
-  /*  Realtime subscriptions + event listeners                        */
+  /*  Realtime: rely on useDataSync + periodic refresh                 */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
     loadDashboardData();
 
-    // Listen for local sync events
+    // Listen for sync events from useDataSync (which handles realtime DB pulls)
     const handleSync = () => loadDashboardData();
     window.addEventListener('rp-data-synced', handleSync);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') loadDashboardData();
-    });
+    window.addEventListener('storage', handleSync);
 
-    // Realtime subscriptions for instant updates
-    const channel = supabase
-      .channel('dashboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, handleSync)
-      .subscribe();
+    // Reload on tab focus
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadDashboardData();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Periodic refresh every 5 seconds to catch any missed updates
+    const interval = setInterval(() => loadDashboardData(), 5000);
 
     return () => {
       window.removeEventListener('rp-data-synced', handleSync);
-      supabase.removeChannel(channel);
+      window.removeEventListener('storage', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(interval);
     };
   }, [loadDashboardData]);
 
