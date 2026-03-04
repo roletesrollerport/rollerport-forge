@@ -7,7 +7,12 @@ import type {
 function load<T>(key: string, fallback: T): T {
   try {
     const d = localStorage.getItem(key);
-    return d ? JSON.parse(d) : fallback;
+    if (d) return JSON.parse(d);
+    // First time: persist seed data to localStorage so sync can find it
+    if (Array.isArray(fallback) && (fallback as any[]).length > 0) {
+      localStorage.setItem(key, JSON.stringify(fallback));
+    }
+    return fallback;
   } catch { return fallback; }
 }
 

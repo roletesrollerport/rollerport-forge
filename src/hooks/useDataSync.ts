@@ -37,35 +37,40 @@ async function pushToDb(key: string) {
   if (!config) return;
 
   const localData = getLocalData(key);
-  const currentIds = new Set<string>();
-
-  // Upsert all items
-  if (localData.length > 0) {
-    const rows = localData.map((item: any) => {
-      const id = config.idField === 'vendedor' ? item.vendedor : item.id;
-      currentIds.add(id);
-      return { [config.idField]: id, data: item, updated_at: new Date().toISOString() };
-    });
-
-    // Batch upsert in chunks of 50
-    for (let i = 0; i < rows.length; i += 50) {
-      const chunk = rows.slice(i, i + 50);
-      const { error } = await supabase
-        .from(config.table as any)
-        .upsert(chunk as any, { onConflict: config.idField });
-      if (error) console.error(`[DataSync] Upsert error for ${config.table}:`, error);
-    }
+  
+  // NEVER push empty data to DB - this would erase real data
+  if (localData.length === 0) {
+    console.log(`[DataSync] Skipping push for ${config.table} - no local data`);
+    return;
   }
 
-  // Delete items that were removed locally
-  const prevIds = knownIds[key] || new Set();
-  for (const id of prevIds) {
-    if (!currentIds.has(id)) {
-      const { error } = await supabase
-        .from(config.table as any)
-        .delete()
-        .eq(config.idField, id);
-      if (error) console.error(`[DataSync] Delete error for ${config.table}:`, error);
+  const currentIds = new Set<string>();
+  const rows = localData.map((item: any) => {
+    const id = config.idField === 'vendedor' ? item.vendedor : item.id;
+    currentIds.add(id);
+    return { [config.idField]: id, data: item, updated_at: new Date().toISOString() };
+  });
+
+  // Batch upsert in chunks of 50
+  for (let i = 0; i < rows.length; i += 50) {
+    const chunk = rows.slice(i, i + 50);
+    const { error } = await supabase
+      .from(config.table as any)
+      .upsert(chunk as any, { onConflict: config.idField });
+    if (error) console.error(`[DataSync] Upsert error for ${config.table}:`, error);
+  }
+
+  // Only delete items that were explicitly known before and are now removed
+  const prevIds = knownIds[key];
+  if (prevIds && prevIds.size > 0) {
+    for (const id of prevIds) {
+      if (!currentIds.has(id)) {
+        const { error } = await supabase
+          .from(config.table as any)
+          .delete()
+          .eq(config.idField, id);
+        if (error) console.error(`[DataSync] Delete error for ${config.table}:`, error);
+      }
     }
   }
 
