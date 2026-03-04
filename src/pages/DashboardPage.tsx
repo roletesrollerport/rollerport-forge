@@ -57,7 +57,7 @@ function StatCard({ icon: Icon, label, value, color, onClick }: { icon: any; lab
 /* ------------------------------------------------------------------ */
 /*  Status progress bar                                                */
 /* ------------------------------------------------------------------ */
-function StatusBar({ label, value, max, color, onClick }: { label: string; value: number; max: number; color: string; onClick?: () => void }) {
+function StatusBar({ label, value, max, color, onClick }: { label: string; value: number; max: number; color: string; onClick?: (e?: React.MouseEvent) => void }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <button onClick={onClick} className="flex items-center gap-3 text-xs w-full hover:bg-muted/30 rounded px-1 py-0.5 transition-colors">
@@ -634,13 +634,17 @@ export default function DashboardPage() {
   /*  MAIN DASHBOARD VIEW                                              */
   /* ================================================================ */
   return (
-    <div className="space-y-6">
-      <div>
+    <div>
+      {/* TOPO */}
+      <div className="mb-2">
         <h1 className="page-header">Início</h1>
-        <p className="page-subtitle">Visão geral do sistema ROLLERPORT{!isMaster ? ` – ${currentUserName}` : ''}</p>
+        <p className="page-subtitle">Sistema Rollerport</p>
       </div>
 
-      {/* Top stat cards - clickable */}
+      {/* Espaço de 2 linhas */}
+      <div className="h-8" />
+
+      {/* 4 Cards globais - contagens persistentes e clicáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={FileText} label="Orçamentos" value={globalOrc.total} color="bg-primary/10 text-primary" onClick={() => navigate('/orcamentos')} />
         <StatCard icon={ShoppingCart} label="Pedidos" value={globalPed.total} color="bg-secondary/20 text-secondary" onClick={() => navigate('/pedidos')} />
@@ -648,64 +652,83 @@ export default function DashboardPage() {
         <StatCard icon={Factory} label="Ordens de Serviço" value={globalOs.total} color="bg-accent/10 text-accent" onClick={() => navigate('/producao')} />
       </div>
 
-      {/* Status bars - clickable */}
+      {/* Espaço de 2 linhas */}
+      <div className="h-8" />
+
+      {/* 3 Cards de Status - clicáveis */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-card rounded-lg border p-5">
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
-          <div className="space-y-3">
-            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/orcamentos?status=RASCUNHO')} />
-            <StatusBar label="Enviado" value={globalOrc.enviado} max={globalOrc.total} color="[&>div]:bg-info" onClick={() => navigate('/orcamentos?status=ENVIADO')} />
-            <StatusBar label="Aguardando" value={globalOrc.aguardando} max={globalOrc.total} color="[&>div]:bg-secondary" onClick={() => navigate('/orcamentos?status=AGUARDANDO')} />
-            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" onClick={() => navigate('/orcamentos?status=APROVADO')} />
-            <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" onClick={() => navigate('/orcamentos?status=REPROVADO')} />
-          </div>
-        </div>
-        <div className="bg-card rounded-lg border p-5">
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
-          <div className="space-y-3">
-            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/pedidos?status=PENDENTE')} />
-            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" onClick={() => navigate('/pedidos?status=CONFIRMADO')} />
-            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" onClick={() => navigate('/pedidos?status=EM_PRODUCAO')} />
-            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" onClick={() => navigate('/pedidos?status=CONCLUIDO')} />
-            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-success" onClick={() => navigate('/pedidos?status=ENTREGUE')} />
-          </div>
-        </div>
-        <div className="bg-card rounded-lg border p-5">
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
-          <div className="space-y-3">
-            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" onClick={() => navigate('/producao?status=ABERTA')} />
-            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" onClick={() => navigate('/producao?status=EM_ANDAMENTO')} />
-            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" onClick={() => navigate('/producao?status=CONCLUIDA')} />
-          </div>
-        </div>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
+            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
+            <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
+            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
+            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
+            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/producao')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
+            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
+            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+            <StatusBar label="Entregue" value={globalOs.total > 0 ? globalOs.concluida : 0} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Espaço de 2 linhas */}
+      <div className="h-8" />
 
       {/* Taxa de Conversão */}
-      <div className="bg-card rounded-lg border p-5 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDashView('conversion-detail')}>
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-primary" /> Taxa de Conversão
-          <span className="text-[10px] text-muted-foreground ml-2">(clique para relatório completo)</span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="text-center p-4 rounded-lg bg-muted/30">
-            <div className="flex items-center justify-center gap-2 mb-2"><CheckCircle className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Orçamento → Pedido</span></div>
-            <p className="text-3xl font-bold text-primary">{taxaConversao}%</p>
-            <p className="text-xs text-muted-foreground mt-1">{globalOrc.aprovado} aprovados de {globalOrc.total}</p>
+      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDashView('conversion-detail')}>
+        <CardHeader className="pb-2">
+          <h2 className="font-semibold flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Taxa de Conversão
+            <span className="text-[10px] text-muted-foreground ml-2">(clique para relatório completo)</span>
+          </h2>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="text-center p-4 rounded-lg bg-muted/30">
+              <div className="flex items-center justify-center gap-2 mb-2"><CheckCircle className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Orçamento → Pedido</span></div>
+              <p className="text-3xl font-bold text-primary">{taxaConversao}%</p>
+              <p className="text-xs text-muted-foreground mt-1">{globalOrc.aprovado} aprovados de {globalOrc.total}</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-muted/30">
+              <div className="flex items-center justify-center gap-2 mb-2"><Truck className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Pedidos Entregues</span></div>
+              <p className="text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
+              <p className="text-xs text-muted-foreground mt-1">{globalPed.entregue} de {globalPed.total} pedidos</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-muted/30">
+              <div className="flex items-center justify-center gap-2 mb-2"><Factory className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">O.S. Ativas</span></div>
+              <p className="text-3xl font-bold text-primary">{globalOs.total}</p>
+              <p className="text-xs text-muted-foreground mt-1">Ordens em andamento</p>
+            </div>
           </div>
-          <div className="text-center p-4 rounded-lg bg-muted/30">
-            <div className="flex items-center justify-center gap-2 mb-2"><Truck className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Pedidos Entregues</span></div>
-            <p className="text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
-            <p className="text-xs text-muted-foreground mt-1">{globalPed.entregue} de {globalPed.total} pedidos</p>
-          </div>
-          <div className="text-center p-4 rounded-lg bg-muted/30">
-            <div className="flex items-center justify-center gap-2 mb-2"><Factory className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">O.S. Ativas</span></div>
-            <p className="text-3xl font-bold text-primary">{globalOs.total}</p>
-            <p className="text-xs text-muted-foreground mt-1">Ordens em andamento</p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* User Cards */}
+      {/* Espaço de 2 linhas */}
+      <div className="h-8" />
+
+      {/* Cards dos Usuários */}
       {isMaster ? (
         <div>
           <h2 className="font-semibold mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Vendedores</h2>
