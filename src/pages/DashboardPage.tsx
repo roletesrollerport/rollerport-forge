@@ -491,24 +491,18 @@ export default function DashboardPage() {
   /* ================================================================ */
   const renderUserCard = (usuario: any, fullWidth = false) => {
     const isOnline = onlineUserIds.has(usuario.id);
-    const userOrcs = getUserOrcs(usuario.nome);
     const userPeds = getUserPeds(usuario.nome);
-    const userOS = getUserOS(usuario.nome);
-    const orcS = getOrcStats(userOrcs);
-    const pedS = getPedStats(userPeds);
-    const osS = getOsStats(userOS);
     const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
     const meta = metas.find(m => m.vendedor === usuario.nome);
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
-    const vParam = encodeURIComponent(usuario.nome);
 
     return (
-      <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full' : ''}`}>
-        {/* Header: Avatar + Name + Online */}
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
+      <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
+        <CardContent className="p-5 space-y-4">
+          {/* Foto + Nome */}
+          <div className="flex items-center gap-4">
             <div className="relative">
-              <Avatar className="h-12 w-12">
+              <Avatar className="h-14 w-14">
                 {usuario.foto ? <AvatarImage src={usuario.foto} alt={usuario.nome} /> : null}
                 <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">
                   {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -523,52 +517,28 @@ export default function DashboardPage() {
                 <span className="absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-4 w-4 bg-muted-foreground/40 border-2 border-card"></span>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-sm truncate">{usuario.nome}</p>
-                <Badge variant={usuario.ativo ? 'default' : 'destructive'} className="text-[10px] px-1.5 py-0">
-                  {usuario.ativo ? 'Ativo' : 'Inativo'}
-                </Badge>
-              </div>
-              <span className={`text-[10px] ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>{isOnline ? 'Online' : 'Offline'}</span>
+            <div>
+              <p className="font-semibold text-base">{usuario.nome}</p>
+              <span className={`text-xs font-medium ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
+                {isOnline ? '● Online' : '● Offline'}
+              </span>
             </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4 pt-0">
-          {/* Top counters - clickable */}
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <button onClick={() => navigate(`/orcamentos?vendedor=${vParam}`)} className="rounded-lg bg-primary/5 hover:bg-primary/10 p-2.5 transition-colors">
-              <FileText className="h-4 w-4 mx-auto mb-1 text-primary" />
-              <p className="text-xl font-bold text-primary">{orcS.total}</p>
-              <p className="text-[10px] text-muted-foreground">Orçamentos</p>
-            </button>
-            <button onClick={() => navigate(`/pedidos?vendedor=${vParam}`)} className="rounded-lg bg-secondary/5 hover:bg-secondary/10 p-2.5 transition-colors">
-              <ShoppingCart className="h-4 w-4 mx-auto mb-1 text-secondary" />
-              <p className="text-xl font-bold text-secondary">{pedS.total}</p>
-              <p className="text-[10px] text-muted-foreground">Pedidos</p>
-            </button>
-            <button onClick={() => navigate(`/producao?vendedor=${vParam}`)} className="rounded-lg bg-accent/5 hover:bg-accent/10 p-2.5 transition-colors">
-              <ClipboardList className="h-4 w-4 mx-auto mb-1 text-accent" />
-              <p className="text-xl font-bold text-accent">{osS.total}</p>
-              <p className="text-[10px] text-muted-foreground">O.S.</p>
-            </button>
           </div>
 
           {/* Meta do Mês */}
-          <div className="text-xs">
-            <div className="flex justify-between mb-1">
+          <div className="text-xs space-y-1">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground font-medium">Meta do Mês</span>
               {isMaster && editingMeta?.vendedor === usuario.nome ? (
                 <div className="flex items-center gap-1">
-                  <Input type="number" step="0.01" className="h-5 w-20 text-[10px] px-1" value={editingMeta.valor || ''} onChange={e => setEditingMeta({ ...editingMeta, valor: +e.target.value })} autoFocus />
-                  <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3 w-3" /></button>
-                  <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                  <Input type="number" step="0.01" className="h-6 w-24 text-xs px-1" value={editingMeta.valor || ''} onChange={e => setEditingMeta({ ...editingMeta, valor: +e.target.value })} autoFocus />
+                  <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                 </div>
               ) : (
                 <div className="flex items-center gap-1">
                   <strong>{meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}</strong>
-                  {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3 w-3" /></button>}
+                  {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3.5 w-3.5" /></button>}
                 </div>
               )}
             </div>
@@ -576,56 +546,23 @@ export default function DashboardPage() {
               <>
                 <div className="flex items-center gap-2">
                   <Progress value={metaPct} className="h-2 flex-1" />
-                  <span className="text-[10px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
+                  <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
+                <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
               </>
             )}
           </div>
 
-          {/* Orçamentos status - all clickable */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Orçamentos</p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <StatusChip label="Rascunho" count={orcS.rascunho} colorClass="bg-muted text-muted-foreground" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=RASCUNHO`)} />
-              <StatusChip label="Enviado" count={orcS.enviado} colorClass="bg-info/10 text-info" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=ENVIADO`)} />
-              <StatusChip label="Aguardando" count={orcS.aguardando} colorClass="bg-secondary/10 text-secondary" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=AGUARDANDO`)} />
-              <StatusChip label="Aprovado" count={orcS.aprovado} colorClass="bg-success/10 text-success" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=APROVADO`)} />
-              <StatusChip label="Reprovado" count={orcS.reprovado} colorClass="bg-destructive/10 text-destructive" onClick={() => navigate(`/orcamentos?vendedor=${vParam}&status=REPROVADO`)} />
-            </div>
-          </div>
-
-          {/* Pedidos status - all clickable */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Pedidos</p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <StatusChip label="Pendente" count={pedS.pendente} colorClass="bg-muted text-muted-foreground" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=PENDENTE`)} />
-              <StatusChip label="Confirmado" count={pedS.confirmado} colorClass="bg-info/10 text-info" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=CONFIRMADO`)} />
-              <StatusChip label="Em Produção" count={pedS.producao} colorClass="bg-secondary/10 text-secondary" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=EM_PRODUCAO`)} />
-              <StatusChip label="Concluído" count={pedS.concluido} colorClass="bg-primary/10 text-primary" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=CONCLUIDO`)} />
-              <StatusChip label="Entregue" count={pedS.entregue} colorClass="bg-success/10 text-success" onClick={() => navigate(`/pedidos?vendedor=${vParam}&status=ENTREGUE`)} />
-            </div>
-          </div>
-
-          {/* O.S. status - all clickable */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Ordens de Serviço</p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <StatusChip label="Aberta" count={osS.aberta} colorClass="bg-muted text-muted-foreground" onClick={() => navigate(`/producao?vendedor=${vParam}&status=ABERTA`)} />
-              <StatusChip label="Em Andamento" count={osS.emAndamento} colorClass="bg-secondary/10 text-secondary" onClick={() => navigate(`/producao?vendedor=${vParam}&status=EM_ANDAMENTO`)} />
-              <StatusChip label="Concluída" count={osS.concluida} colorClass="bg-success/10 text-success" onClick={() => navigate(`/producao?vendedor=${vParam}&status=CONCLUIDA`)} />
-            </div>
+          {/* Botões */}
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+              <Eye className="h-3.5 w-3.5" /> Ver Relatório
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+              <Printer className="h-3.5 w-3.5" /> Imprimir
+            </Button>
           </div>
         </CardContent>
-
-        <CardFooter className="flex gap-2 pt-0">
-          <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
-            <Eye className="h-3 w-3" /> Ver Relatório
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
-            <Printer className="h-3 w-3" /> Imprimir
-          </Button>
-        </CardFooter>
       </Card>
     );
   };
