@@ -553,17 +553,15 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Botões - somente para Master */}
-          {isMaster && (
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
-                <Eye className="h-3.5 w-3.5" /> Ver Relatório
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
-                <Printer className="h-3.5 w-3.5" /> Imprimir
-              </Button>
-            </div>
-          )}
+          {/* Botões - Ver Relatório e Imprimir */}
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+              <Eye className="h-3.5 w-3.5" /> Ver Relatório
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+              <Printer className="h-3.5 w-3.5" /> Imprimir
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -670,7 +668,7 @@ export default function DashboardPage() {
       {/* Cards dos Usuários */}
       <div>
         <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" /> {isMaster ? 'Vendedores' : 'Minha Performance'}
+          <Users className="h-4 w-4 text-primary" /> {isMaster ? 'Vendedores' : 'Equipe'}
         </h2>
         {usersLoading || !dataLoaded ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -683,10 +681,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {isMaster
-              ? dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))
-              : currentUser ? [renderUserCard(currentUser)] : null
-            }
+            {dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))}
           </div>
         )}
       </div>
