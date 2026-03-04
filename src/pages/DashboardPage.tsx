@@ -90,44 +90,81 @@ export default function DashboardPage() {
   const { onlineUserIds } = usePresenceContext();
 
   /* ---------------------------------------------------------------- */
-  /*  Data loading from store (backed by localStorage ↔ Supabase)     */
+  /*  Data loading - Direct from Supabase DB (avoids localStorage race)*/
   /* ---------------------------------------------------------------- */
-  const loadDashboardData = useCallback(() => {
-    setData({
-      orcamentos: store.getOrcamentos(),
-      pedidos: store.getPedidos(),
-      clientes: store.getClientes(),
-      os: store.getOrdensServico(),
-    });
-    setMetas(store.getMetas());
-    setDataLoaded(true);
+  const loadDashboardData = useCallback(async () => {
+    try {
+      const [orcRes, pedRes, cliRes, osRes, metRes] = await Promise.all([
+        supabase.from('orcamentos').select('*'),
+        supabase.from('pedidos').select('*'),
+        supabase.from('clientes').select('*'),
+        supabase.from('ordens_servico').select('*'),
+        supabase.from('metas_vendedores').select('*'),
+      ]);
+
+      setData({
+        orcamentos: (orcRes.data || []).map((r: any) => r.data),
+        pedidos: (pedRes.data || []).map((r: any) => r.data),
+        clientes: (cliRes.data || []).map((r: any) => r.data),
+        os: (osRes.data || []).map((r: any) => r.data),
+      });
+
+      const metasFromDb = (metRes.data || []).map((r: any) => r.data);
+      if (metasFromDb.length > 0) {
+        setMetas(metasFromDb);
+      } else {
+        setMetas(store.getMetas());
+      }
+
+      setDataLoaded(true);
+    } catch (err) {
+      console.error('[Dashboard] Error loading data:', err);
+      // Fallback to localStorage
+      setData({
+        orcamentos: store.getOrcamentos(),
+        pedidos: store.getPedidos(),
+        clientes: store.getClientes(),
+        os: store.getOrdensServico(),
+      });
+      setMetas(store.getMetas());
+      setDataLoaded(true);
+    }
   }, []);
 
   /* ---------------------------------------------------------------- */
-  /*  Realtime: rely on useDataSync events (avoids race conditions)    */
+  /*  Realtime: direct DB subscriptions for instant cross-machine sync */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
     loadDashboardData();
 
-    // useDataSync pulls from DB and fires this event when localStorage is ready
-    const handleSync = () => {
-      // Small delay to ensure localStorage is fully written
-      setTimeout(() => loadDashboardData(), 100);
-    };
+    const handleSync = () => loadDashboardData();
+
+    // Realtime subscriptions for instant updates across browsers
+    const channel = supabase
+      .channel('dashboard-rt-v3')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, handleSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, handleSync)
+      .subscribe();
+
+    // Also listen for local saves
+    window.addEventListener('rp-store-save', handleSync);
     window.addEventListener('rp-data-synced', handleSync);
-    window.addEventListener('storage', handleSync);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') loadDashboardData();
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Periodic fallback every 3s (reads localStorage which useDataSync keeps fresh)
-    const interval = setInterval(() => loadDashboardData(), 3000);
+    // Periodic refresh every 10s as safety net
+    const interval = setInterval(() => loadDashboardData(), 10000);
 
     return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('rp-store-save', handleSync);
       window.removeEventListener('rp-data-synced', handleSync);
-      window.removeEventListener('storage', handleSync);
       document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(interval);
     };
