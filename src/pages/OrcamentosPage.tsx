@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { store } from '@/lib/store';
 import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 import { useCustos } from '@/hooks/useCustos';
-import { useUsuarios } from '@/hooks/useUsuarios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +9,6 @@ import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
@@ -79,9 +77,6 @@ export default function OrcamentosPage() {
   const [viewOrc, setViewOrc] = useState<Orcamento | null>(null);
   const [editingOrc, setEditingOrc] = useState<Orcamento | null>(null);
   const [searchList, setSearchList] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [deleteMotivo, setDeleteMotivo] = useState('');
 
   // Form state
   const [clienteId, setClienteId] = useState('');
@@ -143,7 +138,6 @@ export default function OrcamentosPage() {
     };
   }, []);
   const costData = useCustos();
-  const { usuarios: dbUsuarios } = useUsuarios();
   const { tubos, eixos, conjuntos, revestimentos, encaixes } = costData;
 
   const clienteSelecionado = clientes.find(c => c.id === clienteId);
@@ -306,19 +300,9 @@ export default function OrcamentosPage() {
   };
 
   const deleteOrcamento = (id: string) => {
-    setDeleteTargetId(id);
-    setDeleteMotivo('');
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteOrcamento = () => {
-    if (!deleteTargetId) return;
-    if (!deleteMotivo.trim()) { toast.error('Informe o motivo da exclusão!'); return; }
-    const orc = orcamentos.find(o => o.id === deleteTargetId);
-    const updated = orcamentos.filter(o => o.id !== deleteTargetId);
+    const updated = orcamentos.filter(o => o.id !== id);
     store.saveOrcamentos(updated); setOrcamentos(updated);
-    setDeleteDialogOpen(false);
-    toast.success('Orçamento removido! Motivo registrado.');
+    toast.success('Orçamento removido!');
   };
 
   const convertToPedido = (orc: Orcamento) => {
@@ -521,8 +505,9 @@ export default function OrcamentosPage() {
       valorIPI: acc.valorIPI + i.valorIPI,
     }), { valorLiquido: 0, pis: 0, cofins: 0, icmsOrigem: 0, icmsDestino: 0, valorTotal: 0, valorIPI: 0 });
 
-    // Find vendedor info from DB
-    const vendedorUser = dbUsuarios.find(u => u.nome === viewOrc.vendedor);
+    // Find vendedor info
+    const usuarios = store.getUsuarios();
+    const vendedorUser = usuarios.find(u => u.nome === viewOrc.vendedor);
 
     return (
       <div>
@@ -1258,26 +1243,6 @@ export default function OrcamentosPage() {
           </tbody>
         </table>
       </div>
-
-      {/* Dialog de exclusão */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Excluir Orçamento</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Informe o motivo da exclusão antes de prosseguir:</p>
-            <Textarea 
-              value={deleteMotivo} 
-              onChange={e => setDeleteMotivo(e.target.value)} 
-              placeholder="Motivo da exclusão..." 
-              rows={3}
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Voltar</Button>
-              <Button variant="destructive" onClick={confirmDeleteOrcamento}>Confirmar Exclusão</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

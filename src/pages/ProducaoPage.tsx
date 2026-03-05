@@ -32,9 +32,6 @@ export default function ProducaoPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [deleteMotivo, setDeleteMotivo] = useState('');
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
 
@@ -65,32 +62,14 @@ export default function ProducaoPage() {
   const confirmCancelarOS = () => {
     if (!cancelTarget) return;
     if (!cancelMotivo.trim()) { toast.error('Informe o motivo do cancelamento!'); return; }
-    saveOrdens(ordens.map(o => o.id === cancelTarget.id ? {
-      ...o,
-      status: 'ABERTA' as any,
-      motivoCancelamento: cancelMotivo.trim(),
-      dataCancelamento: new Date().toISOString(),
-      statusHistory: [...(o.statusHistory || []), { status: 'CANCELADA', date: new Date().toISOString() }],
-    } : o));
+    saveOrdens(ordens.filter(o => o.id !== cancelTarget.id));
     const pedidos = store.getPedidos();
     store.savePedidos(pedidos.map(p => p.id === cancelTarget.pedidoId ? { ...p, status: 'PENDENTE' as const } : p));
     setCancelDialogOpen(false);
-    toast.success('O.S. cancelada. Motivo registrado no relatório.');
+    toast.success('O.S. cancelada. Pedido voltou para pendente.'); navigate('/pedidos');
   };
 
-  const deleteOS = (id: string) => {
-    setDeleteTargetId(id);
-    setDeleteMotivo('');
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteOS = () => {
-    if (!deleteTargetId) return;
-    if (!deleteMotivo.trim()) { toast.error('Informe o motivo da exclusão!'); return; }
-    saveOrdens(ordens.filter(o => o.id !== deleteTargetId));
-    setDeleteDialogOpen(false);
-    toast.success('O.S. excluída! Motivo registrado.');
-  };
+  const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
 
   const openView = (os: OrdemServico) => { setCurrent(os); setView('view'); };
   const openEdit = (os: OrdemServico) => { setCurrent(os); setEditItems([...os.itens]); setView('edit'); };
@@ -240,10 +219,9 @@ export default function ProducaoPage() {
         <div className="bg-card border rounded-lg p-6 max-w-6xl mx-auto print:border-0 print:shadow-none print:max-w-none print:p-2">
           {/* Header: O.S. number top-left */}
           <div className="text-sm font-bold mb-1">O.S. Nº {current.numero}</div>
-          <div className="grid grid-cols-5 gap-2 text-xs mb-2 border rounded p-2">
+          <div className="grid grid-cols-4 gap-2 text-xs mb-2 border rounded p-2">
             <div><span className="font-semibold">EMPRESA:</span> {current.empresa}</div>
             <div><span className="font-semibold">PEDIDO:</span> {current.pedidoNumero}</div>
-            <div><span className="font-semibold">VENDEDOR:</span> {(current as any).vendedor || '-'}</div>
             <div><span className="font-semibold">EMISSÃO:</span> {current.emissao}</div>
             <div><span className="font-semibold">ENTREGA:</span> {current.entrega}</div>
           </div>
@@ -271,10 +249,9 @@ export default function ProducaoPage() {
         </div>
         <div className="bg-card border rounded-lg p-6">
           <h2 className="text-lg font-bold mb-4">O.S. {current.numero}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
             <div><span className="text-muted-foreground">Empresa:</span> <strong>{current.empresa}</strong></div>
             <div><span className="text-muted-foreground">Pedido:</span> <strong>{current.pedidoNumero}</strong></div>
-            <div><span className="text-muted-foreground">Vendedor:</span> <strong>{(current as any).vendedor || '-'}</strong></div>
             <div><span className="text-muted-foreground">Emissão:</span> <strong>{current.emissao}</strong></div>
             <div><span className="text-muted-foreground">Entrega:</span> <strong>{current.entrega}</strong></div>
             <div><span className="text-muted-foreground">Dias Propostos:</span> <strong>{current.diasPropostos}</strong></div>
@@ -326,7 +303,6 @@ export default function ProducaoPage() {
           <thead><tr className="border-b bg-muted/50">
             <th className="text-left p-3 font-medium">O.S.</th>
             <th className="text-left p-3 font-medium">Empresa</th>
-            <th className="text-left p-3 font-medium hidden md:table-cell">Vendedor</th>
             <th className="text-left p-3 font-medium hidden md:table-cell">Pedido</th>
             <th className="text-left p-3 font-medium hidden md:table-cell">Emissão</th>
             <th className="text-left p-3 font-medium hidden lg:table-cell">Entrega</th>
@@ -344,7 +320,6 @@ export default function ProducaoPage() {
                 <tr key={os.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 font-mono font-medium">{os.numero}</td>
                   <td className="p-3">{os.empresa}</td>
-                  <td className="p-3 hidden md:table-cell text-muted-foreground">{(os as any).vendedor || '-'}</td>
                   <td className="p-3 hidden md:table-cell font-mono">{os.pedidoNumero}</td>
                   <td className="p-3 hidden md:table-cell">{os.emissao}</td>
                   <td className="p-3 hidden lg:table-cell">{os.entrega}</td>
@@ -374,7 +349,7 @@ export default function ProducaoPage() {
                 </tr>
               );
             })}
-            {filteredOrdens.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Nenhuma O.S. criada.</td></tr>}
+            {filteredOrdens.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhuma O.S. criada.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -394,21 +369,6 @@ export default function ProducaoPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Voltar</Button>
               <Button variant="destructive" onClick={confirmCancelarOS}>Confirmar Cancelamento</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de exclusão */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Excluir O.S.</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Informe o motivo da exclusão antes de prosseguir:</p>
-            <Textarea value={deleteMotivo} onChange={e => setDeleteMotivo(e.target.value)} placeholder="Motivo da exclusão..." rows={3} />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Voltar</Button>
-              <Button variant="destructive" onClick={confirmDeleteOS}>Confirmar Exclusão</Button>
             </div>
           </div>
         </DialogContent>
