@@ -58,7 +58,16 @@ function AppContent() {
             setSessionToken(null);
           }
           setChecking(false);
+        }).catch(() => {
+          setChecking(false);
         });
+      }).catch(() => {
+        // Session invalid or network error - show login
+        localStorage.removeItem('rp_logged_user');
+        localStorage.removeItem('rp_session_token');
+        setLoggedUserId(null);
+        setSessionToken(null);
+        setChecking(false);
       });
     } else {
       setChecking(false);
