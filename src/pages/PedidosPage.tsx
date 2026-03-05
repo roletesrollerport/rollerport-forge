@@ -5,9 +5,18 @@ import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamen
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
+
+const daysSince = (dateStr: string): number => {
+  if (!dateStr) return 0;
+  const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr.split('/').reverse().join('-'));
+  if (isNaN(d.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+};
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
@@ -154,6 +163,9 @@ export default function PedidosPage() {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<View>('list');
   const [currentPedido, setCurrentPedido] = useState<Pedido | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Pedido | null>(null);
+  const [cancelMotivo, setCancelMotivo] = useState('');
 
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
@@ -184,9 +196,10 @@ export default function PedidosPage() {
       orcamentoNumero: orc.numero, clienteNome: orc.clienteNome,
       dataEntrega: orc.previsaoEntrega || orc.dataEntrega, status: 'PENDENTE',
       valorTotal: orc.valorTotal, createdAt: new Date().toISOString().split('T')[0],
+      statusHistory: [{ status: 'PENDENTE', date: new Date().toISOString() }],
     };
     const updatedPedidos = [...pedidos, pedido]; store.savePedidos(updatedPedidos); setPedidos(updatedPedidos);
-    const updatedOrcs = orcamentos.map(o => o.id === orc.id ? { ...o, status: 'APROVADO' as const } : o);
+    const updatedOrcs = orcamentos.map(o => o.id === orc.id ? { ...o, status: 'APROVADO' as const, dataAprovacao: new Date().toISOString() } : o);
     store.saveOrcamentos(updatedOrcs); setOrcamentos(updatedOrcs);
     const notifs = store.getNotificacoes();
     notifs.push({ id: store.nextId('notif'), tipo: 'pedido', titulo: `Novo Pedido ${pedido.numero}`, mensagem: `Pedido gerado para ${orc.clienteNome} - ${fmt(orc.valorTotal)}`, lida: false, createdAt: new Date().toISOString() });
@@ -194,14 +207,27 @@ export default function PedidosPage() {
   };
 
   const updateStatus = (id: string, status: StatusPedido) => {
-    const updated = pedidos.map(p => p.id === id ? { ...p, status } : p);
+    const updated = pedidos.map(p => {
+      if (p.id !== id) return p;
+      const history = [...(p.statusHistory || []), { status, date: new Date().toISOString() }];
+      return { ...p, status, statusHistory: history };
+    });
     store.savePedidos(updated); setPedidos(updated); toast.success('Status atualizado!');
   };
 
   const cancelarPedido = (pedido: Pedido) => {
-    const updatedPedidos = pedidos.filter(p => p.id !== pedido.id); store.savePedidos(updatedPedidos); setPedidos(updatedPedidos);
-    const updatedOrcs = orcamentos.map(o => o.id === pedido.orcamentoId ? { ...o, status: 'RASCUNHO' as const } : o);
+    setCancelTarget(pedido);
+    setCancelMotivo('');
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancelarPedido = () => {
+    if (!cancelTarget) return;
+    if (!cancelMotivo.trim()) { toast.error('Informe o motivo do cancelamento!'); return; }
+    const updatedPedidos = pedidos.filter(p => p.id !== cancelTarget.id); store.savePedidos(updatedPedidos); setPedidos(updatedPedidos);
+    const updatedOrcs = orcamentos.map(o => o.id === cancelTarget.orcamentoId ? { ...o, status: 'RASCUNHO' as const } : o);
     store.saveOrcamentos(updatedOrcs); setOrcamentos(updatedOrcs);
+    setCancelDialogOpen(false);
     toast.success('Pedido cancelado. Orçamento voltou para edição.'); navigate('/orcamentos');
   };
 
@@ -349,6 +375,7 @@ export default function PedidosPage() {
               <thead><tr className="border-b bg-muted/50">
                 <th className="text-left p-3 font-medium">Nº</th><th className="text-left p-3 font-medium">Cliente</th>
                 <th className="text-left p-3 font-medium hidden md:table-cell">Data</th><th className="text-left p-3 font-medium">Status</th>
+                <th className="text-left p-3 font-medium hidden md:table-cell">Dias</th>
                 <th className="text-right p-3 font-medium">Valor</th><th className="p-3 w-40">Ações</th>
               </tr></thead>
               <tbody>
@@ -358,6 +385,9 @@ export default function PedidosPage() {
                     <td className="p-3">{o.clienteNome}</td>
                     <td className="p-3 hidden md:table-cell">{o.dataOrcamento || o.createdAt}</td>
                     <td className="p-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground uppercase">{o.status}</span></td>
+                    <td className="p-3 hidden md:table-cell">
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{daysSince(o.createdAt)}d</span>
+                    </td>
                     <td className="p-3 text-right font-mono">{fmt(o.valorTotal)}</td>
                     <td className="p-3">
                       <div className="flex gap-1 justify-end">
@@ -384,17 +414,28 @@ export default function PedidosPage() {
               <th className="text-left p-3 font-medium">Empresa</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
               <th className="text-left p-3 font-medium min-w-[180px]">Status</th>
+              <th className="text-left p-3 font-medium hidden md:table-cell">Dias</th>
               <th className="text-right p-3 font-medium">Valor</th>
               <th className="p-3 w-52">Ações</th>
             </tr></thead>
             <tbody>
-              {filteredPedidos.map(p => (
+              {filteredPedidos.map(p => {
+                const days = daysSince(p.createdAt);
+                const lastStatusChange = p.statusHistory?.length ? p.statusHistory[p.statusHistory.length - 1] : null;
+                const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
+                return (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 font-mono font-medium">{p.numero}</td>
                   <td className="p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
                   <td className="p-3">{p.clienteNome}</td>
                   <td className="p-3 hidden md:table-cell">{p.createdAt}</td>
                   <td className="p-3"><StatusProgressBar status={p.status} /></td>
+                  <td className="p-3 hidden md:table-cell">
+                    <div className="flex flex-col text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Total: {days}d</span>
+                      <span className="text-[10px]">No status: {daysInStatus}d</span>
+                    </div>
+                  </td>
                   <td className="p-3 text-right font-mono">{fmt(p.valorTotal)}</td>
                   <td className="p-3">
                     <div className="flex gap-1 justify-end">
@@ -409,12 +450,33 @@ export default function PedidosPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
-              {filteredPedidos.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
+                );
+              })}
+              {filteredPedidos.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Dialog de cancelamento */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Cancelar Pedido {cancelTarget?.numero}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Informe o motivo do cancelamento antes de prosseguir:</p>
+            <Textarea 
+              value={cancelMotivo} 
+              onChange={e => setCancelMotivo(e.target.value)} 
+              placeholder="Motivo do cancelamento..." 
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Voltar</Button>
+              <Button variant="destructive" onClick={confirmCancelarPedido}>Confirmar Cancelamento</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -62,13 +62,14 @@ function StatCard({ icon: Icon, label, value, color, onClick }: { icon: any; lab
 /* ------------------------------------------------------------------ */
 /*  Status progress bar                                                */
 /* ------------------------------------------------------------------ */
-function StatusBar({ label, value, max, color, onClick }: { label: string; value: number; max: number; color: string; onClick?: (e?: React.MouseEvent) => void }) {
+function StatusBar({ label, value, max, color, extra, onClick }: { label: string; value: number; max: number; color: string; extra?: string; onClick?: (e?: React.MouseEvent) => void }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <button onClick={onClick} className="flex items-center gap-3 text-xs w-full hover:bg-muted/30 rounded px-1 py-0.5 transition-colors">
       <span className="w-28 text-muted-foreground truncate text-left">{label}</span>
       <div className="flex-1"><Progress value={pct} className={`h-2 ${color}`} /></div>
       <span className="w-8 text-right font-mono font-medium">{value}</span>
+      {extra && <span className="w-12 text-right text-[10px] text-muted-foreground">{extra}</span>}
     </button>
   );
 }
@@ -245,6 +246,23 @@ export default function DashboardPage() {
   const globalOs = getOsStats(isMaster ? data.os : getUserOS(currentUserName));
 
   const taxaConversao = globalOrc.total > 0 ? +((globalOrc.aprovado / globalOrc.total) * 100).toFixed(1) : 0;
+
+  // Day averages helper
+  const daysSince = (dateStr: string): number => {
+    if (!dateStr) return 0;
+    const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr.split('/').reverse().join('-'));
+    if (isNaN(d.getTime())) return 0;
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+  };
+  const avgDays = (items: any[], field = 'createdAt') => {
+    if (items.length === 0) return '';
+    const total = items.reduce((s: number, i: any) => s + daysSince(i[field] || i.createdAt), 0);
+    return `~${Math.round(total / items.length)}d`;
+  };
+
+  const orcByStatus = (status: string) => (isMaster ? data.orcamentos : getUserOrcs(currentUserName)).filter((o: any) => o.status === status);
+  const pedByStatus = (status: string) => (isMaster ? data.pedidos : getUserPeds(currentUserName)).filter((p: any) => p.status === status);
+  const osByStatus = (status: string) => (isMaster ? data.os : getUserOS(currentUserName)).filter((o: any) => o.status === status);
 
   /* ---------------------------------------------------------------- */
   /*  Meta helpers                                                     */
@@ -701,9 +719,9 @@ export default function DashboardPage() {
             <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
           </CardHeader>
           <CardContent className="space-y-3">
-            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
-            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
-            <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
+            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
+            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
+            <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
           </CardContent>
         </Card>
 
@@ -712,10 +730,10 @@ export default function DashboardPage() {
             <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
           </CardHeader>
           <CardContent className="space-y-3">
-            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
-            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
-            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
-            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
+            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
+            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
+            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
+            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('CONCLUIDO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
           </CardContent>
         </Card>
 
@@ -724,9 +742,9 @@ export default function DashboardPage() {
             <h2 className="font-semibold flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
           </CardHeader>
           <CardContent className="space-y-3">
-            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
-            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
-            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
+            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
+            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
             <StatusBar label="Entregue" value={globalOs.total > 0 ? globalOs.concluida : 0} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
           </CardContent>
         </Card>
