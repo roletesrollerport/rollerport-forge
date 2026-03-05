@@ -317,14 +317,41 @@ export default function DashboardPage() {
   /* ================================================================ */
   /*  VENDOR DETAIL / PRINT VIEW                                       */
   /* ================================================================ */
+  // Helper: find date a status was reached from statusHistory
+  const findStatusDate = (item: any, statusName: string) => {
+    if (!item?.statusHistory) return null;
+    const entry = item.statusHistory.find((h: any) => h.status === statusName);
+    return entry ? entry.date : null;
+  };
+  const fmtDate = (d: string | null | undefined) => {
+    if (!d) return '—';
+    try {
+      const dt = d.includes('T') ? new Date(d) : new Date(d.split('/').reverse().join('-'));
+      if (isNaN(dt.getTime())) return d;
+      return dt.toLocaleDateString('pt-BR');
+    } catch { return d; }
+  };
+  const daysBetweenDates = (a: string | null | undefined, b: string | null | undefined): string => {
+    if (!a || !b) return '—';
+    try {
+      const da = a.includes('T') ? new Date(a) : new Date(a.split('/').reverse().join('-'));
+      const db = b.includes('T') ? new Date(b) : new Date(b.split('/').reverse().join('-'));
+      if (isNaN(da.getTime()) || isNaN(db.getTime())) return '—';
+      const diff = Math.max(0, Math.floor((db.getTime() - da.getTime()) / 86400000));
+      return `${diff}d`;
+    } catch { return '—'; }
+  };
+
   if ((dashView === 'vendor-detail' || dashView === 'vendor-print') && selectedVendor) {
     const userOrcs = getUserOrcs(selectedVendor);
     const userPeds = getUserPeds(selectedVendor);
+    const userOS = getUserOS(selectedVendor);
     const orcS = getOrcStats(userOrcs);
     const pedS = getPedStats(userPeds);
     const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
     const meta = metas.find(m => m.vendedor === selectedVendor);
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    const metaRestante = meta && meta.metaMensal > 0 ? Math.max(0, meta.metaMensal - totalVendido) : 0;
     const conversao = orcS.total > 0 ? ((orcS.aprovado / orcS.total) * 100).toFixed(1) : '0';
 
     return (
@@ -338,9 +365,9 @@ export default function DashboardPage() {
             <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
           )}
         </div>
-        <div className="bg-card border rounded-lg p-6 max-w-4xl mx-auto print:border-0 print:shadow-none">
+        <div className="bg-card border rounded-lg p-6 max-w-7xl mx-auto print:border-0 print:shadow-none">
           <h2 className="text-xl font-bold mb-6">Vendedor: {selectedVendor}</h2>
-          <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm mb-6">
             <div className="border rounded p-3"><span className="text-muted-foreground">Orçamentos:</span> <strong>{orcS.total}</strong></div>
             <div className="border rounded p-3"><span className="text-muted-foreground">Aprovados:</span> <strong className="text-success">{orcS.aprovado}</strong></div>
             <div className="border rounded p-3"><span className="text-muted-foreground">Pedidos:</span> <strong>{pedS.total}</strong></div>
@@ -349,82 +376,150 @@ export default function DashboardPage() {
             <div className="border rounded p-3">
               <span className="text-muted-foreground">Meta:</span>
               {meta && meta.metaMensal > 0 ? (
-                <div className="flex items-center gap-2 mt-1"><Progress value={metaPct} className="h-3 flex-1" /><strong>{metaPct.toFixed(0)}%</strong></div>
+                <div className="space-y-1 mt-1">
+                  <div className="flex items-center gap-2"><Progress value={metaPct} className="h-3 flex-1" /><strong>{metaPct.toFixed(0)}%</strong></div>
+                  <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
+                  <p className="text-[11px] font-medium">Falta: {fmt(metaRestante)}</p>
+                </div>
               ) : <strong> Não definida</strong>}
             </div>
           </div>
 
           <h3 className="font-semibold text-sm mt-4 mb-2">Orçamentos</h3>
+          <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse mb-4">
             <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th><th className="text-left p-2">Data</th>
-              <th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
+              <th className="text-left p-2 whitespace-nowrap">Nº</th><th className="text-left p-2 whitespace-nowrap">Cliente</th><th className="text-left p-2 whitespace-nowrap">Criação</th>
+              <th className="text-left p-2 whitespace-nowrap">Aprovação</th><th className="text-left p-2 whitespace-nowrap">Dias</th>
+              <th className="text-right p-2 whitespace-nowrap">Valor</th><th className="text-left p-2 whitespace-nowrap">Status</th><th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
               {isMaster && <th className="p-2 w-20 print:hidden">Ações</th>}
             </tr></thead>
             <tbody>
-              {userOrcs.map((o: any) => (
-                <tr key={o.id} className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-mono">{o.numero}</td><td className="p-2">{o.clienteNome}</td>
-                  <td className="p-2">{o.dataOrcamento || o.createdAt}</td>
-                  <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
-                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
-                  {isMaster && (
-                    <td className="p-2 print:hidden">
-                      <div className="flex gap-1">
-                        <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
-                        <button onClick={() => deleteOrcamento(o.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-              {userOrcs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhum orçamento.</td></tr>}
+              {userOrcs.map((o: any) => {
+                const criacao = o.dataOrcamento || o.createdAt;
+                const aprovacao = o.dataAprovacao || findStatusDate(o, 'APROVADO');
+                return (
+                  <tr key={o.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono">{o.numero}</td><td className="p-2">{o.clienteNome}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(criacao)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(aprovacao)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, aprovacao)}</td>
+                    <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
+                    <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
+                    <td className="p-2 text-destructive max-w-[150px] truncate" title={o.motivoCancelamento || ''}>{o.status === 'REPROVADO' ? (o.motivoCancelamento || '—') : ''}</td>
+                    {isMaster && (
+                      <td className="p-2 print:hidden">
+                        <div className="flex gap-1">
+                          <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
+                          <button onClick={() => deleteOrcamento(o.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              {userOrcs.length === 0 && <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">Nenhum orçamento.</td></tr>}
             </tbody>
           </table>
+          </div>
 
           <h3 className="font-semibold text-sm mt-4 mb-2">Pedidos</h3>
-          <table className="w-full text-xs border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse mb-4">
             <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th>
-              <th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
+              <th className="text-left p-2 whitespace-nowrap">Nº</th><th className="text-left p-2 whitespace-nowrap">Cliente</th>
+              <th className="text-left p-2 whitespace-nowrap">Criação</th><th className="text-left p-2 whitespace-nowrap">Confirmado</th>
+              <th className="text-left p-2 whitespace-nowrap">Produção</th><th className="text-left p-2 whitespace-nowrap">Concluído</th>
+              <th className="text-left p-2 whitespace-nowrap">Entregue</th><th className="text-left p-2 whitespace-nowrap">Dias</th>
+              <th className="text-right p-2 whitespace-nowrap">Valor</th><th className="text-left p-2 whitespace-nowrap">Status</th>
+              <th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
               {isMaster && <th className="p-2 w-20 print:hidden">Ações</th>}
             </tr></thead>
             <tbody>
-              {userPeds.map((p: any) => (
-                <tr key={p.id} className="border-b hover:bg-muted/30">
-                  <td className="p-2 font-mono">{p.numero}</td><td className="p-2">{p.clienteNome}</td>
-                  <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
-                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{p.status}</span></td>
-                  {isMaster && (
-                    <td className="p-2 print:hidden">
-                      <div className="flex gap-1">
-                        <button onClick={() => navigate('/pedidos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
-                        <button onClick={() => deletePedido(p.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-              {userPeds.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
+              {userPeds.map((p: any) => {
+                const criacao = p.createdAt;
+                const dtConfirmado = findStatusDate(p, 'CONFIRMADO');
+                const dtProducao = findStatusDate(p, 'EM_PRODUCAO');
+                const dtConcluido = findStatusDate(p, 'CONCLUIDO');
+                const dtEntregue = findStatusDate(p, 'ENTREGUE');
+                const lastDate = dtEntregue || dtConcluido || dtProducao || dtConfirmado || null;
+                return (
+                  <tr key={p.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono">{p.numero}</td><td className="p-2">{p.clienteNome}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(criacao)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(dtConfirmado)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(dtProducao)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluido)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(dtEntregue)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, lastDate || new Date().toISOString())}</td>
+                    <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
+                    <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{p.status?.replace('_', ' ')}</span></td>
+                    <td className="p-2 text-destructive max-w-[150px] truncate" title={p.motivoCancelamento || ''}>{p.motivoCancelamento || ''}</td>
+                    {isMaster && (
+                      <td className="p-2 print:hidden">
+                        <div className="flex gap-1">
+                          <button onClick={() => navigate('/pedidos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
+                          <button onClick={() => deletePedido(p.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              {userPeds.length === 0 && <tr><td colSpan={12} className="p-4 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
             </tbody>
           </table>
+          </div>
+
+          <h3 className="font-semibold text-sm mt-4 mb-2">Ordens de Serviço</h3>
+          <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead><tr className="border-b bg-muted/50">
+              <th className="text-left p-2 whitespace-nowrap">O.S.</th><th className="text-left p-2 whitespace-nowrap">Empresa</th><th className="text-left p-2 whitespace-nowrap">Pedido</th>
+              <th className="text-left p-2 whitespace-nowrap">Emissão</th><th className="text-left p-2 whitespace-nowrap">Em Andamento</th><th className="text-left p-2 whitespace-nowrap">Concluída</th>
+              <th className="text-left p-2 whitespace-nowrap">Dias</th><th className="text-left p-2 whitespace-nowrap">Status</th><th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
+            </tr></thead>
+            <tbody>
+              {userOS.map((os: any) => {
+                const emissao = os.emissao || os.createdAt;
+                const dtAndamento = findStatusDate(os, 'EM_ANDAMENTO');
+                const dtConcluida = findStatusDate(os, 'CONCLUIDA');
+                const lastOs = dtConcluida || dtAndamento || null;
+                return (
+                  <tr key={os.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono">{os.numero}</td><td className="p-2">{os.empresa}</td><td className="p-2">{os.pedidoNumero}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(emissao)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(dtAndamento)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluida)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(emissao, lastOs || new Date().toISOString())}</td>
+                    <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
+                    <td className="p-2 text-destructive max-w-[150px] truncate" title={os.motivoCancelamento || ''}>{os.motivoCancelamento || ''}</td>
+                  </tr>
+                );
+              })}
+              {userOS.length === 0 && <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">Nenhuma O.S.</td></tr>}
+            </tbody>
+          </table>
+          </div>
         </div>
         {dashView === 'vendor-print' && (
-          <style>{`@media print { @page { margin: 1cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+          <style>{`@media print { @page { margin: 0.5cm; size: landscape; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
         )}
       </div>
     );
   }
 
   /* ================================================================ */
-  /*  REPORT DETAIL                                                    */
+  /*  REPORT DETAIL — full timeline tracking                           */
   /* ================================================================ */
+
   if (dashView === 'report-detail' || dashView === 'report-print') {
     const fv = selectedReportVendor;
     const reportOrcs = fv ? getUserOrcs(fv) : (isMaster ? data.orcamentos : getUserOrcs(currentUserName));
     const reportPeds = fv ? getUserPeds(fv) : (isMaster ? data.pedidos : getUserPeds(currentUserName));
     const reportOS = fv ? getUserOS(fv) : (isMaster ? data.os : getUserOS(currentUserName));
     const vendedores = dbUsuarios.filter(u => u.nivel !== 'master' && u.ativo);
+    const totalVendidoReport = reportPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
 
     return (
       <div>
@@ -440,75 +535,146 @@ export default function DashboardPage() {
             </select>
           )}
         </div>
-        <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none space-y-6">
+        <div className="bg-card border rounded-lg p-6 max-w-7xl mx-auto print:border-0 print:shadow-none space-y-6">
           <h2 className="text-xl font-bold">Relatório Comercial {fv ? `- ${fv}` : '- Todos'}</h2>
 
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
+            <div className="border rounded-lg p-3"><p className="text-muted-foreground">Orçamentos</p><p className="text-2xl font-bold">{reportOrcs.length}</p></div>
+            <div className="border rounded-lg p-3"><p className="text-muted-foreground">Pedidos</p><p className="text-2xl font-bold">{reportPeds.length}</p></div>
+            <div className="border rounded-lg p-3"><p className="text-muted-foreground">Total Vendido</p><p className="text-2xl font-bold text-success">{fmt(totalVendidoReport)}</p></div>
+            <div className="border rounded-lg p-3"><p className="text-muted-foreground">O.S.</p><p className="text-2xl font-bold">{reportOS.length}</p></div>
+          </div>
+
+          {/* Orçamentos with timeline */}
           <div>
             <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Orçamentos ({reportOrcs.length})</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th><th className="text-left p-2">Vendedor</th>
-                  <th className="text-left p-2">Data</th><th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
+                  <th className="text-left p-2 whitespace-nowrap">Nº</th>
+                  <th className="text-left p-2 whitespace-nowrap">Cliente</th>
+                  <th className="text-left p-2 whitespace-nowrap">Vendedor</th>
+                  <th className="text-left p-2 whitespace-nowrap">Criação</th>
+                  <th className="text-left p-2 whitespace-nowrap">Aprovação</th>
+                  <th className="text-left p-2 whitespace-nowrap">Dias até Aprov.</th>
+                  <th className="text-right p-2 whitespace-nowrap">Valor</th>
+                  <th className="text-left p-2 whitespace-nowrap">Status</th>
+                  <th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
                 </tr></thead>
                 <tbody>
-                  {reportOrcs.map((o: any) => (
-                    <tr key={o.id} className="border-b hover:bg-muted/30">
-                      <td className="p-2 font-mono">{o.numero}</td><td className="p-2">{o.clienteNome}</td><td className="p-2">{o.vendedor}</td>
-                      <td className="p-2">{o.dataOrcamento || o.createdAt}</td>
-                      <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
-                      <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
-                    </tr>
-                  ))}
+                  {reportOrcs.map((o: any) => {
+                    const criacao = o.dataOrcamento || o.createdAt;
+                    const aprovacao = o.dataAprovacao || findStatusDate(o, 'APROVADO');
+                    return (
+                      <tr key={o.id} className="border-b hover:bg-muted/30">
+                        <td className="p-2 font-mono">{o.numero}</td>
+                        <td className="p-2">{o.clienteNome}</td>
+                        <td className="p-2">{o.vendedor}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(criacao)}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(aprovacao)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, aprovacao)}</td>
+                        <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
+                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
+                        <td className="p-2 text-destructive max-w-[200px] truncate" title={o.motivoCancelamento || ''}>{o.status === 'REPROVADO' ? (o.motivoCancelamento || '—') : ''}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
+          {/* Pedidos with timeline */}
           <div>
             <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Pedidos ({reportPeds.length})</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th>
-                  <th className="text-left p-2">Entrega</th><th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
+                  <th className="text-left p-2 whitespace-nowrap">Nº</th>
+                  <th className="text-left p-2 whitespace-nowrap">Cliente</th>
+                  <th className="text-left p-2 whitespace-nowrap">Criação</th>
+                  <th className="text-left p-2 whitespace-nowrap">Confirmado</th>
+                  <th className="text-left p-2 whitespace-nowrap">Produção</th>
+                  <th className="text-left p-2 whitespace-nowrap">Concluído</th>
+                  <th className="text-left p-2 whitespace-nowrap">Entregue</th>
+                  <th className="text-left p-2 whitespace-nowrap">Dias Total</th>
+                  <th className="text-right p-2 whitespace-nowrap">Valor</th>
+                  <th className="text-left p-2 whitespace-nowrap">Status</th>
+                  <th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
                 </tr></thead>
                 <tbody>
-                  {reportPeds.map((p: any) => (
-                    <tr key={p.id} className="border-b hover:bg-muted/30">
-                      <td className="p-2 font-mono">{p.numero}</td><td className="p-2">{p.clienteNome}</td>
-                      <td className="p-2">{p.dataEntrega}</td>
-                      <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
-                      <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{p.status}</span></td>
-                    </tr>
-                  ))}
+                  {reportPeds.map((p: any) => {
+                    const criacao = p.createdAt;
+                    const dtConfirmado = findStatusDate(p, 'CONFIRMADO');
+                    const dtProducao = findStatusDate(p, 'EM_PRODUCAO');
+                    const dtConcluido = findStatusDate(p, 'CONCLUIDO');
+                    const dtEntregue = findStatusDate(p, 'ENTREGUE');
+                    const lastDate = dtEntregue || dtConcluido || dtProducao || dtConfirmado || null;
+                    return (
+                      <tr key={p.id} className="border-b hover:bg-muted/30">
+                        <td className="p-2 font-mono">{p.numero}</td>
+                        <td className="p-2">{p.clienteNome}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(criacao)}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(dtConfirmado)}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(dtProducao)}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluido)}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(dtEntregue)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, lastDate || new Date().toISOString())}</td>
+                        <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
+                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : p.status === 'CONCLUIDO' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>{p.status?.replace('_', ' ')}</span></td>
+                        <td className="p-2 text-destructive max-w-[200px] truncate" title={p.motivoCancelamento || ''}>{p.motivoCancelamento || ''}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
+          {/* O.S. with timeline */}
           <div>
             <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Ordens de Serviço ({reportOS.length})</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="text-left p-2">O.S.</th><th className="text-left p-2">Empresa</th><th className="text-left p-2">Pedido</th>
-                  <th className="text-left p-2">Status</th>
+                  <th className="text-left p-2 whitespace-nowrap">O.S.</th>
+                  <th className="text-left p-2 whitespace-nowrap">Empresa</th>
+                  <th className="text-left p-2 whitespace-nowrap">Pedido</th>
+                  <th className="text-left p-2 whitespace-nowrap">Emissão</th>
+                  <th className="text-left p-2 whitespace-nowrap">Em Andamento</th>
+                  <th className="text-left p-2 whitespace-nowrap">Concluída</th>
+                  <th className="text-left p-2 whitespace-nowrap">Dias Total</th>
+                  <th className="text-left p-2 whitespace-nowrap">Status</th>
+                  <th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
                 </tr></thead>
                 <tbody>
-                  {reportOS.map((os: any) => (
-                    <tr key={os.id} className="border-b hover:bg-muted/30">
-                      <td className="p-2 font-mono">{os.numero}</td><td className="p-2">{os.empresa}</td><td className="p-2">{os.pedidoNumero}</td>
-                      <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
-                    </tr>
-                  ))}
+                  {reportOS.map((os: any) => {
+                    const emissao = os.emissao || os.createdAt;
+                    const dtAndamento = findStatusDate(os, 'EM_ANDAMENTO');
+                    const dtConcluida = findStatusDate(os, 'CONCLUIDA');
+                    const lastOs = dtConcluida || dtAndamento || null;
+                    return (
+                      <tr key={os.id} className="border-b hover:bg-muted/30">
+                        <td className="p-2 font-mono">{os.numero}</td>
+                        <td className="p-2">{os.empresa}</td>
+                        <td className="p-2">{os.pedidoNumero}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(emissao)}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(dtAndamento)}</td>
+                        <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluida)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(emissao, lastOs || new Date().toISOString())}</td>
+                        <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
+                        <td className="p-2 text-destructive max-w-[200px] truncate" title={os.motivoCancelamento || ''}>{os.motivoCancelamento || ''}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
         {dashView === 'report-print' && (
-          <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+          <style>{`@media print { @page { margin: 0.5cm; size: landscape; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
         )}
       </div>
     );
@@ -667,6 +833,7 @@ export default function DashboardPage() {
                   <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
+                <p className="text-[11px] font-medium text-primary">Falta: {fmt(Math.max(0, meta.metaMensal - totalVendido))}</p>
               </>
             )}
           </div>
@@ -695,7 +862,14 @@ export default function DashboardPage() {
       {/* TOPO */}
       <div className="mb-2">
         <h1 className="page-header">Início</h1>
-        <p className="page-subtitle">Sistema Rollerport</p>
+        <div className="flex items-center gap-3">
+          <p className="page-subtitle">Sistema Rollerport</p>
+          {isMaster && (
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 ml-auto" onClick={() => setDashView('report-detail')}>
+              <ClipboardList className="h-3.5 w-3.5" /> Relatório Geral
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Espaço de 2 linhas */}
