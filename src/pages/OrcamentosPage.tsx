@@ -11,6 +11,7 @@ import {
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ImageThumbnail, OptionImage } from '@/components/ImagePopup';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
@@ -856,8 +857,9 @@ export default function OrcamentosPage() {
               <div className="mt-2 border rounded max-h-40 overflow-y-auto">
                 {filteredProdutos.map(p => (
                   <button key={p.id} onClick={() => { setSelectedProduto(p); setProdutoQtd(1); setProdutoDesconto(0); setProdutoNcm((p as any).ncm || ''); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50">
-                    {p.codigo} – {p.nome} <span className="text-muted-foreground ml-2">{fmt(p.valor)}</span>
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex items-center gap-2">
+                    {p.imagem && <img src={p.imagem} alt={p.nome} className="h-8 w-8 object-cover rounded border" />}
+                    <span>{p.codigo} – {p.nome} <span className="text-muted-foreground ml-2">{fmt(p.valor)}</span></span>
                   </button>
                 ))}
                 {filteredProdutos.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum produto encontrado</p>}
@@ -872,9 +874,12 @@ export default function OrcamentosPage() {
             <h3 className="font-semibold flex items-center gap-2 mb-3">
               <Package className="h-4 w-4" /> Novo Item – Produto
             </h3>
-            <div className="bg-muted/30 rounded p-3 mb-3">
-              <p className="font-medium">{selectedProduto.nome}</p>
-              <p className="text-xs text-muted-foreground">Valor unitário: {fmt(selectedProduto.valor)}</p>
+            <div className="bg-muted/30 rounded p-3 mb-3 flex items-center gap-3">
+              {selectedProduto.imagem && <ImageThumbnail src={selectedProduto.imagem} alt={selectedProduto.nome} size="md" />}
+              <div>
+                <p className="font-medium">{selectedProduto.nome}</p>
+                <p className="text-xs text-muted-foreground">Valor unitário: {fmt(selectedProduto.valor)}</p>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
@@ -966,6 +971,7 @@ export default function OrcamentosPage() {
                   <option value="">Selecione...</option>
                   {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
                 </select>
+                {(() => { const enc = encaixes.find(e => e.tipo === roleteItem.tipoEncaixe); return enc?.imagem ? <div className="mt-1"><OptionImage src={enc.imagem} alt={`Encaixe ${enc.tipo}`} /></div> : null; })()}
               </div>
               {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
                 <div>
@@ -980,6 +986,7 @@ export default function OrcamentosPage() {
                   <option value="">Selecione...</option>
                   {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
                 </select>
+                {(() => { const conj = conjuntos.find(c => c.codigo === roleteItem.conjunto); return conj?.imagem ? <div className="mt-1"><OptionImage src={conj.imagem} alt={`Conjunto ${conj.codigo}`} /></div> : null; })()}
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Revest. Spiraflex</label>
@@ -989,6 +996,7 @@ export default function OrcamentosPage() {
                   <option value="">Sem Spiraflex</option>
                   {revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
                 </select>
+                {(() => { const rev = revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento && r.tipo.toUpperCase().includes('SPIRAFLEX')); return rev?.imagem ? <div className="mt-1"><OptionImage src={rev.imagem} alt={`Rev. ${rev.tipo}`} /></div> : null; })()}
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Revest. Borracha</label>
@@ -998,6 +1006,7 @@ export default function OrcamentosPage() {
                   <option value="">Sem Anéis</option>
                   {revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
                 </select>
+                {(() => { const rev = revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento && r.tipo.toUpperCase().includes('ABI')); return rev?.imagem ? <div className="mt-1"><OptionImage src={rev.imagem} alt={`Rev. ${rev.tipo}`} /></div> : null; })()}
               </div>
               {roleteItem.especificacaoRevestimento && revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento && r.tipo.toUpperCase().includes('ABI')) && (
                 <div>
@@ -1056,7 +1065,7 @@ export default function OrcamentosPage() {
               {itensProduto.map((item, i) => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
                   <div className="flex items-center gap-3">
-                    <Package className="h-4 w-4 text-muted-foreground" />
+                    {(() => { const prod = produtos.find(pr => pr.id === item.produtoId); return prod?.imagem ? <ImageThumbnail src={prod.imagem} alt={prod.nome} size="sm" /> : <Package className="h-4 w-4 text-muted-foreground" />; })()}
                     <div>
                       <p className="font-medium text-sm">{produtos.find(p => p.id === item.produtoId)?.codigo || ''} – {item.produtoNome}</p>
                       <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorUnitario)}</p>

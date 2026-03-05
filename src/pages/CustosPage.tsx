@@ -30,13 +30,34 @@ function ImageCell({ src, onUpload, onRemove }: { src?: string; onUpload: (url: 
     reader.onload = () => onUpload(reader.result as string);
     reader.readAsDataURL(file);
   };
+  const handleCopy = async () => {
+    if (!src) return;
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      toast.success('Imagem copiada!');
+    } catch { await navigator.clipboard.writeText(src); toast.success('URL copiada!'); }
+  };
+  const handleDownload = () => {
+    if (!src) return;
+    const a = document.createElement('a'); a.href = src; a.download = 'imagem'; a.click();
+  };
   return (
     <div className="flex items-center gap-1">
       {src ? (
         <>
           <img src={src} alt="item" className="h-8 w-8 object-cover rounded cursor-pointer border" onClick={() => setPreview(true)} />
           <button onClick={onRemove} className="text-destructive hover:text-destructive/80 p-0.5"><X className="h-3 w-3" /></button>
-          <Dialog open={preview} onOpenChange={setPreview}><DialogContent className="max-w-lg"><img src={src} alt="preview" className="w-full rounded" /></DialogContent></Dialog>
+          <Dialog open={preview} onOpenChange={setPreview}>
+            <DialogContent className="max-w-lg">
+              <img src={src} alt="preview" className="w-full rounded" />
+              <div className="flex gap-2 justify-end mt-2">
+                <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2"><Download className="h-4 w-4" /> Copiar</Button>
+                <Button variant="outline" size="sm" onClick={handleDownload} className="gap-2"><Download className="h-4 w-4" /> Baixar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       ) : (
         <label className="cursor-pointer text-muted-foreground hover:text-primary p-1">
@@ -245,7 +266,6 @@ export default function CustosPage() {
         {activeTab === 'tubos' && (
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
-              <th className="p-3 w-12"></th>
               <th className="text-left p-3 font-medium">Diâmetro</th>
               <th className="text-left p-3 font-medium">Parede</th>
               <th className="text-left p-3 font-medium">Preço da Barra (6000 mm)</th>
@@ -254,7 +274,6 @@ export default function CustosPage() {
             <tbody>
               {tubos.map((t, i) => (
                 <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-2"><ImageCell src={t.imagem} onUpload={(url) => updateTuboImg(t.id, url)} onRemove={() => updateTuboImg(t.id, '')} /></td>
                   {editingId === t.id ? (<>
                     <td className="p-2"><Input type="number" value={t.diametro || ''} placeholder="Diâmetro" onChange={e => { const n = [...tubos]; n[i] = { ...t, diametro: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
                     <td className="p-2"><Input type="number" value={t.parede || ''} placeholder="Parede" onChange={e => { const n = [...tubos]; n[i] = { ...t, parede: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
@@ -274,7 +293,6 @@ export default function CustosPage() {
         {activeTab === 'eixos' && (
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
-              <th className="p-3 w-12"></th>
               <th className="text-left p-3 font-medium">Diâmetro</th>
               <th className="text-left p-3 font-medium">Preço da Barra (6000 mm)</th>
               <th className="p-3 w-28">Ações</th>
@@ -282,7 +300,6 @@ export default function CustosPage() {
             <tbody>
               {eixos.map((e, i) => (
                 <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-2"><ImageCell src={e.imagem} onUpload={(url) => updateEixoImg(e.id, url)} onRemove={() => updateEixoImg(e.id, '')} /></td>
                   {editingId === e.id ? (<>
                     <td className="p-2"><Input value={e.diametro} placeholder="Diâmetro" onChange={ev => { const n = [...eixos]; n[i] = { ...e, diametro: ev.target.value }; setEixos(n); }} /></td>
                     <td className="p-2"><Input type="number" step="0.01" value={e.precoBarra6000mm || ''} placeholder="R$ 0,00" onChange={ev => { const n = [...eixos]; n[i] = { ...e, precoBarra6000mm: ev.target.value ? +ev.target.value : '' as any }; setEixos(n); }} /></td>

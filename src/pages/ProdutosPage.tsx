@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, Search, Settings2, Package } from 'lucide-react';
+import { Plus, Trash2, Edit, Search, Settings2, Package, ImagePlus } from 'lucide-react';
+import { ImageThumbnail } from '@/components/ImagePopup';
 import { toast } from 'sonner';
 
 const fmt = (v: number) => v ? `R$ ${v.toFixed(2).replace('.', ',')}` : '-';
@@ -127,6 +128,18 @@ export default function ProdutosPage() {
               <div><label className="text-xs text-muted-foreground">Medidas</label><Input value={editing.medidas} onChange={e => setEditing({ ...editing, medidas: e.target.value })} placeholder="Ex: 100x50x30mm" /></div>
               <div><label className="text-xs text-muted-foreground">Descrição</label><Textarea value={editing.descricao} onChange={e => setEditing({ ...editing, descricao: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Valor (R$)</label><Input type="number" step="0.01" value={editing.valor || ''} placeholder="Deixe vazio se necessário" onChange={e => setEditing({ ...editing, valor: e.target.value ? +e.target.value : '' as any })} /></div>
+              <div>
+                <label className="text-xs text-muted-foreground">Imagem do Produto</label>
+                <div className="mt-1">
+                  <ImageThumbnail 
+                    src={editing.imagem} 
+                    alt={editing.nome || 'Produto'} 
+                    size="md"
+                    onUpload={(url) => setEditing({ ...editing, imagem: url })}
+                    onRemove={() => setEditing({ ...editing, imagem: undefined })}
+                  />
+                </div>
+              </div>
               <div><label className="text-xs text-muted-foreground">NCM</label><Input value={(editing as any).ncm || ''} onChange={e => setEditing({ ...editing, ncm: e.target.value } as any)} placeholder="Ex: 8431.39.00" /></div>
               <h4 className="text-xs font-semibold text-muted-foreground mt-3">Impostos (%)</h4>
               <div className="grid grid-cols-3 gap-2">
@@ -149,6 +162,7 @@ export default function ProdutosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
+              <th className="p-3 w-12"></th>
               <th className="text-left p-3 font-medium">Código</th>
               <th className="text-left p-3 font-medium">Nome</th>
               <th className="text-left p-3 font-medium">Tipo</th>
@@ -159,6 +173,7 @@ export default function ProdutosPage() {
           <tbody>
             {filtered.map(p => (
               <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                <td className="p-3">{p.imagem ? <ImageThumbnail src={p.imagem} alt={p.nome} size="sm" /> : <span className="text-muted-foreground text-xs">—</span>}</td>
                 <td className="p-3 font-mono text-xs">{p.codigo}</td>
                 <td className="p-3 font-medium">
                   {p.nome}
@@ -178,7 +193,7 @@ export default function ProdutosPage() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nenhum produto cadastrado.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Nenhum produto cadastrado.</td></tr>}
           </tbody>
         </table>
       </div>
