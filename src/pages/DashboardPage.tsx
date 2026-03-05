@@ -12,6 +12,7 @@ import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
@@ -96,6 +97,9 @@ export default function DashboardPage() {
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedCancelReason, setSelectedCancelReason] = useState<string>('');
+  const [aiReportOpen, setAiReportOpen] = useState(false);
+  const [aiReportText, setAiReportText] = useState('');
+  const [aiReportLoading, setAiReportLoading] = useState(false);
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -128,6 +132,81 @@ export default function DashboardPage() {
     store.savePedidos(data.pedidos.filter(p => p.id !== id));
     setData(d => ({ ...d, pedidos: d.pedidos.filter(p => p.id !== id) }));
     toast.success('Pedido excluído!');
+  };
+
+  const generateAIReport = async (vendorName: string) => {
+    setAiReportLoading(true);
+    setAiReportText('');
+    setAiReportOpen(true);
+    try {
+      const vendorOrcs = data.orcamentos.filter((o: any) => o.vendedor === vendorName);
+      const vendorPeds = data.pedidos.filter((p: any) => p.vendedor === vendorName);
+      const vendorOS = data.os.filter((o: any) => o.vendedor === vendorName);
+      const tvend = vendorPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
+      const metaObj = metas.find((m: any) => m.vendedor === vendorName);
+      const metaVal = metaObj?.metaMensal || 0;
+      const conv = vendorOrcs.length > 0 ? ((vendorOrcs.filter((o: any) => o.status === 'APROVADO').length / vendorOrcs.length) * 100).toFixed(1) : '0';
+
+      const prompt = `Analise o desempenho do vendedor "${vendorName}" e gere um relatório motivacional completo.
+
+DADOS:
+- Orçamentos: ${vendorOrcs.length} (Aprovados: ${vendorOrcs.filter((o: any) => o.status === 'APROVADO').length}, Reprovados: ${vendorOrcs.filter((o: any) => o.status === 'REPROVADO').length})
+- Taxa de conversão: ${conv}%
+- Pedidos: ${vendorPeds.length} (Entregues: ${vendorPeds.filter((p: any) => p.status === 'ENTREGUE').length})
+- Total vendido: R$ ${tvend.toFixed(2)}
+- Meta mensal: R$ ${metaVal.toFixed(2)}
+- Falta para meta: R$ ${Math.max(0, metaVal - tvend).toFixed(2)}
+- % da meta alcançado: ${metaVal > 0 ? ((tvend / metaVal) * 100).toFixed(1) : 'Sem meta definida'}%
+- O.S. geradas: ${vendorOS.length} (Concluídas: ${vendorOS.filter((o: any) => o.status === 'CONCLUIDA').length})
+
+Gere um relatório contendo:
+1. **Resumo do Desempenho** - Análise objetiva dos números
+2. **Pontos Fortes** - O que está indo bem
+3. **Pontos de Melhoria** - Onde pode melhorar com dicas práticas
+4. **Plano de Ação** - Passos concretos para alcançar a meta
+5. **Mensagem Motivacional** - Uma mensagem inspiradora e encorajadora para o vendedor não desanimar e continuar focado
+
+Use emojis relevantes para tornar mais visual. Responda em português do Brasil.`;
+
+      const sessionToken = localStorage.getItem('rp_session_token');
+      const resp = await supabase.functions.invoke('chat', {
+        body: { messages: [{ role: 'user', content: prompt }], mode: 'ia', sessionToken },
+      });
+
+      if (resp.error) throw resp.error;
+      const result = resp.data;
+
+      if (result instanceof ReadableStream) {
+        const reader = result.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\\n').filter((l: string) => l.startsWith('data: '));
+          for (const line of lines) {
+            const jsonStr = line.slice(6);
+            if (jsonStr === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content || '';
+              fullText += content;
+              setAiReportText(fullText);
+            } catch {}
+          }
+        }
+      } else if (typeof result === 'string') {
+        setAiReportText(result);
+      } else {
+        setAiReportText(result?.choices?.[0]?.message?.content || 'Não foi possível gerar o relatório.');
+      }
+    } catch (err) {
+      console.error('AI report error:', err);
+      setAiReportText('Erro ao gerar relatório. Tente novamente.');
+    } finally {
+      setAiReportLoading(false);
+    }
   };
 
   const totalOrcamentos = data.orcamentos.length;
@@ -224,7 +303,12 @@ export default function DashboardPage() {
 
     return (
       <div className="space-y-6">
-        <Button variant="outline" onClick={() => setDashView('main')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+        <div className="flex gap-2 items-center">
+          <Button variant="outline" onClick={() => setDashView('main')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+          <Button onClick={() => generateAIReport(selectedVendor)} className="gap-2 bg-gradient-to-r from-primary to-primary/80">
+            <TrendingUp className="h-4 w-4" /> Relatório de Desempenho IA
+          </Button>
+        </div>
         <div className="bg-card border rounded-lg p-6 max-w-7xl mx-auto">
           <h2 className="text-xl font-bold mb-6">Vendedor: {selectedVendor}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm mb-6">
@@ -392,6 +476,25 @@ export default function DashboardPage() {
             <DialogTitle>Motivo do Cancelamento</DialogTitle>
           </DialogHeader>
           <p className="text-sm whitespace-pre-wrap break-words">{selectedCancelReason}</p>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog relatório IA */}
+      <Dialog open={aiReportOpen} onOpenChange={setAiReportOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Relatório de Desempenho IA</DialogTitle>
+          </DialogHeader>
+          {aiReportLoading && !aiReportText ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              <span className="ml-3 text-muted-foreground">Gerando relatório...</span>
+            </div>
+          ) : (
+            <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap text-sm leading-relaxed">
+              {aiReportText}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
