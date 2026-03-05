@@ -29,8 +29,8 @@ function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: 
   const enc = encaixes.find(e => e.tipo === item.tipoEncaixe);
 
   // Formula: Tubo * compTubo + Eixo * compEixo + Encaixe + Conjunto
-  const custoTubo = tubo ? (item.comprimentoTubo / 1000) * tubo.valorMetro : 0;
-  const custoEixo = eixo ? (item.comprimentoEixo / 1000) * eixo.valorMetro : 0;
+  const custoTubo = tubo ? (item.comprimentoTubo / 1000) * (tubo.precoBarra6000mm / 6) : 0;
+  const custoEixo = eixo ? (item.comprimentoEixo / 1000) * (eixo.precoBarra6000mm / 6) : 0;
   const custoConj = conj ? conj.valor : 0;
   const custoEnc = enc ? enc.preco : 0;
 

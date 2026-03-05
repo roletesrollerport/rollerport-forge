@@ -99,8 +99,8 @@ export default function CustosPage() {
 
   const exportExcel = () => {
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tubos.map(t => ({ Diâmetro: t.diametro, Parede: t.parede, 'Valor/Metro': t.valorMetro }))), 'Tubos');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eixos.map(e => ({ Diâmetro: e.diametro, 'Valor/Metro': e.valorMetro }))), 'Eixos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tubos.map(t => ({ Diâmetro: t.diametro, Parede: t.parede, 'Preço Barra 6000mm': t.precoBarra6000mm }))), 'Tubos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eixos.map(e => ({ Diâmetro: e.diametro, 'Preço Barra 6000mm': e.precoBarra6000mm }))), 'Eixos');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(conjuntos.map(c => ({ Código: c.codigo, Valor: c.valor }))), 'Conjuntos');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(spiraflex.map(r => ({ Tipo: r.tipo, 'Valor/Metro': r.valorMetroOuPeca }))), 'Spiraflex');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(aneis.map(r => ({ Modelo: r.tipo, 'Valor/Peça': r.valorMetroOuPeca }))), 'Anéis');
@@ -111,8 +111,8 @@ export default function CustosPage() {
 
   const exportModelo = () => {
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Diâmetro: '', Parede: '', 'Valor/Metro': '' }]), 'Tubos');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Diâmetro: '', 'Valor/Metro': '' }]), 'Eixos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Diâmetro: '', Parede: '', 'Preço Barra 6000mm': '' }]), 'Tubos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Diâmetro: '', 'Preço Barra 6000mm': '' }]), 'Eixos');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Código: '', Valor: '' }]), 'Conjuntos');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Tipo: '', 'Valor/Metro': '' }]), 'Spiraflex');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Modelo: '', 'Valor/Peça': '' }]), 'Anéis');
@@ -131,7 +131,7 @@ export default function CustosPage() {
       if (tWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(tWs);
         const newItems: Tubo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map(r => ({
-          id: 'new_' + crypto.randomUUID(), diametro: +(r['Diâmetro'] || r['Diametro'] || 0), parede: +(r['Parede'] || 0), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+          id: 'new_' + crypto.randomUUID(), diametro: +(r['Diâmetro'] || r['Diametro'] || 0), parede: +(r['Parede'] || 0), precoBarra6000mm: +(r['Preço Barra 6000mm'] || r['PrecoBarra6000mm'] || r['Valor/Metro'] ? (+(r['Valor/Metro'] || 0)) * 6 : +(r['Preço Barra 6000mm'] || r['PrecoBarra6000mm'] || 0)),
         }));
         if (newItems.length) setTubos(prev => [...prev, ...newItems]);
       }
@@ -139,7 +139,7 @@ export default function CustosPage() {
       if (eWs) {
         const rows: any[] = XLSX.utils.sheet_to_json(eWs);
         const newItems: Eixo[] = rows.filter(r => r['Diâmetro'] || r['Diametro']).map(r => ({
-          id: 'new_' + crypto.randomUUID(), diametro: String(r['Diâmetro'] || r['Diametro'] || ''), valorMetro: +(r['Valor/Metro'] || r['ValorMetro'] || 0),
+          id: 'new_' + crypto.randomUUID(), diametro: String(r['Diâmetro'] || r['Diametro'] || ''), precoBarra6000mm: +(r['Preço Barra 6000mm'] || r['PrecoBarra6000mm'] || r['Valor/Metro'] ? (+(r['Valor/Metro'] || 0)) * 6 : +(r['Preço Barra 6000mm'] || r['PrecoBarra6000mm'] || 0)),
         }));
         if (newItems.length) setEixos(prev => [...prev, ...newItems]);
       }
@@ -181,8 +181,8 @@ export default function CustosPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const addTubo = () => { const id = 'new_' + crypto.randomUUID(); setTubos([...tubos, { id, diametro: '' as any, parede: '' as any, valorMetro: '' as any }]); setEditingId(id); };
-  const addEixo = () => { const id = 'new_' + crypto.randomUUID(); setEixos([...eixos, { id, diametro: '', valorMetro: '' as any }]); setEditingId(id); };
+  const addTubo = () => { const id = 'new_' + crypto.randomUUID(); setTubos([...tubos, { id, diametro: '' as any, parede: '' as any, precoBarra6000mm: '' as any }]); setEditingId(id); };
+  const addEixo = () => { const id = 'new_' + crypto.randomUUID(); setEixos([...eixos, { id, diametro: '', precoBarra6000mm: '' as any }]); setEditingId(id); };
   const addConjunto = () => { const id = 'new_' + crypto.randomUUID(); setConjuntos([...conjuntos, { id, codigo: '', valor: '' as any }]); setEditingId(id); };
   const addRevestimento = (isSpiraflex: boolean) => { const id = 'new_' + crypto.randomUUID(); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : 'ABI-', valorMetroOuPeca: '' as any }]); setEditingId(id); };
   const addEncaixe = () => { const id = 'new_' + crypto.randomUUID(); setEncaixes([...encaixes, { id, tipo: '', preco: '' as any }]); setEditingId(id); };
@@ -248,7 +248,7 @@ export default function CustosPage() {
               <th className="p-3 w-12"></th>
               <th className="text-left p-3 font-medium">Diâmetro</th>
               <th className="text-left p-3 font-medium">Parede</th>
-              <th className="text-left p-3 font-medium">Valor/metro</th>
+              <th className="text-left p-3 font-medium">Preço da Barra (6000 mm)</th>
               <th className="p-3 w-28">Ações</th>
             </tr></thead>
             <tbody>
@@ -258,11 +258,11 @@ export default function CustosPage() {
                   {editingId === t.id ? (<>
                     <td className="p-2"><Input type="number" value={t.diametro || ''} placeholder="Diâmetro" onChange={e => { const n = [...tubos]; n[i] = { ...t, diametro: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
                     <td className="p-2"><Input type="number" value={t.parede || ''} placeholder="Parede" onChange={e => { const n = [...tubos]; n[i] = { ...t, parede: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
-                    <td className="p-2"><Input type="number" step="0.01" value={t.valorMetro || ''} placeholder="R$ 0,00" onChange={e => { const n = [...tubos]; n[i] = { ...t, valorMetro: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
+                    <td className="p-2"><Input type="number" step="0.01" value={t.precoBarra6000mm || ''} placeholder="R$ 0,00" onChange={e => { const n = [...tubos]; n[i] = { ...t, precoBarra6000mm: e.target.value ? +e.target.value : '' as any }; setTubos(n); }} /></td>
                   </>) : (<>
                     <td className="p-3">{t.diametro || ''}</td>
                     <td className="p-3">{t.parede || ''}</td>
-                    <td className="p-3 font-mono">{fmt(t.valorMetro)}</td>
+                    <td className="p-3 font-mono">{fmt(t.precoBarra6000mm)}</td>
                   </>)}
                   <td className="p-3"><ActionButtons id={t.id} item={t} onDelete={handleDeleteTubo} /></td>
                 </tr>
@@ -276,7 +276,7 @@ export default function CustosPage() {
             <thead><tr className="border-b bg-muted/50">
               <th className="p-3 w-12"></th>
               <th className="text-left p-3 font-medium">Diâmetro</th>
-              <th className="text-left p-3 font-medium">Valor/metro</th>
+              <th className="text-left p-3 font-medium">Preço da Barra (6000 mm)</th>
               <th className="p-3 w-28">Ações</th>
             </tr></thead>
             <tbody>
@@ -285,10 +285,10 @@ export default function CustosPage() {
                   <td className="p-2"><ImageCell src={e.imagem} onUpload={(url) => updateEixoImg(e.id, url)} onRemove={() => updateEixoImg(e.id, '')} /></td>
                   {editingId === e.id ? (<>
                     <td className="p-2"><Input value={e.diametro} placeholder="Diâmetro" onChange={ev => { const n = [...eixos]; n[i] = { ...e, diametro: ev.target.value }; setEixos(n); }} /></td>
-                    <td className="p-2"><Input type="number" step="0.01" value={e.valorMetro || ''} placeholder="R$ 0,00" onChange={ev => { const n = [...eixos]; n[i] = { ...e, valorMetro: ev.target.value ? +ev.target.value : '' as any }; setEixos(n); }} /></td>
+                    <td className="p-2"><Input type="number" step="0.01" value={e.precoBarra6000mm || ''} placeholder="R$ 0,00" onChange={ev => { const n = [...eixos]; n[i] = { ...e, precoBarra6000mm: ev.target.value ? +ev.target.value : '' as any }; setEixos(n); }} /></td>
                   </>) : (<>
                     <td className="p-3">{e.diametro}</td>
-                    <td className="p-3 font-mono">{fmt(e.valorMetro)}</td>
+                    <td className="p-3 font-mono">{fmt(e.precoBarra6000mm)}</td>
                   </>)}
                   <td className="p-3"><ActionButtons id={e.id} item={e} onDelete={handleDeleteEixo} /></td>
                 </tr>
