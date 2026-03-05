@@ -105,3 +105,15 @@
     @apply text-sm text-muted-foreground mt-1;
   }
 }
+
+@media print {
+  /* Hide all app chrome: sidebar, header, chat widget, floating buttons */
+  aside { display: none !important; }
+  header { display: none !important; }
+  .fixed { display: none !important; }
+  
+  /* Make main content fill the page without constraints */
+  .flex.h-screen { display: block !important; height: auto !important; overflow: visible !important; }
+  .flex-1.flex.flex-col { display: block !important; }
+  main { padding: 0 !important; overflow: visible !important; }
+}
