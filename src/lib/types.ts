@@ -139,6 +139,7 @@ export interface Orcamento {
   status: StatusOrcamento;
   valorTotal: number;
   createdAt: string;
+  dataAprovacao?: string;
 }
 
 // ======= PEDIDOS =======
@@ -154,6 +155,9 @@ export interface Pedido {
   status: StatusPedido;
   valorTotal: number;
   createdAt: string;
+  motivoCancelamento?: string;
+  dataCancelamento?: string;
+  statusHistory?: { status: string; date: string }[];
 }
 
 // ======= PRODUÇÃO =======
@@ -196,6 +200,9 @@ export interface OrdemServico {
   status: StatusOS;
   itens: ItemOS[];
   createdAt: string;
+  motivoCancelamento?: string;
+  dataCancelamento?: string;
+  statusHistory?: { status: string; date: string }[];
 }
 
 // ======= ESTOQUE =======

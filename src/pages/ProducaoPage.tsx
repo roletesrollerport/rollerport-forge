@@ -4,10 +4,19 @@ import { store } from '@/lib/store';
 import type { OrdemServico, StatusOS, ItemOS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
+
+const daysSince = (dateStr: string): number => {
+  if (!dateStr) return 0;
+  const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr.split('/').reverse().join('-'));
+  if (isNaN(d.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+};
 
 type View = 'list' | 'view' | 'edit' | 'print';
 
@@ -20,7 +29,9 @@ export default function ProducaoPage() {
   const [current, setCurrent] = useState<OrdemServico | null>(null);
   const [editItems, setEditItems] = useState<ItemOS[]>([]);
   const [search, setSearch] = useState('');
-
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
+  const [cancelMotivo, setCancelMotivo] = useState('');
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
 
@@ -34,13 +45,27 @@ export default function ProducaoPage() {
   const saveOrdens = (updated: OrdemServico[]) => { store.saveOrdensServico(updated); setOrdens(updated); };
 
   const updateStatus = (id: string, status: StatusOS) => {
-    saveOrdens(ordens.map(o => o.id === id ? { ...o, status } : o)); toast.success('Status atualizado!');
+    const updated = ordens.map(o => {
+      if (o.id !== id) return o;
+      const history = [...(o.statusHistory || []), { status, date: new Date().toISOString() }];
+      return { ...o, status, statusHistory: history };
+    });
+    saveOrdens(updated); toast.success('Status atualizado!');
   };
 
   const cancelarOS = (os: OrdemServico) => {
-    saveOrdens(ordens.filter(o => o.id !== os.id));
+    setCancelTarget(os);
+    setCancelMotivo('');
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancelarOS = () => {
+    if (!cancelTarget) return;
+    if (!cancelMotivo.trim()) { toast.error('Informe o motivo do cancelamento!'); return; }
+    saveOrdens(ordens.filter(o => o.id !== cancelTarget.id));
     const pedidos = store.getPedidos();
-    store.savePedidos(pedidos.map(p => p.id === os.pedidoId ? { ...p, status: 'PENDENTE' as const } : p));
+    store.savePedidos(pedidos.map(p => p.id === cancelTarget.pedidoId ? { ...p, status: 'PENDENTE' as const } : p));
+    setCancelDialogOpen(false);
     toast.success('O.S. cancelada. Pedido voltou para pendente.'); navigate('/pedidos');
   };
 
@@ -282,11 +307,15 @@ export default function ProducaoPage() {
             <th className="text-left p-3 font-medium hidden md:table-cell">Emissão</th>
             <th className="text-left p-3 font-medium hidden lg:table-cell">Entrega</th>
             <th className="text-left p-3 font-medium min-w-[150px]">Status</th>
+            <th className="text-left p-3 font-medium hidden md:table-cell">Dias</th>
             <th className="p-3 w-56"></th>
           </tr></thead>
           <tbody>
             {filteredOrdens.map(os => {
               const pct = statusProgress[os.status] || 0;
+              const days = daysSince(os.createdAt);
+              const lastStatusChange = os.statusHistory?.length ? os.statusHistory[os.statusHistory.length - 1] : null;
+              const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
               return (
                 <tr key={os.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 font-mono font-medium">{os.numero}</td>
@@ -298,6 +327,12 @@ export default function ProducaoPage() {
                     <div className="flex items-center gap-2">
                       <Progress value={pct} className="h-2 flex-1" />
                       <span className={`text-xs font-medium whitespace-nowrap ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>{os.status.replace('_', ' ')}</span>
+                    </div>
+                  </td>
+                  <td className="p-3 hidden md:table-cell">
+                    <div className="flex flex-col text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Total: {days}d</span>
+                      <span className="text-[10px]">No status: {daysInStatus}d</span>
                     </div>
                   </td>
                   <td className="p-3">
@@ -314,10 +349,30 @@ export default function ProducaoPage() {
                 </tr>
               );
             })}
-            {filteredOrdens.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhuma O.S. criada.</td></tr>}
+            {filteredOrdens.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhuma O.S. criada.</td></tr>}
           </tbody>
         </table>
       </div>
+
+      {/* Dialog de cancelamento */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Cancelar O.S. {cancelTarget?.numero}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Informe o motivo do cancelamento antes de prosseguir:</p>
+            <Textarea 
+              value={cancelMotivo} 
+              onChange={e => setCancelMotivo(e.target.value)} 
+              placeholder="Motivo do cancelamento..." 
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Voltar</Button>
+              <Button variant="destructive" onClick={confirmCancelarOS}>Confirmar Cancelamento</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
