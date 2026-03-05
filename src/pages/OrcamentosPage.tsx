@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { store } from '@/lib/store';
 import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 import { useCustos } from '@/hooks/useCustos';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -138,6 +139,7 @@ export default function OrcamentosPage() {
     };
   }, []);
   const costData = useCustos();
+  const { usuarios: dbUsuarios } = useUsuarios();
   const { tubos, eixos, conjuntos, revestimentos, encaixes } = costData;
 
   const clienteSelecionado = clientes.find(c => c.id === clienteId);
@@ -505,9 +507,8 @@ export default function OrcamentosPage() {
       valorIPI: acc.valorIPI + i.valorIPI,
     }), { valorLiquido: 0, pis: 0, cofins: 0, icmsOrigem: 0, icmsDestino: 0, valorTotal: 0, valorIPI: 0 });
 
-    // Find vendedor info
-    const usuarios = store.getUsuarios();
-    const vendedorUser = usuarios.find(u => u.nome === viewOrc.vendedor);
+    // Find vendedor info from DB
+    const vendedorUser = dbUsuarios.find(u => u.nome === viewOrc.vendedor);
 
     return (
       <div>

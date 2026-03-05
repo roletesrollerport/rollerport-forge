@@ -224,11 +224,18 @@ export default function PedidosPage() {
   const confirmCancelarPedido = () => {
     if (!cancelTarget) return;
     if (!cancelMotivo.trim()) { toast.error('Informe o motivo do cancelamento!'); return; }
-    const updatedPedidos = pedidos.filter(p => p.id !== cancelTarget.id); store.savePedidos(updatedPedidos); setPedidos(updatedPedidos);
-    const updatedOrcs = orcamentos.map(o => o.id === cancelTarget.orcamentoId ? { ...o, status: 'RASCUNHO' as const } : o);
+    const updatedPedidos = pedidos.map(p => p.id === cancelTarget.id ? { 
+      ...p, 
+      status: 'PENDENTE' as const,
+      motivoCancelamento: cancelMotivo.trim(),
+      dataCancelamento: new Date().toISOString(),
+      statusHistory: [...(p.statusHistory || []), { status: 'CANCELADO', date: new Date().toISOString() }],
+    } : p);
+    store.savePedidos(updatedPedidos); setPedidos(updatedPedidos);
+    const updatedOrcs = orcamentos.map(o => o.id === cancelTarget.orcamentoId ? { ...o, status: 'RASCUNHO' as const, motivoCancelamento: cancelMotivo.trim() } : o);
     store.saveOrcamentos(updatedOrcs); setOrcamentos(updatedOrcs);
     setCancelDialogOpen(false);
-    toast.success('Pedido cancelado. Orçamento voltou para edição.'); navigate('/orcamentos');
+    toast.success('Pedido cancelado. Motivo registrado no relatório.');
   };
 
   const deletePedido = (id: string) => {

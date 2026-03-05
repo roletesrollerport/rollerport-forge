@@ -62,11 +62,17 @@ export default function ProducaoPage() {
   const confirmCancelarOS = () => {
     if (!cancelTarget) return;
     if (!cancelMotivo.trim()) { toast.error('Informe o motivo do cancelamento!'); return; }
-    saveOrdens(ordens.filter(o => o.id !== cancelTarget.id));
+    saveOrdens(ordens.map(o => o.id === cancelTarget.id ? {
+      ...o,
+      status: 'ABERTA' as any,
+      motivoCancelamento: cancelMotivo.trim(),
+      dataCancelamento: new Date().toISOString(),
+      statusHistory: [...(o.statusHistory || []), { status: 'CANCELADA', date: new Date().toISOString() }],
+    } : o));
     const pedidos = store.getPedidos();
     store.savePedidos(pedidos.map(p => p.id === cancelTarget.pedidoId ? { ...p, status: 'PENDENTE' as const } : p));
     setCancelDialogOpen(false);
-    toast.success('O.S. cancelada. Pedido voltou para pendente.'); navigate('/pedidos');
+    toast.success('O.S. cancelada. Motivo registrado no relatório.');
   };
 
   const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
