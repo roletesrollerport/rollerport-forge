@@ -456,7 +456,7 @@ export default function OrcamentosPage() {
         codExterno: (prod as any)?.codigoCliente || '', descricao: ip.produtoNome,
         ncm: (prod as any)?.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
         icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ip.valorUnitario,
-        valorTotal: ip.valorTotal, valorIPI: +(ip.valorTotal + ipiVal * ip.quantidade).toFixed(2),
+        valorTotal: ip.valorTotal, valorIPI: ip.valorTotal,
       });
     });
     (viewOrc.itensRolete || []).forEach((ir) => {
@@ -471,7 +471,7 @@ export default function OrcamentosPage() {
         codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`,
         ncm: ir.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
         icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ir.valorPorPeca,
-        valorTotal: ir.valorTotal, valorIPI: +(ir.valorTotal + ipiVal * ir.quantidade).toFixed(2),
+        valorTotal: ir.valorTotal, valorIPI: ir.valorTotal,
       });
     });
 
