@@ -248,6 +248,7 @@ export default function PedidosPage() {
     const os = {
       id: store.nextId('os'), numero: store.nextNumero('os'), pedidoId: pedido.id,
       empresa: pedido.clienteNome, pedidoNumero: pedido.numero,
+      vendedor: orc.vendedor || '',
       emissao: new Date().toISOString().split('T')[0], entrega: pedido.dataEntrega,
       entradaProducao: '', diasPropostos: 12, status: 'ABERTA' as const,
       itens: (orc.itensRolete || []).map((item, i) => ({
@@ -260,6 +261,7 @@ export default function PedidosPage() {
         corte: false, torno: false, fresa: false, solda: false, pintura: false, montagem: false,
       })),
       createdAt: new Date().toISOString().split('T')[0],
+      statusHistory: [{ status: 'ABERTA', date: new Date().toISOString() }],
     };
     store.saveOrdensServico([...store.getOrdensServico(), os]);
     updateStatus(pedido.id, 'EM_PRODUCAO');

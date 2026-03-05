@@ -225,9 +225,10 @@ export default function ProducaoPage() {
         <div className="bg-card border rounded-lg p-6 max-w-6xl mx-auto print:border-0 print:shadow-none print:max-w-none print:p-2">
           {/* Header: O.S. number top-left */}
           <div className="text-sm font-bold mb-1">O.S. Nº {current.numero}</div>
-          <div className="grid grid-cols-4 gap-2 text-xs mb-2 border rounded p-2">
+          <div className="grid grid-cols-5 gap-2 text-xs mb-2 border rounded p-2">
             <div><span className="font-semibold">EMPRESA:</span> {current.empresa}</div>
             <div><span className="font-semibold">PEDIDO:</span> {current.pedidoNumero}</div>
+            <div><span className="font-semibold">VENDEDOR:</span> {(current as any).vendedor || '-'}</div>
             <div><span className="font-semibold">EMISSÃO:</span> {current.emissao}</div>
             <div><span className="font-semibold">ENTREGA:</span> {current.entrega}</div>
           </div>
@@ -255,9 +256,10 @@ export default function ProducaoPage() {
         </div>
         <div className="bg-card border rounded-lg p-6">
           <h2 className="text-lg font-bold mb-4">O.S. {current.numero}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm mb-6">
             <div><span className="text-muted-foreground">Empresa:</span> <strong>{current.empresa}</strong></div>
             <div><span className="text-muted-foreground">Pedido:</span> <strong>{current.pedidoNumero}</strong></div>
+            <div><span className="text-muted-foreground">Vendedor:</span> <strong>{(current as any).vendedor || '-'}</strong></div>
             <div><span className="text-muted-foreground">Emissão:</span> <strong>{current.emissao}</strong></div>
             <div><span className="text-muted-foreground">Entrega:</span> <strong>{current.entrega}</strong></div>
             <div><span className="text-muted-foreground">Dias Propostos:</span> <strong>{current.diasPropostos}</strong></div>
@@ -309,6 +311,7 @@ export default function ProducaoPage() {
           <thead><tr className="border-b bg-muted/50">
             <th className="text-left p-3 font-medium">O.S.</th>
             <th className="text-left p-3 font-medium">Empresa</th>
+            <th className="text-left p-3 font-medium hidden md:table-cell">Vendedor</th>
             <th className="text-left p-3 font-medium hidden md:table-cell">Pedido</th>
             <th className="text-left p-3 font-medium hidden md:table-cell">Emissão</th>
             <th className="text-left p-3 font-medium hidden lg:table-cell">Entrega</th>
@@ -326,6 +329,7 @@ export default function ProducaoPage() {
                 <tr key={os.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="p-3 font-mono font-medium">{os.numero}</td>
                   <td className="p-3">{os.empresa}</td>
+                  <td className="p-3 hidden md:table-cell text-muted-foreground">{(os as any).vendedor || '-'}</td>
                   <td className="p-3 hidden md:table-cell font-mono">{os.pedidoNumero}</td>
                   <td className="p-3 hidden md:table-cell">{os.emissao}</td>
                   <td className="p-3 hidden lg:table-cell">{os.entrega}</td>
@@ -355,7 +359,7 @@ export default function ProducaoPage() {
                 </tr>
               );
             })}
-            {filteredOrdens.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhuma O.S. criada.</td></tr>}
+            {filteredOrdens.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Nenhuma O.S. criada.</td></tr>}
           </tbody>
         </table>
       </div>
