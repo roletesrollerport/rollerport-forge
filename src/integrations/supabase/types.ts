@@ -113,21 +113,21 @@ export type Database = {
           diametro: string
           id: string
           imagem: string | null
-          valor_metro: number
+          preco_barra_6000mm: number
         }
         Insert: {
           created_at?: string
           diametro?: string
           id?: string
           imagem?: string | null
-          valor_metro?: number
+          preco_barra_6000mm?: number
         }
         Update: {
           created_at?: string
           diametro?: string
           id?: string
           imagem?: string | null
-          valor_metro?: number
+          preco_barra_6000mm?: number
         }
         Relationships: []
       }
@@ -186,7 +186,7 @@ export type Database = {
           id: string
           imagem: string | null
           parede: number
-          valor_metro: number
+          preco_barra_6000mm: number
         }
         Insert: {
           created_at?: string
@@ -194,7 +194,7 @@ export type Database = {
           id?: string
           imagem?: string | null
           parede?: number
-          valor_metro?: number
+          preco_barra_6000mm?: number
         }
         Update: {
           created_at?: string
@@ -202,7 +202,7 @@ export type Database = {
           id?: string
           imagem?: string | null
           parede?: number
-          valor_metro?: number
+          preco_barra_6000mm?: number
         }
         Relationships: []
       }

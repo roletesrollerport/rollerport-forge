@@ -3,14 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 
 // DB row types
-interface TuboRow { id: string; diametro: number; parede: number; valor_metro: number; imagem: string | null; }
-interface EixoRow { id: string; diametro: string; valor_metro: number; imagem: string | null; }
+interface TuboRow { id: string; diametro: number; parede: number; preco_barra_6000mm: number; imagem: string | null; }
+interface EixoRow { id: string; diametro: string; preco_barra_6000mm: number; imagem: string | null; }
 interface ConjuntoRow { id: string; codigo: string; valor: number; imagem: string | null; }
 interface RevestimentoRow { id: string; tipo: string; valor_metro_ou_peca: number; imagem: string | null; }
 interface EncaixeRow { id: string; tipo: string; preco: number; imagem: string | null; }
 
-const toTubo = (r: TuboRow): Tubo => ({ id: r.id, diametro: r.diametro, parede: r.parede, valorMetro: r.valor_metro, imagem: r.imagem || undefined });
-const toEixo = (r: EixoRow): Eixo => ({ id: r.id, diametro: r.diametro, valorMetro: r.valor_metro, imagem: r.imagem || undefined });
+const toTubo = (r: TuboRow): Tubo => ({ id: r.id, diametro: r.diametro, parede: r.parede, precoBarra6000mm: r.preco_barra_6000mm, imagem: r.imagem || undefined });
+const toEixo = (r: EixoRow): Eixo => ({ id: r.id, diametro: r.diametro, precoBarra6000mm: r.preco_barra_6000mm, imagem: r.imagem || undefined });
 const toConj = (r: ConjuntoRow): Conjunto => ({ id: r.id, codigo: r.codigo, valor: r.valor, imagem: r.imagem || undefined });
 const toRev = (r: RevestimentoRow): Revestimento => ({ id: r.id, tipo: r.tipo, valorMetroOuPeca: r.valor_metro_ou_peca, imagem: r.imagem || undefined });
 const toEnc = (r: EncaixeRow): Encaixe => ({ id: r.id, tipo: r.tipo, preco: r.preco, imagem: r.imagem || undefined });
@@ -43,7 +43,7 @@ export function useCustos() {
 
   // CRUD operations
   const saveTubo = async (t: Tubo) => {
-    const row = { diametro: t.diametro, parede: t.parede, valor_metro: t.valorMetro, imagem: t.imagem || null };
+    const row = { diametro: t.diametro, parede: t.parede, preco_barra_6000mm: t.precoBarra6000mm, imagem: t.imagem || null };
     if (t.id && !t.id.startsWith('new_')) {
       await supabase.from('custos_tubos' as any).update(row).eq('id', t.id);
     } else {
@@ -52,7 +52,7 @@ export function useCustos() {
   };
 
   const saveEixo = async (e: Eixo) => {
-    const row = { diametro: e.diametro, valor_metro: e.valorMetro, imagem: e.imagem || null };
+    const row = { diametro: e.diametro, preco_barra_6000mm: e.precoBarra6000mm, imagem: e.imagem || null };
     if (e.id && !e.id.startsWith('new_')) {
       await supabase.from('custos_eixos' as any).update(row).eq('id', e.id);
     } else {

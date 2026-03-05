@@ -3,14 +3,14 @@ export interface Tubo {
   id: string;
   diametro: number;
   parede: number;
-  valorMetro: number;
+  precoBarra6000mm: number;
   imagem?: string;
 }
 
 export interface Eixo {
   id: string;
   diametro: string;
-  valorMetro: number;
+  precoBarra6000mm: number;
   imagem?: string;
 }
 
