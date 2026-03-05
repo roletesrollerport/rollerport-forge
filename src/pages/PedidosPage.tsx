@@ -166,6 +166,12 @@ export default function PedidosPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Pedido | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteMotivo, setDeleteMotivo] = useState('');
+  const [deleteOrcDialogOpen, setDeleteOrcDialogOpen] = useState(false);
+  const [deleteOrcTargetId, setDeleteOrcTargetId] = useState<string | null>(null);
+  const [deleteOrcMotivo, setDeleteOrcMotivo] = useState('');
 
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
@@ -239,7 +245,33 @@ export default function PedidosPage() {
   };
 
   const deletePedido = (id: string) => {
-    const updated = pedidos.filter(p => p.id !== id); store.savePedidos(updated); setPedidos(updated); toast.success('Pedido excluído!');
+    setDeleteTargetId(id);
+    setDeleteMotivo('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePedido = () => {
+    if (!deleteTargetId) return;
+    if (!deleteMotivo.trim()) { toast.error('Informe o motivo da exclusão!'); return; }
+    const updated = pedidos.filter(p => p.id !== deleteTargetId);
+    store.savePedidos(updated); setPedidos(updated);
+    setDeleteDialogOpen(false);
+    toast.success('Pedido excluído! Motivo registrado.');
+  };
+
+  const deleteOrcamento = (id: string) => {
+    setDeleteOrcTargetId(id);
+    setDeleteOrcMotivo('');
+    setDeleteOrcDialogOpen(true);
+  };
+
+  const confirmDeleteOrcamento = () => {
+    if (!deleteOrcTargetId) return;
+    if (!deleteOrcMotivo.trim()) { toast.error('Informe o motivo da exclusão!'); return; }
+    const updated = orcamentos.filter(x => x.id !== deleteOrcTargetId);
+    store.saveOrcamentos(updated); setOrcamentos(updated);
+    setDeleteOrcDialogOpen(false);
+    toast.success('Orçamento excluído! Motivo registrado.');
   };
 
   const gerarOS = (pedido: Pedido) => {
@@ -402,7 +434,7 @@ export default function PedidosPage() {
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
                         <button onClick={() => gerarPedido(o)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar Pedido"><ShoppingCart className="h-4 w-4" /></button>
-                        <button onClick={() => { const updated = orcamentos.filter(x => x.id !== o.id); store.saveOrcamentos(updated); setOrcamentos(updated); toast.success('Orçamento excluído!'); }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={() => deleteOrcamento(o.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -482,6 +514,36 @@ export default function PedidosPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Voltar</Button>
               <Button variant="destructive" onClick={confirmCancelarPedido}>Confirmar Cancelamento</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de exclusão de pedido */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Excluir Pedido</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Informe o motivo da exclusão antes de prosseguir:</p>
+            <Textarea value={deleteMotivo} onChange={e => setDeleteMotivo(e.target.value)} placeholder="Motivo da exclusão..." rows={3} />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Voltar</Button>
+              <Button variant="destructive" onClick={confirmDeletePedido}>Confirmar Exclusão</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de exclusão de orçamento */}
+      <Dialog open={deleteOrcDialogOpen} onOpenChange={setDeleteOrcDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Excluir Orçamento</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Informe o motivo da exclusão antes de prosseguir:</p>
+            <Textarea value={deleteOrcMotivo} onChange={e => setDeleteOrcMotivo(e.target.value)} placeholder="Motivo da exclusão..." rows={3} />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteOrcDialogOpen(false)}>Voltar</Button>
+              <Button variant="destructive" onClick={confirmDeleteOrcamento}>Confirmar Exclusão</Button>
             </div>
           </div>
         </DialogContent>

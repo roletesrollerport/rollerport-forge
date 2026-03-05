@@ -32,6 +32,9 @@ export default function ProducaoPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteMotivo, setDeleteMotivo] = useState('');
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
 
@@ -75,7 +78,19 @@ export default function ProducaoPage() {
     toast.success('O.S. cancelada. Motivo registrado no relatório.');
   };
 
-  const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
+  const deleteOS = (id: string) => {
+    setDeleteTargetId(id);
+    setDeleteMotivo('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteOS = () => {
+    if (!deleteTargetId) return;
+    if (!deleteMotivo.trim()) { toast.error('Informe o motivo da exclusão!'); return; }
+    saveOrdens(ordens.filter(o => o.id !== deleteTargetId));
+    setDeleteDialogOpen(false);
+    toast.success('O.S. excluída! Motivo registrado.');
+  };
 
   const openView = (os: OrdemServico) => { setCurrent(os); setView('view'); };
   const openEdit = (os: OrdemServico) => { setCurrent(os); setEditItems([...os.itens]); setView('edit'); };
@@ -379,6 +394,21 @@ export default function ProducaoPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Voltar</Button>
               <Button variant="destructive" onClick={confirmCancelarOS}>Confirmar Cancelamento</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de exclusão */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Excluir O.S.</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Informe o motivo da exclusão antes de prosseguir:</p>
+            <Textarea value={deleteMotivo} onChange={e => setDeleteMotivo(e.target.value)} placeholder="Motivo da exclusão..." rows={3} />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Voltar</Button>
+              <Button variant="destructive" onClick={confirmDeleteOS}>Confirmar Exclusão</Button>
             </div>
           </div>
         </DialogContent>

@@ -10,6 +10,7 @@ import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
@@ -78,6 +79,9 @@ export default function OrcamentosPage() {
   const [viewOrc, setViewOrc] = useState<Orcamento | null>(null);
   const [editingOrc, setEditingOrc] = useState<Orcamento | null>(null);
   const [searchList, setSearchList] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteMotivo, setDeleteMotivo] = useState('');
 
   // Form state
   const [clienteId, setClienteId] = useState('');
@@ -302,9 +306,19 @@ export default function OrcamentosPage() {
   };
 
   const deleteOrcamento = (id: string) => {
-    const updated = orcamentos.filter(o => o.id !== id);
+    setDeleteTargetId(id);
+    setDeleteMotivo('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteOrcamento = () => {
+    if (!deleteTargetId) return;
+    if (!deleteMotivo.trim()) { toast.error('Informe o motivo da exclusão!'); return; }
+    const orc = orcamentos.find(o => o.id === deleteTargetId);
+    const updated = orcamentos.filter(o => o.id !== deleteTargetId);
     store.saveOrcamentos(updated); setOrcamentos(updated);
-    toast.success('Orçamento removido!');
+    setDeleteDialogOpen(false);
+    toast.success('Orçamento removido! Motivo registrado.');
   };
 
   const convertToPedido = (orc: Orcamento) => {
@@ -1244,6 +1258,26 @@ export default function OrcamentosPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Dialog de exclusão */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Excluir Orçamento</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Informe o motivo da exclusão antes de prosseguir:</p>
+            <Textarea 
+              value={deleteMotivo} 
+              onChange={e => setDeleteMotivo(e.target.value)} 
+              placeholder="Motivo da exclusão..." 
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Voltar</Button>
+              <Button variant="destructive" onClick={confirmDeleteOrcamento}>Confirmar Exclusão</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
