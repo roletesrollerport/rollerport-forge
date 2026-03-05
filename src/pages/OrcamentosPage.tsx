@@ -17,7 +17,7 @@ const emptyItem = (): ItemOrcamento => ({
   id: '', tipoRolete: '' as any, quantidade: '' as any, diametroTubo: '' as any, paredeTubo: '' as any, comprimentoTubo: '' as any,
   comprimentoEixo: '' as any, diametroEixo: '' as any, tipoEncaixe: '', medidaFresado: '', conjunto: '',
   tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: '' as any, custo: 0,
-  multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '84.31.39.00',
+  multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '8431.39.00',
 });
 
 function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[]): ItemOrcamento {
@@ -990,7 +990,7 @@ export default function OrcamentosPage() {
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">NCM</label>
-                <Input placeholder="NCM" value={(roleteItem as any).ncm || ''} onChange={e => updateRoleteField({ ncm: e.target.value } as any)} />
+                <Input placeholder="NCM" value={roleteItem.ncm || '8431.39.00'} onChange={e => updateRoleteField({ ncm: e.target.value } as any)} />
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Desconto (%)</label>
