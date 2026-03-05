@@ -121,8 +121,22 @@ export default function OrcamentosPage() {
   const [showCadProduto, setShowCadProduto] = useState(false);
   const [cadProduto, setCadProduto] = useState({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0, ncm: '' });
 
-  const clientes = store.getClientes();
-  const produtos = store.getProdutos();
+  const [clientes, setClientes] = useState(store.getClientes());
+  const [produtos, setProdutos] = useState(store.getProdutos());
+
+  // Re-read from store when data syncs from other users
+  useEffect(() => {
+    const reload = () => {
+      setClientes(store.getClientes());
+      setProdutos(store.getProdutos());
+    };
+    window.addEventListener('rp-data-synced', reload);
+    window.addEventListener('rp-store-save', reload);
+    return () => {
+      window.removeEventListener('rp-data-synced', reload);
+      window.removeEventListener('rp-store-save', reload);
+    };
+  }, []);
   const costData = useCustos();
   const { tubos, eixos, conjuntos, revestimentos, encaixes } = costData;
 

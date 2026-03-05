@@ -18,7 +18,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
+
+const formatCurrencyInput = (value: number): string => {
+  if (!value && value !== 0) return '';
+  return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
+};
 
 /* ------------------------------------------------------------------ */
 /*  Clickable status chip                                              */
@@ -613,9 +618,20 @@ export default function DashboardPage() {
           <div className="text-xs space-y-1">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground font-medium">Meta do Mês</span>
-              {isMaster && editingMeta?.vendedor === usuario.nome ? (
+          {isMaster && editingMeta?.vendedor === usuario.nome ? (
                 <div className="flex items-center gap-1">
-                  <Input type="number" step="0.01" className="h-6 w-24 text-xs px-1" value={editingMeta.valor || ''} onChange={e => setEditingMeta({ ...editingMeta, valor: +e.target.value })} autoFocus />
+                  <Input 
+                    type="text" 
+                    inputMode="numeric"
+                    className="h-6 w-28 text-xs px-1" 
+                    value={formatCurrencyInput(editingMeta.valor)} 
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      const cents = parseInt(raw || '0', 10);
+                      setEditingMeta({ ...editingMeta, valor: cents / 100 });
+                    }} 
+                    autoFocus 
+                  />
                   <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3.5 w-3.5" /></button>
                   <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                 </div>
