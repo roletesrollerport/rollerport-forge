@@ -75,6 +75,7 @@ export interface Produto {
   descricao: string;
   miniDescricao?: string;
   valor: number;
+  imagem?: string;
   createdAt: string;
 }
 
