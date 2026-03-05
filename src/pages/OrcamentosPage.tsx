@@ -28,24 +28,38 @@ function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: 
   const rev = revestimentos.find(r => r.tipo === item.especificacaoRevestimento);
   const enc = encaixes.find(e => e.tipo === item.tipoEncaixe);
 
-  // Formula: Tubo * compTubo + Eixo * compEixo + Encaixe + Conjunto
-  const custoTubo = tubo ? (item.comprimentoTubo / 1000) * (tubo.precoBarra6000mm / 6) : 0;
-  const custoEixo = eixo ? (item.comprimentoEixo / 1000) * (eixo.precoBarra6000mm / 6) : 0;
+  // ETAPA 1 – Cálculo do tubo (aproveitamento de barra de 6000 mm)
+  let custoTubo = 0;
+  if (tubo && item.comprimentoTubo > 0 && item.comprimentoTubo < 6000) {
+    const QT = Math.max(1, Math.floor(6000 / item.comprimentoTubo));
+    custoTubo = tubo.precoBarra6000mm / QT;
+  }
+
+  // ETAPA 2 – Cálculo do eixo (aproveitamento de barra de 6000 mm)
+  let custoEixo = 0;
+  if (eixo && item.comprimentoEixo > 0 && item.comprimentoEixo < 6000) {
+    const QE = Math.max(1, Math.floor(6000 / item.comprimentoEixo));
+    custoEixo = eixo.precoBarra6000mm / QE;
+  }
+
+  // ETAPA 3 – Custo base
   const custoConj = conj ? conj.valor : 0;
   const custoEnc = enc ? enc.preco : 0;
 
-  // Revestimento: Spiraflex = valor * comprimentoEixo; Anéis = valor * quantidade
+  // ETAPA 4 – Revestimento
   let custoRev = 0;
   if (rev) {
     const isSpiraflex = rev.tipo.toUpperCase().includes('SPIRAFLEX');
     if (isSpiraflex) {
-      custoRev = (item.comprimentoEixo / 1000) * rev.valorMetroOuPeca;
+      custoRev = rev.valorMetroOuPeca * (item.comprimentoEixo / 1000);
     } else {
       custoRev = rev.valorMetroOuPeca * (item.quantidadeAneis || 1);
     }
   }
 
-  const custo = custoTubo + custoEixo + custoConj + custoRev + custoEnc;
+  const custo = custoTubo + custoEixo + custoConj + custoEnc + custoRev;
+
+  // ETAPA 5 – Preço final (multiplicador padrão 1.8, inclui impostos)
   const desconto = item.desconto || 0;
   const valorPorPeca = custo * item.multiplicador * (1 - desconto / 100);
   const valorTotal = valorPorPeca * item.quantidade;
