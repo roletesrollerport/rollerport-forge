@@ -98,6 +98,7 @@ export default function OrcamentosPage() {
   const [produtoSearch, setProdutoSearch] = useState('');
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const [produtoQtd, setProdutoQtd] = useState(1);
+  const [produtoNcm, setProdutoNcm] = useState('');
   const [produtoDesconto, setProdutoDesconto] = useState(0);
 
   const [showRoleteForm, setShowRoleteForm] = useState(false);
@@ -118,7 +119,7 @@ export default function OrcamentosPage() {
 
   // Cadastro rápido produto
   const [showCadProduto, setShowCadProduto] = useState(false);
-  const [cadProduto, setCadProduto] = useState({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0 });
+  const [cadProduto, setCadProduto] = useState({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0, ncm: '' });
 
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
@@ -319,6 +320,9 @@ export default function OrcamentosPage() {
       quantidade: produtoQtd,
       valorUnitario: +valorComDesc.toFixed(2),
       valorTotal: +(valorComDesc * produtoQtd).toFixed(2),
+      ncm: produtoNcm,
+      medidas: (selectedProduto as any).medidas || '',
+      descricao: selectedProduto.descricao || '',
     };
     setItensProduto([...itensProduto, item]);
     setShowProdutoSearch(false);
@@ -326,6 +330,7 @@ export default function OrcamentosPage() {
     setProdutoSearch('');
     setProdutoQtd(1);
     setProdutoDesconto(0);
+    setProdutoNcm('');
   };
 
   // Insert rolete into orçamento
@@ -396,11 +401,12 @@ export default function OrcamentosPage() {
     const id = store.nextId('prod');
     const novo: Produto = {
       id, ...cadProduto, tipo: 'GENERICO',
+      ncm: cadProduto.ncm,
       createdAt: new Date().toISOString().split('T')[0],
-    };
+    } as any;
     store.saveProdutos([...produtos, novo]);
     setShowCadProduto(false);
-    setCadProduto({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0 });
+    setCadProduto({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0, ncm: '' });
     toast.success('Produto cadastrado!');
   };
 
@@ -454,7 +460,7 @@ export default function OrcamentosPage() {
       allPrintItems.push({
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '', descricao: ip.produtoNome,
-        ncm: (prod as any)?.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
+        ncm: ip.ncm || (prod as any)?.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
         icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ip.valorUnitario,
         valorTotal: ip.valorTotal, valorIPI: ip.valorTotal,
       });
@@ -820,7 +826,7 @@ export default function OrcamentosPage() {
             {produtoSearch && (
               <div className="mt-2 border rounded max-h-40 overflow-y-auto">
                 {filteredProdutos.map(p => (
-                  <button key={p.id} onClick={() => { setSelectedProduto(p); setProdutoQtd(1); setProdutoDesconto(0); }}
+                  <button key={p.id} onClick={() => { setSelectedProduto(p); setProdutoQtd(1); setProdutoDesconto(0); setProdutoNcm((p as any).ncm || ''); }}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50">
                     {p.codigo} – {p.nome} <span className="text-muted-foreground ml-2">{fmt(p.valor)}</span>
                   </button>
@@ -841,7 +847,7 @@ export default function OrcamentosPage() {
               <p className="font-medium">{selectedProduto.nome}</p>
               <p className="text-xs text-muted-foreground">Valor unitário: {fmt(selectedProduto.valor)}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
                 <label className="text-xs text-primary font-medium">Quantidade</label>
                 <Input type="number" value={produtoQtd} onChange={e => setProdutoQtd(+e.target.value)} />
@@ -849,6 +855,10 @@ export default function OrcamentosPage() {
               <div>
                 <label className="text-xs text-primary font-medium">Desconto (%)</label>
                 <Input type="number" value={produtoDesconto} onChange={e => setProdutoDesconto(+e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">NCM</label>
+                <Input placeholder="Digite o NCM" value={produtoNcm} onChange={e => setProdutoNcm(e.target.value)} />
               </div>
             </div>
             <div>
@@ -1142,8 +1152,9 @@ export default function OrcamentosPage() {
               <div className="flex justify-between"><h3 className="font-semibold">Cadastrar Produto</h3><button onClick={() => setShowCadProduto(false)}><XIcon className="h-4 w-4" /></button></div>
               <Input placeholder="Código" value={cadProduto.codigo} onChange={e => setCadProduto({ ...cadProduto, codigo: e.target.value })} />
               <Input placeholder="Nome" value={cadProduto.nome} onChange={e => setCadProduto({ ...cadProduto, nome: e.target.value })} />
-              <Input placeholder="Medidas" value={cadProduto.medidas} onChange={e => setCadProduto({ ...cadProduto, medidas: e.target.value })} />
+              <Input placeholder="Medidas (Ex: 100x50x30mm)" value={cadProduto.medidas} onChange={e => setCadProduto({ ...cadProduto, medidas: e.target.value })} />
               <Input placeholder="Descrição" value={cadProduto.descricao} onChange={e => setCadProduto({ ...cadProduto, descricao: e.target.value })} />
+              <Input placeholder="NCM" value={cadProduto.ncm} onChange={e => setCadProduto({ ...cadProduto, ncm: e.target.value })} />
               <Input type="number" step="0.01" placeholder="Valor (R$)" value={cadProduto.valor || ''} onChange={e => setCadProduto({ ...cadProduto, valor: +e.target.value })} />
               <Button onClick={salvarProduto} className="w-full">Salvar</Button>
             </div>

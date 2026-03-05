@@ -115,6 +115,9 @@ export interface ItemProdutoOrcamento {
   quantidade: number;
   valorUnitario: number;
   valorTotal: number;
+  ncm?: string;
+  medidas?: string;
+  descricao?: string;
 }
 
 export interface Orcamento {
