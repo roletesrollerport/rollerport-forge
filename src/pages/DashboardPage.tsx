@@ -234,6 +234,8 @@ export default function DashboardPage() {
     return nameMatch((orc as any)?.vendedor, nome);
   });
   const getUserOS = (nome: string) => data.os.filter((os: any) => {
+    // Match by vendedor field on OS itself (new), or fallback to pedido→orçamento chain
+    if (os.vendedor && nameMatch(os.vendedor, nome)) return true;
     const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
     if (!ped) return false;
     const orc = data.orcamentos.find((o: any) => o.id === (ped as any).orcamentoId);
@@ -337,8 +339,14 @@ export default function DashboardPage() {
       const da = a.includes('T') ? new Date(a) : new Date(a.split('/').reverse().join('-'));
       const db = b.includes('T') ? new Date(b) : new Date(b.split('/').reverse().join('-'));
       if (isNaN(da.getTime()) || isNaN(db.getTime())) return '—';
-      const diff = Math.max(0, Math.floor((db.getTime() - da.getTime()) / 86400000));
-      return `${diff}d`;
+      const diffMs = Math.max(0, db.getTime() - da.getTime());
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      if (diffDays === 0) {
+        return diffHours > 0 ? `${diffHours}h` : '<1h';
+      }
+      const remainHours = diffHours - (diffDays * 24);
+      return remainHours > 0 ? `${diffDays}d ${remainHours}h` : `${diffDays}d`;
     } catch { return '—'; }
   };
 
@@ -430,7 +438,11 @@ export default function DashboardPage() {
               <th className="text-left p-2 whitespace-nowrap">Nº</th><th className="text-left p-2 whitespace-nowrap">Cliente</th>
               <th className="text-left p-2 whitespace-nowrap">Criação</th><th className="text-left p-2 whitespace-nowrap">Confirmado</th>
               <th className="text-left p-2 whitespace-nowrap">Produção</th><th className="text-left p-2 whitespace-nowrap">Concluído</th>
-              <th className="text-left p-2 whitespace-nowrap">Entregue</th><th className="text-left p-2 whitespace-nowrap">Dias</th>
+              <th className="text-left p-2 whitespace-nowrap">Entregue</th>
+              <th className="text-left p-2 whitespace-nowrap">Criação→Confirm.</th>
+              <th className="text-left p-2 whitespace-nowrap">Confirm.→Produção</th>
+              <th className="text-left p-2 whitespace-nowrap">Produção→Concluído</th>
+              <th className="text-left p-2 whitespace-nowrap">Total</th>
               <th className="text-right p-2 whitespace-nowrap">Valor</th><th className="text-left p-2 whitespace-nowrap">Status</th>
               <th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
               {isMaster && <th className="p-2 w-20 print:hidden">Ações</th>}
@@ -451,6 +463,9 @@ export default function DashboardPage() {
                     <td className="p-2 whitespace-nowrap">{fmtDate(dtProducao)}</td>
                     <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluido)}</td>
                     <td className="p-2 whitespace-nowrap">{fmtDate(dtEntregue)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, dtConfirmado)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(dtConfirmado, dtProducao)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(dtProducao, dtConcluido)}</td>
                     <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, lastDate || new Date().toISOString())}</td>
                     <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
                     <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{p.status?.replace('_', ' ')}</span></td>
@@ -466,7 +481,7 @@ export default function DashboardPage() {
                   </tr>
                 );
               })}
-              {userPeds.length === 0 && <tr><td colSpan={12} className="p-4 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
+              {userPeds.length === 0 && <tr><td colSpan={15} className="p-4 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
             </tbody>
           </table>
           </div>
@@ -475,9 +490,10 @@ export default function DashboardPage() {
           <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-2 whitespace-nowrap">O.S.</th><th className="text-left p-2 whitespace-nowrap">Empresa</th><th className="text-left p-2 whitespace-nowrap">Pedido</th>
+              <th className="text-left p-2 whitespace-nowrap">O.S.</th><th className="text-left p-2 whitespace-nowrap">Empresa</th><th className="text-left p-2 whitespace-nowrap">Vendedor</th><th className="text-left p-2 whitespace-nowrap">Pedido</th>
               <th className="text-left p-2 whitespace-nowrap">Emissão</th><th className="text-left p-2 whitespace-nowrap">Em Andamento</th><th className="text-left p-2 whitespace-nowrap">Concluída</th>
-              <th className="text-left p-2 whitespace-nowrap">Dias</th><th className="text-left p-2 whitespace-nowrap">Status</th><th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
+              <th className="text-left p-2 whitespace-nowrap">Aberta→Andamento</th><th className="text-left p-2 whitespace-nowrap">Andamento→Concluída</th><th className="text-left p-2 whitespace-nowrap">Total</th>
+              <th className="text-left p-2 whitespace-nowrap">Status</th><th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
             </tr></thead>
             <tbody>
               {userOS.map((os: any) => {
@@ -487,17 +503,19 @@ export default function DashboardPage() {
                 const lastOs = dtConcluida || dtAndamento || null;
                 return (
                   <tr key={os.id} className="border-b hover:bg-muted/30">
-                    <td className="p-2 font-mono">{os.numero}</td><td className="p-2">{os.empresa}</td><td className="p-2">{os.pedidoNumero}</td>
+                    <td className="p-2 font-mono">{os.numero}</td><td className="p-2">{os.empresa}</td><td className="p-2">{os.vendedor || '-'}</td><td className="p-2">{os.pedidoNumero}</td>
                     <td className="p-2 whitespace-nowrap">{fmtDate(emissao)}</td>
                     <td className="p-2 whitespace-nowrap">{fmtDate(dtAndamento)}</td>
                     <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluida)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(emissao, dtAndamento)}</td>
+                    <td className="p-2 text-center font-mono">{daysBetweenDates(dtAndamento, dtConcluida)}</td>
                     <td className="p-2 text-center font-mono">{daysBetweenDates(emissao, lastOs || new Date().toISOString())}</td>
                     <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
                     <td className="p-2 text-destructive max-w-[150px] truncate" title={os.motivoCancelamento || ''}>{os.motivoCancelamento || ''}</td>
                   </tr>
                 );
               })}
-              {userOS.length === 0 && <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">Nenhuma O.S.</td></tr>}
+              {userOS.length === 0 && <tr><td colSpan={12} className="p-4 text-center text-muted-foreground">Nenhuma O.S.</td></tr>}
             </tbody>
           </table>
           </div>
@@ -598,7 +616,10 @@ export default function DashboardPage() {
                   <th className="text-left p-2 whitespace-nowrap">Produção</th>
                   <th className="text-left p-2 whitespace-nowrap">Concluído</th>
                   <th className="text-left p-2 whitespace-nowrap">Entregue</th>
-                  <th className="text-left p-2 whitespace-nowrap">Dias Total</th>
+                  <th className="text-left p-2 whitespace-nowrap">Criação→Confirm.</th>
+                  <th className="text-left p-2 whitespace-nowrap">Confirm.→Produção</th>
+                  <th className="text-left p-2 whitespace-nowrap">Produção→Concluído</th>
+                  <th className="text-left p-2 whitespace-nowrap">Total</th>
                   <th className="text-right p-2 whitespace-nowrap">Valor</th>
                   <th className="text-left p-2 whitespace-nowrap">Status</th>
                   <th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
@@ -620,6 +641,9 @@ export default function DashboardPage() {
                         <td className="p-2 whitespace-nowrap">{fmtDate(dtProducao)}</td>
                         <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluido)}</td>
                         <td className="p-2 whitespace-nowrap">{fmtDate(dtEntregue)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, dtConfirmado)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(dtConfirmado, dtProducao)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(dtProducao, dtConcluido)}</td>
                         <td className="p-2 text-center font-mono">{daysBetweenDates(criacao, lastDate || new Date().toISOString())}</td>
                         <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
                         <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : p.status === 'CONCLUIDO' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>{p.status?.replace('_', ' ')}</span></td>
@@ -640,11 +664,14 @@ export default function DashboardPage() {
                 <thead><tr className="border-b bg-muted/50">
                   <th className="text-left p-2 whitespace-nowrap">O.S.</th>
                   <th className="text-left p-2 whitespace-nowrap">Empresa</th>
+                  <th className="text-left p-2 whitespace-nowrap">Vendedor</th>
                   <th className="text-left p-2 whitespace-nowrap">Pedido</th>
                   <th className="text-left p-2 whitespace-nowrap">Emissão</th>
                   <th className="text-left p-2 whitespace-nowrap">Em Andamento</th>
                   <th className="text-left p-2 whitespace-nowrap">Concluída</th>
-                  <th className="text-left p-2 whitespace-nowrap">Dias Total</th>
+                  <th className="text-left p-2 whitespace-nowrap">Aberta→Andamento</th>
+                  <th className="text-left p-2 whitespace-nowrap">Andamento→Concluída</th>
+                  <th className="text-left p-2 whitespace-nowrap">Total</th>
                   <th className="text-left p-2 whitespace-nowrap">Status</th>
                   <th className="text-left p-2 whitespace-nowrap">Motivo Cancel.</th>
                 </tr></thead>
@@ -658,10 +685,13 @@ export default function DashboardPage() {
                       <tr key={os.id} className="border-b hover:bg-muted/30">
                         <td className="p-2 font-mono">{os.numero}</td>
                         <td className="p-2">{os.empresa}</td>
+                        <td className="p-2">{os.vendedor || '-'}</td>
                         <td className="p-2">{os.pedidoNumero}</td>
                         <td className="p-2 whitespace-nowrap">{fmtDate(emissao)}</td>
                         <td className="p-2 whitespace-nowrap">{fmtDate(dtAndamento)}</td>
                         <td className="p-2 whitespace-nowrap">{fmtDate(dtConcluida)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(emissao, dtAndamento)}</td>
+                        <td className="p-2 text-center font-mono">{daysBetweenDates(dtAndamento, dtConcluida)}</td>
                         <td className="p-2 text-center font-mono">{daysBetweenDates(emissao, lastOs || new Date().toISOString())}</td>
                         <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
                         <td className="p-2 text-destructive max-w-[200px] truncate" title={os.motivoCancelamento || ''}>{os.motivoCancelamento || ''}</td>
