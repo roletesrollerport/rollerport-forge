@@ -695,10 +695,20 @@ export default function DashboardPage() {
   return (
     <div>
       {/* TOPO */}
-      <div className="mb-2">
-        <h1 className="page-header">Início</h1>
-        <p className="page-subtitle">Sistema Rollerport</p>
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <h1 className="page-header">Início</h1>
+          <p className="page-subtitle">Sistema Rollerport</p>
+        </div>
+        {isMaster && (
+          <Button variant="outline" size="sm" onClick={() => setMigrationOpen(true)} className="gap-2">
+            <Database className="h-4 w-4" />
+            Migrar Banco de Dados
+          </Button>
+        )}
       </div>
+
+      {isMaster && <MigrationDialog open={migrationOpen} onOpenChange={setMigrationOpen} />}
 
       {/* Espaço de 2 linhas */}
       <div className="h-8" />
