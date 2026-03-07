@@ -14,8 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
-  ClipboardList
+  ClipboardList, Database
 } from 'lucide-react';
+import MigrationDialog from '@/components/MigrationDialog';
 import { toast } from 'sonner';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
