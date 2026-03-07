@@ -14,9 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
-  ClipboardList, Database
+  ClipboardList
 } from 'lucide-react';
-import MigrationDialog from '@/components/MigrationDialog';
 import { toast } from 'sonner';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
@@ -88,7 +87,6 @@ export default function DashboardPage() {
   const [dashView, setDashView] = useState<DashView>('main');
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
-  const [migrationOpen, setMigrationOpen] = useState(false);
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -695,20 +693,10 @@ export default function DashboardPage() {
   return (
     <div>
       {/* TOPO */}
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <h1 className="page-header">Início</h1>
-          <p className="page-subtitle">Sistema Rollerport</p>
-        </div>
-        {isMaster && (
-          <Button variant="outline" size="sm" onClick={() => setMigrationOpen(true)} className="gap-2">
-            <Database className="h-4 w-4" />
-            Migrar Banco de Dados
-          </Button>
-        )}
+      <div className="mb-2">
+        <h1 className="page-header">Início</h1>
+        <p className="page-subtitle">Sistema Rollerport</p>
       </div>
-
-      {isMaster && <MigrationDialog open={migrationOpen} onOpenChange={setMigrationOpen} />}
 
       {/* Espaço de 2 linhas */}
       <div className="h-8" />
