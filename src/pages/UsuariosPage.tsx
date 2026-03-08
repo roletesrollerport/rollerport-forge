@@ -4,7 +4,7 @@ import type { NivelAcesso, Genero, PermissaoModulo } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail, Loader2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -43,11 +43,32 @@ const emptyEditing = () => ({
 type EditingState = ReturnType<typeof emptyEditing>;
 
 export default function UsuariosPage() {
-  const { usuarios, loading, saveUsuario, deleteUsuario } = useUsuarios();
+  const { usuarios, loading, saveUsuario, deleteUsuario, getUserCredentials, generateTempPassword } = useUsuarios();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EditingState>(emptyEditing());
   const [showSenha, setShowSenha] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [viewingPass, setViewingPass] = useState<{ id: string, pass: string, isPlain: boolean } | null>(null);
+
+  const handleViewPass = async (userId: string) => {
+    try {
+      const data = await getUserCredentials(userId);
+      setViewingPass({ id: userId, pass: data.password, isPlain: data.isPlain });
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao buscar senha');
+    }
+  };
+
+  const handleGenTempPass = async (userId: string) => {
+    if (!confirm('Deseja gerar uma nova senha temporária para este usuário? A senha atual será invalidada.')) return;
+    try {
+      const data = await generateTempPassword(userId);
+      toast.success(`Nova senha gerada com sucesso!`);
+      setViewingPass({ id: userId, pass: data.tempPassword, isPlain: true });
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar senha');
+    }
+  };
 
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const loggedUser = usuarios.find(u => u.id === loggedUserId);
@@ -278,10 +299,32 @@ export default function UsuariosPage() {
               {isMaster && (
                 <div className="flex gap-1 flex-shrink-0">
                   <button onClick={() => openEdit(u)} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
-                  {u.nivel !== 'master' && <button onClick={() => handleDelete(u.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>}
+                  {u.nivel !== 'master' && (
+                    <>
+                      <button onClick={() => handleViewPass(u.id)} className="p-1 rounded hover:bg-muted text-amber-600" title="Ver Senha"><Eye className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => handleGenTempPass(u.id)} className="p-1 rounded hover:bg-muted text-blue-600" title="Gerar Senha Temporária"><Lock className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => handleDelete(u.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
+
+            {viewingPass?.id === u.id && (
+              <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-[10px] space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-amber-800 dark:text-amber-400">Credenciais:</span>
+                  <button onClick={() => setViewingPass(null)} className="text-amber-800 dark:text-amber-400 hover:underline">Fechar</button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono bg-white dark:bg-black/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-xs">
+                    {viewingPass.pass}
+                  </span>
+                  {!viewingPass.isPlain && <span className="text-muted-foreground italic">(Hashed)</span>}
+                  {viewingPass.isPlain && <span className="text-green-600 font-medium">Original</span>}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5 text-xs">
               <div className="flex items-center gap-1.5 text-muted-foreground">

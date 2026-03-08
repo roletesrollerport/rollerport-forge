@@ -120,5 +120,54 @@ export function useUsuarios() {
     return data ? parseUsuario(data) : null;
   };
 
-  return { usuarios, loading, fetchUsuarios, saveUsuario, deleteUsuario, login, getById };
+  const requestPasswordReset = async (loginStr: string) => {
+    const { data, error } = await supabase.functions.invoke('password-recovery', {
+      body: { action: 'request_reset', loginStr },
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const verifyResetCode = async (loginStr: string, code: string) => {
+    const { data, error } = await supabase.functions.invoke('password-recovery', {
+      body: { action: 'verify_code', loginStr, code },
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const resetPassword = async (loginStr: string, code: string, newPassword: string) => {
+    const { data, error } = await supabase.functions.invoke('password-recovery', {
+      body: { action: 'reset_password', loginStr, code, newPassword },
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const getUserCredentials = async (userId: string) => {
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'get_user_credentials', sessionToken, userId },
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const generateTempPassword = async (userId: string) => {
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'generate_temp_password', sessionToken, userId },
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  return { 
+    usuarios, loading, fetchUsuarios, saveUsuario, deleteUsuario, login, getById,
+    requestPasswordReset, verifyResetCode, resetPassword, getUserCredentials, generateTempPassword
+  };
 }

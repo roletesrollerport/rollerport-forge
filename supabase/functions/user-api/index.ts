@@ -119,6 +119,62 @@ serve(async (req) => {
       });
     }
 
+    if (action === "get_user_credentials") {
+      const { userId: targetId } = params;
+      if (!targetId) {
+        return new Response(JSON.stringify({ error: "Missing userId" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: targetUser } = await supabaseAdmin
+        .from("usuarios")
+        .select("senha")
+        .eq("id", targetId)
+        .maybeSingle();
+
+      if (!targetUser) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const isPlain = !targetUser.senha.startsWith("$2");
+      return new Response(JSON.stringify({ 
+        password: isPlain ? targetUser.senha : "••••••", 
+        isPlain 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "generate_temp_password") {
+      const { userId: targetId } = params;
+      if (!targetId) {
+        return new Response(JSON.stringify({ error: "Missing userId" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const tempPassword = Math.random().toString(36).slice(-8); // 8 chars random
+      const hashed = hashSync(tempPassword);
+
+      const { error } = await supabaseAdmin
+        .from("usuarios")
+        .update({ senha: hashed })
+        .eq("id", targetId);
+
+      if (error) {
+        return new Response(JSON.stringify({ error: "Failed to update password" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ tempPassword }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "delete_user") {
       const { userId: targetId } = params;
       if (!targetId) {
