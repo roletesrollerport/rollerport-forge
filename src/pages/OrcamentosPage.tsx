@@ -683,15 +683,15 @@ export default function OrcamentosPage() {
               ))}
               {/* TOTALS ROW */}
               <tr className="bg-gray-100 font-bold">
-                <td className="border p-1 text-center" colSpan={2}>TOTAL</td>
-                <td className="border p-1" colSpan={3}></td>
+                <td className="border p-1 text-center" colSpan={5}>TOTAL</td>
+                <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorLiquido)}</td>
-                <td className="border p-1 text-center"></td>
+                <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
+                <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.pis)}</td>
                 <td className="border p-1 text-right">{fmt(totals.cofins)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsDestino)}</td>
-                <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
               </tr>
             </tbody>
