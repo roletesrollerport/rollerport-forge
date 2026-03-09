@@ -647,18 +647,18 @@ export default function OrcamentosPage() {
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-1 text-center whitespace-nowrap">Item</th>
-                <th className="border p-1 text-center whitespace-nowrap">Qtd</th>
                 <th className="border p-1 text-center whitespace-nowrap">Código</th>
                 <th className="border p-1 text-center whitespace-nowrap">Cód. Cliente</th>
                 <th className="border p-1 text-left whitespace-nowrap" style={{minWidth: '180px'}}>Descrição</th>
+                <th className="border p-1 text-center whitespace-nowrap">Qtd</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr Unit.</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr Líq.</th>
+                <th className="border p-1 text-right whitespace-nowrap">Vlr Total</th>
                 <th className="border p-1 text-center whitespace-nowrap">NCM</th>
                 <th className="border p-1 text-right whitespace-nowrap">PIS</th>
                 <th className="border p-1 text-right whitespace-nowrap">Cofins</th>
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Orig.</th>
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Dest.</th>
-                <th className="border p-1 text-right whitespace-nowrap">Vlr Total</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr c/ IPI</th>
               </tr>
             </thead>
@@ -666,32 +666,32 @@ export default function OrcamentosPage() {
               {allPrintItems.map((row) => (
                 <tr key={row.item}>
                   <td className="border p-1 text-center">{String(row.item).padStart(2, '0')}</td>
-                  <td className="border p-1 text-center">{row.qtd}</td>
                   <td className="border p-1 text-center">{row.codigo}</td>
                   <td className="border p-1 text-center">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
+                  <td className="border p-1 text-center">{row.qtd}</td>
                   <td className="border p-1 text-right">{fmt(row.valorUnitario)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorLiquido)}</td>
+                  <td className="border p-1 text-right">{fmt(row.valorTotal)}</td>
                   <td className="border p-1 text-center">{row.ncm || '-'}</td>
                   <td className="border p-1 text-right">{fmt(row.pis)}</td>
                   <td className="border p-1 text-right">{fmt(row.cofins)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsOrigem)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsDestino)}</td>
-                  <td className="border p-1 text-right">{fmt(row.valorTotal)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorIPI)}</td>
                 </tr>
               ))}
               {/* TOTALS ROW */}
               <tr className="bg-gray-100 font-bold">
-                <td className="border p-1 text-center" colSpan={2}>TOTAL</td>
-                <td className="border p-1" colSpan={3}></td>
+                <td className="border p-1 text-center" colSpan={5}>TOTAL</td>
+                <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorLiquido)}</td>
-                <td className="border p-1 text-center"></td>
+                <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
+                <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.pis)}</td>
                 <td className="border p-1 text-right">{fmt(totals.cofins)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsDestino)}</td>
-                <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
               </tr>
             </tbody>
