@@ -1178,7 +1178,7 @@ export default function OrcamentosPage() {
                   </div>
                 ))}
               </div>
-              <Button onClick={salvarCliente} className="w-full">Salvar Cliente</Button>
+              <Button onClick={salvarCliente} className="w-full">Salvar {categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'}</Button>
             </div>
           </div>
         )}
