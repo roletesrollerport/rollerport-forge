@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Edit, Search, Settings2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ export default function ProdutosPage() {
   const [openRolete, setOpenRolete] = useState(false);
   const [openProduto, setOpenProduto] = useState(false);
   const [editing, setEditing] = useState<Produto | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Produto | null>(null);
 
   const emptyRolete = (): Produto => ({
     id: '', codigo: '', codigoCliente: '', nome: '', tipo: 'RC', medidas: '', descricao: '',
@@ -56,10 +58,11 @@ export default function ProdutosPage() {
     toast.success('Produto salvo!');
   };
 
-  const handleDelete = (id: string) => {
-    const updated = produtos.filter(p => p.id !== id);
+  const handleDelete = (produto: Produto) => {
+    const updated = produtos.filter(p => p.id !== produto.id);
     store.saveProdutos(updated);
     setProdutos(updated);
+    setDeleteConfirm(null);
     toast.success('Produto removido!');
   };
 
@@ -173,7 +176,7 @@ export default function ProdutosPage() {
                 <td className="p-3">
                   <div className="flex gap-1">
                     <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => handleDelete(p.id)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </td>
               </tr>
@@ -182,6 +185,26 @@ export default function ProdutosPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o produto <strong>{deleteConfirm?.nome}</strong>?
+              <br />
+              Esta ação não pode ser desfeita e o produto será removido para todos os usuários.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
