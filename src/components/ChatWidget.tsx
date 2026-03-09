@@ -263,7 +263,7 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
       className="fixed z-50 w-[380px] h-[520px] bg-card border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-200"
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-primary text-primary-foreground shrink-0">
+      <div onMouseDown={onMouseDown} className="flex items-center gap-2 px-3 py-2.5 bg-primary text-primary-foreground shrink-0 cursor-grab active:cursor-grabbing select-none">
         {selectedUser ? (
           <>
             <button onClick={() => setSelectedUser(null)} className="p-1 rounded hover:bg-primary-foreground/10">
