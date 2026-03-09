@@ -164,6 +164,13 @@ export default function OrcamentosPage() {
       c.endereco?.toLowerCase().includes(s) || c.whatsapp?.includes(clienteSearch) || compradorMatch;
   });
 
+  // Orçamentos do cliente selecionado (ordenados por data, mais recente primeiro)
+  const clienteOrcamentos = clienteId
+    ? orcamentos.filter(o => o.clienteId === clienteId).sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+    : [];
+
   const filteredProdutos = produtos.filter(p =>
     p.tipo === 'GENERICO' && (
       p.nome.toLowerCase().includes(produtoSearch.toLowerCase()) ||
