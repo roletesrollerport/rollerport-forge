@@ -697,6 +697,42 @@ export default function OrcamentosPage() {
             </tbody>
           </table>
 
+          {/* ===== RESUMO FINANCEIRO ===== */}
+          <div className="mt-4 flex justify-end">
+            <div className="w-80 text-[10px]">
+              <div className="flex justify-between border-b pb-1 mb-1">
+                <span>Valor Total Líquido:</span>
+                <span>{fmt(totals.valorTotal)}</span>
+              </div>
+              <div className="space-y-0.5 mb-2 text-[9px]">
+                <div className="flex justify-between">
+                  <span className="ml-4">PIS:</span>
+                  <span>{fmt(totals.pis)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="ml-4">COFINS:</span>
+                  <span>{fmt(totals.cofins)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="ml-4">ICMS Origem:</span>
+                  <span>{fmt(totals.icmsOrigem)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="ml-4">ICMS Destino:</span>
+                  <span>{fmt(totals.icmsDestino)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="ml-4">IPI:</span>
+                  <span>{fmt(totals.valorIPI)}</span>
+                </div>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-bold">
+                <span>Total de Impostos:</span>
+                <span>{fmt(totals.pis + totals.cofins + totals.icmsOrigem + totals.icmsDestino + totals.valorIPI)}</span>
+              </div>
+            </div>
+          </div>
+
           {/* ===== Footer ===== */}
           <div className="mt-4 grid grid-cols-3 gap-4 text-[10px] border-t pt-3">
             <div>Previsão de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></div>
