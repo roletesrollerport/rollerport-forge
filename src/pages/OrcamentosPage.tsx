@@ -20,7 +20,7 @@ const emptyItem = (): ItemOrcamento => ({
   comprimentoEixo: '' as any, diametroEixo: '' as any, tipoEncaixe: '', medidaFresado: '', conjunto: '',
   tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: '' as any, custo: 0,
   multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '8431.39.00',
-  aliqPIS: 0, aliqCOFINS: 0, aliqICMS: 0, aliqIPI: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0
+  aliqPIS: PIS_FIXO, aliqCOFINS: COFINS_FIXO, aliqICMS: 0, aliqIPI: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0
 });
 
 function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[], ufCliente: string = 'SP'): ItemOrcamento {
@@ -588,8 +588,8 @@ export default function OrcamentosPage() {
     };
     const taxaICMSOrig = icmsInterMap[destinoUF] || 0.12;
     const taxaICMSDest = origemUF === destinoUF ? 0 : Math.max(0, (icmsInternoMap[destinoUF] || 0.18) - taxaICMSOrig);
-    const taxaPIS = 0.0165;
-    const taxaCOFINS = 0.076;
+    const taxaPIS = PIS_FIXO / 100;
+    const taxaCOFINS = COFINS_FIXO / 100;
     const taxaIPI = 0.05;
 
     // Build all items for the table
@@ -779,12 +779,12 @@ export default function OrcamentosPage() {
               <tr className="bg-gray-100 text-[6px] uppercase font-bold">
                 <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[15px]">ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[15px]">ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
                 {/* ICMS D */}
-                <th className="border p-1 text-center whitespace-nowrap w-[15px]">ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
               </tr>
             </thead>
@@ -1307,14 +1307,14 @@ export default function OrcamentosPage() {
               <div>
                 <span className="text-xs text-primary">Impostos (Destaque)</span><br />
                 <span className="text-[10px] text-muted-foreground">
-                  {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (produtoAliqPIS + produtoAliqCOFINS + produtoAliqICMS)) / 100)}
+                  {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (PIS_FIXO + COFINS_FIXO + (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0))) / 100)}
                 </span>
                 <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * produtoAliqIPI) / 100)}</span>
               </div>
               <div className="bg-primary/5 p-1 rounded border border-primary/10">
                 <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
                 <strong className="text-primary">
-                  {fmt((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (1 - (produtoAliqPIS + produtoAliqCOFINS + produtoAliqICMS) / 100))}
+                  {fmt((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (1 - (PIS_FIXO + COFINS_FIXO + (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0)) / 100))}
                 </strong>
               </div>
             </div>
@@ -1466,14 +1466,6 @@ export default function OrcamentosPage() {
               </div>
               <div className="col-span-2 sm:col-span-6 h-px bg-muted my-1" />
               <div>
-                <label className="text-xs text-primary font-medium">PIS (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqPIS || 0} onChange={e => updateRoleteField({ aliqPIS: +e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">COFINS (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqCOFINS || 0} onChange={e => updateRoleteField({ aliqCOFINS: +e.target.value })} />
-              </div>
-              <div>
                 <label className="text-xs text-primary font-medium">ICMS (%)</label>
                 <Input type="number" step="0.01" value={roleteItem.aliqICMS || 0} onChange={e => updateRoleteField({ aliqICMS: +e.target.value })} />
               </div>
@@ -1488,14 +1480,14 @@ export default function OrcamentosPage() {
               <div>
                 <span className="text-xs text-primary">Impostos (Destaque)</span><br />
                 <span className="text-[10px] text-muted-foreground">
-                  {fmt((roleteItem.valorTotal * ((roleteItem.aliqPIS || 0) + (roleteItem.aliqCOFINS || 0) + (roleteItem.aliqICMS || 0))) / 100)}
+                  {fmt((roleteItem.valorTotal * (PIS_FIXO + COFINS_FIXO + (roleteItem.aliqICMS || 0))) / 100)}
                 </span>
                 <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt((roleteItem.valorTotal * (roleteItem.aliqIPI || 0)) / 100)}</span>
               </div>
               <div className="bg-primary/5 p-1 rounded border border-primary/10">
                 <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
                 <strong className="text-primary">
-                  {fmt(roleteItem.valorTotal * (1 - ((roleteItem.aliqPIS || 0) + (roleteItem.aliqCOFINS || 0) + (roleteItem.aliqICMS || 0)) / 100))}
+                  {fmt(roleteItem.valorTotal * (1 - (PIS_FIXO + COFINS_FIXO + (roleteItem.aliqICMS || 0)) / 100))}
                 </strong>
               </div>
             </div>
