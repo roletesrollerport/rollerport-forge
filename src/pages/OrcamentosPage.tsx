@@ -285,6 +285,45 @@ export default function OrcamentosPage() {
     setView('form');
   };
 
+  // Clonar orçamento com preços atualizados
+  const cloneOrcamento = (orc: Orcamento) => {
+    // Recalcular itens rolete com preços atuais
+    const itensRoleteAtualizados = (orc.itensRolete || []).map(item => {
+      const recalculado = calcItem(item, tubos, eixos, conjuntos, revestimentos, encaixes);
+      return { ...recalculado, id: store.nextId('item') };
+    });
+
+    // Atualizar itens produto com preços atuais do cadastro
+    const itensProdutoAtualizados = (orc.itensProduto || []).map(item => {
+      const produtoAtual = produtos.find(p => p.id === item.produtoId);
+      const valorAtual = produtoAtual?.valor || item.valorUnitario;
+      return {
+        ...item,
+        id: store.nextId('item'),
+        valorUnitario: valorAtual,
+        valorTotal: +(valorAtual * item.quantidade).toFixed(2),
+      };
+    });
+
+    // Preencher formulário com dados clonados
+    setClienteId(orc.clienteId);
+    setClienteSearch(orc.clienteNome);
+    setTipoFrete(orc.tipoFrete || 'FOB');
+    setCondicaoPagamento(orc.condicaoPagamento || '');
+    setVendedor(orc.vendedor || '');
+    setDataOrcamento(new Date().toLocaleDateString('pt-BR'));
+    setPrevisaoEntrega(orc.previsaoEntrega || '');
+    setObservacao(orc.observacao || '');
+    setCompradorSelecionado(orc.compradorNome || '');
+    setItensRolete(itensRoleteAtualizados);
+    setItensProduto(itensProdutoAtualizados);
+    setPrazoPagamento((orc as any).prazoPagamento || '');
+    setEditingOrc(null); // Não é edição, é novo
+    setShowClienteHistory(false);
+    
+    toast.success(`Orçamento ${orc.numero} clonado com preços atualizados!`);
+  };
+
   const totalRoletes = itensRolete.reduce((s, i) => s + i.valorTotal, 0);
   const totalProdutos = itensProduto.reduce((s, i) => s + i.valorTotal, 0);
   const totalGeral = totalRoletes + totalProdutos;
