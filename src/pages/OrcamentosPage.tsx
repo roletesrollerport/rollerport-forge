@@ -736,8 +736,25 @@ export default function OrcamentosPage() {
           )}
 
           {viewOrc.observacao && (
-            <div className="text-[10px] mt-2">Observação: <strong>{viewOrc.observacao}</strong></div>
+            <div className="text-[10px] mt-2 border rounded p-2 bg-muted/20">Observação do Vendedor: <strong>{viewOrc.observacao}</strong></div>
           )}
+
+          {/* ===== Informações Complementares ===== */}
+          <div className="mt-6 border rounded p-3 text-[10px]">
+            <h3 className="text-center font-bold text-xs mb-3">INFORMAÇÕES COMPLEMENTARES</h3>
+            <ol className="list-decimal list-inside text-[9px] space-y-1.5 font-medium">
+              <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A ROLLERPORT pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
+              <li>A ROLLERPORT fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
+              <li>A quantidade de peças solicitadas interfere e determina os valores cobrados e repassados na prestação de serviço, no valor da mercadoria (rolete, suporte, eixo e tubo) e nos descontos ofertados em orçamento;</li>
+              <li>As opções de pagamento ou de faturamento, assim como os parcelamentos, também interferem nos descontos e valores repassados em orçamento;</li>
+              <li><span className="text-red-600 font-bold">OBS: ORÇAMENTO SUJEITO A ALTERAÇÃO MEDIANTE A ANÁLISE DE CRÉDITO NO ATO DO FECHAMENTO DO PEDIDO.</span></li>
+            </ol>
+            <div className="mt-3 bg-yellow-300 p-2 text-[9px] font-bold text-center border border-yellow-500 rounded">
+              <p className="underline mb-1">CONFERIR O ORÇAMENTO ANTES DO FECHAMENTO DO PEDIDO, E ATENÇÃO AS MEDIDAS SOLICITADAS. NO CASO DE PEÇAS DESENHADAS, CONFERIR O DESENHO ENVIADO ANTES DO FECHAMENTO DO PEDIDO.</p>
+              <p className="underline">ATENÇÃO: OS VALORES DESTE ORÇAMENTO SÃO VÁLIDOS APENAS PARA A QUANTIDADE TOTAL SOLICITADA. PARA QUANTIDADES MENORES, OS PREÇOS SOFRERÃO ALTERAÇÕES.</p>
+            </div>
+          </div>
+
           <div className="text-center text-[10px] mt-6">
             <p className="font-semibold">ROLLERPORT – Fábrica de Roletes</p>
             <p className="text-gray-500">Orçamento válido por 5 dias úteis.</p>
