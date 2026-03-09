@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { store } from '@/lib/store';
-import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
+import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe, RegimeTributario, EmpresaEmissora } from '@/lib/types';
 import { useCustos } from '@/hooks/useCustos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,10 +20,41 @@ const emptyItem = (): ItemOrcamento => ({
   comprimentoEixo: '' as any, diametroEixo: '' as any, tipoEncaixe: '', medidaFresado: '', conjunto: '',
   tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: '' as any, custo: 0,
   multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '8431.39.00',
-  aliqPIS: PIS_FIXO, aliqCOFINS: COFINS_FIXO, aliqICMS: 0, aliqIPI: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0
+  aliqPIS: 0, aliqCOFINS: 0, aliqICMS: 0, aliqIPI: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0
 });
 
-function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[], ufCliente: string = 'SP'): ItemOrcamento {
+// Helper para determinar alíquotas com base nos regimes
+function getAlíquotas(origem: RegimeTributario, destino: RegimeTributario, ufCliente: string) {
+  let aliqPIS = 0;
+  let aliqCOFINS = 0;
+  let aliqICMS = ICMS_INTERESTADUAL_SP[ufCliente] || 18.0;
+
+  if (origem === 'Lucro Presumido') {
+    aliqPIS = PIS_FIXO;
+    aliqCOFINS = COFINS_FIXO;
+  } else if (origem === 'Simples Nacional') {
+    // No Simples Nacional, alíquotas de PIS/COFINS geralmente não são destacadas individualmente para crédito
+    aliqPIS = 0;
+    aliqCOFINS = 0;
+  } else if (origem === 'Lucro Real') {
+    aliqPIS = 1.65;
+    aliqCOFINS = 7.6;
+  }
+
+  return { aliqPIS, aliqCOFINS, aliqICMS };
+}
+
+function calcItem(
+  item: ItemOrcamento, 
+  tubos: Tubo[], 
+  eixos: Eixo[], 
+  conjuntos: Conjunto[], 
+  revestimentos: Revestimento[], 
+  encaixes: Encaixe[], 
+  ufCliente: string = 'SP',
+  regimeOrigem: RegimeTributario = 'Simples Nacional',
+  regimeDestino: RegimeTributario = 'Lucro Presumido'
+): ItemOrcamento {
 
   const tubo = tubos.find(t => t.diametro === item.diametroTubo && t.parede === item.paredeTubo);
   const eixo = eixos.find(e => e.diametro === String(item.diametroEixo));
@@ -68,11 +99,9 @@ function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: 
   const valorPorPeca = custo * multiplicador * (1 - desconto / 100);
   const valorTotal = valorPorPeca * item.quantidade;
 
-  // Motor Fiscal Hardcoded
-  const aliqPIS = PIS_FIXO;
-  const aliqCOFINS = COFINS_FIXO;
-  const aliqICMS = ICMS_INTERESTADUAL_SP[ufCliente] || 18.0; // Se não houver UF ou for SP (18), senão (7 ou 12) dependendo do estado.
-  const aliqIPI = item.aliqIPI || 0; // IPI se mantém manual pelo item
+  // Motor Fiscal Baseado em Regime
+  const { aliqPIS, aliqCOFINS, aliqICMS } = getAlíquotas(regimeOrigem, regimeDestino, ufCliente);
+  const aliqIPI = item.aliqIPI || 0;
 
   const valorPIS = valorTotal * (aliqPIS / 100);
   const valorCOFINS = valorTotal * (aliqCOFINS / 100);
@@ -113,6 +142,7 @@ export default function OrcamentosPage() {
   const [tipoFrete, setTipoFrete] = useState<TipoFrete>('FOB');
   const [condicaoPagamento, setCondicaoPagamento] = useState('');
   const [vendedor, setVendedor] = useState('');
+  const [empresaEmissoraId, setEmpresaEmissoraId] = useState('emp_1'); // Default Rollerport
   const [dataOrcamento, setDataOrcamento] = useState(new Date().toLocaleDateString('pt-BR'));
   const [previsaoEntrega, setPrevisaoEntrega] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -156,6 +186,7 @@ export default function OrcamentosPage() {
   const [cadCliente, setCadCliente] = useState<Omit<Cliente, 'id' | 'createdAt'>>({
     nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
     compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
+    regimeTributario: 'Lucro Presumido',
     aniversarioEmpresa: '', redesSociais: '',
   });
 
@@ -261,10 +292,10 @@ export default function OrcamentosPage() {
   // Autosave draft to localStorage on every change when in form view
   useEffect(() => {
     if (view === 'form') {
-      const draft = { clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc };
+      const draft = { clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, empresaEmissoraId, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc };
       localStorage.setItem('orc_draft', JSON.stringify(draft));
     }
-  }, [view, clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc]);
+  }, [view, clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, empresaEmissoraId, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc]);
 
   // Autosave as draft every 10 seconds when in form view
   const autosaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -283,6 +314,7 @@ export default function OrcamentosPage() {
           dataEntrega: previsaoEntrega,
           itensRolete, itensProduto,
           status: editingOrc?.status || 'RASCUNHO',
+          empresaEmissoraId,
           valorTotal: +(itensRolete.reduce((s, i) => s + i.valorTotal, 0) + itensProduto.reduce((s, i) => s + i.valorTotal, 0)).toFixed(2),
           createdAt: editingOrc?.createdAt || new Date().toISOString().split('T')[0],
         };
@@ -306,6 +338,7 @@ export default function OrcamentosPage() {
     setDataOrcamento(new Date().toLocaleDateString('pt-BR'));
     setPrevisaoEntrega(''); setObservacao(''); setCompradorSelecionado('');
     setItensRolete([]); setItensProduto([]);
+    setEmpresaEmissoraId('emp_1');
     setEditingOrc(null); setShowProdutoSearch(false);
     setShowRoleteForm(false); setSelectedProduto(null);
     localStorage.removeItem('orc_draft');
@@ -324,6 +357,7 @@ export default function OrcamentosPage() {
     setObservacao(orc.observacao || '');
     setItensRolete(orc.itensRolete || []);
     setItensProduto(orc.itensProduto || []);
+    setEmpresaEmissoraId(orc.empresaEmissoraId || 'emp_1');
     setPrazoPagamento((orc as any).prazoPagamento || '');
     setView('form');
   };
@@ -332,8 +366,11 @@ export default function OrcamentosPage() {
   const cloneOrcamento = (orc: Orcamento) => {
     // Recalcular itens rolete com preços atuais
     const cliUF = clientes.find(c => c.id === orc.clienteId)?.estado || 'SP';
+    const cliRegime = clientes.find(c => c.id === orc.clienteId)?.regimeTributario || 'Lucro Presumido';
+    const empRegime = store.getEmpresas().find(e => e.id === orc.empresaEmissoraId)?.regimeTributario || 'Simples Nacional';
+
     const itensRoleteAtualizados = (orc.itensRolete || []).map(item => {
-      const recalculado = calcItem(item, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF);
+      const recalculado = calcItem(item, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF, empRegime, cliRegime);
       return { ...recalculado, id: store.nextId('item') };
     });
 
@@ -384,6 +421,7 @@ export default function OrcamentosPage() {
       dataEntrega: previsaoEntrega,
       itensRolete, itensProduto,
       status: editingOrc?.status || 'RASCUNHO',
+      empresaEmissoraId,
       valorTotal: +totalGeral.toFixed(2),
       createdAt: editingOrc?.createdAt || new Date().toISOString().split('T')[0],
     };
@@ -427,7 +465,12 @@ export default function OrcamentosPage() {
   // Insert produto into orçamento
   const insertProduto = () => {
     if (!selectedProduto) return;
+    const cliUF = clienteSelecionado?.estado || 'SP';
+    const cliRegime = clienteSelecionado?.regimeTributario || 'Lucro Presumido';
+    const empRegime = store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario || 'Simples Nacional';
+    const { aliqPIS, aliqCOFINS, aliqICMS } = getAlíquotas(empRegime, cliRegime, cliUF);
     const valorComDesc = selectedProduto.valor * (1 - produtoDesconto / 100);
+
     const item: ItemProdutoOrcamento = {
       id: store.nextId('item'),
       produtoId: selectedProduto.id,
@@ -438,13 +481,13 @@ export default function OrcamentosPage() {
       ncm: produtoNcm,
       medidas: (selectedProduto as any).medidas || '',
       descricao: selectedProduto.descricao || '',
-      aliqPIS: PIS_FIXO,
-      aliqCOFINS: COFINS_FIXO,
-      aliqICMS: ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0,
+      aliqPIS,
+      aliqCOFINS,
+      aliqICMS,
       aliqIPI: produtoAliqIPI,
-      valorPIS: +((valorComDesc * produtoQtd) * (PIS_FIXO / 100)).toFixed(2),
-      valorCOFINS: +((valorComDesc * produtoQtd) * (COFINS_FIXO / 100)).toFixed(2),
-      valorICMS: +((valorComDesc * produtoQtd) * ((ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0) / 100)).toFixed(2),
+      valorPIS: +((valorComDesc * produtoQtd) * (aliqPIS / 100)).toFixed(2),
+      valorCOFINS: +((valorComDesc * produtoQtd) * (aliqCOFINS / 100)).toFixed(2),
+      valorICMS: +((valorComDesc * produtoQtd) * (aliqICMS / 100)).toFixed(2),
       valorIPI: +((valorComDesc * produtoQtd) * (produtoAliqIPI / 100)).toFixed(2),
     };
     setItensProduto([...itensProduto, item]);
@@ -463,7 +506,14 @@ export default function OrcamentosPage() {
   // Insert rolete into orçamento
   const insertRolete = () => {
     const cliUF = clienteSelecionado?.estado || 'SP';
-    const calculated = calcItem({ ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete }, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF);
+    const cliRegime = clienteSelecionado?.regimeTributario || 'Lucro Presumido';
+    const empresas = store.getEmpresas();
+    const empRegime = empresas.find(e => e.id === empresaEmissoraId)?.regimeTributario || 'Simples Nacional';
+
+    const calculated = calcItem(
+      { ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete }, 
+      tubos, eixos, conjuntos, revestimentos, encaixes, cliUF, empRegime, cliRegime
+    );
     setItensRolete([...itensRolete, calculated]);
     // Salvar rolete como produto na lista de produtos
     const novoProduto: Produto = {
@@ -488,7 +538,11 @@ export default function OrcamentosPage() {
 
   const updateRoleteField = (partial: Partial<ItemOrcamento>) => {
     const cliUF = clienteSelecionado?.estado || 'SP';
-    setRoleteItem(prev => calcItem({ ...prev, ...partial }, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF));
+    const cliRegime = clienteSelecionado?.regimeTributario || 'Lucro Presumido';
+    const empresas = store.getEmpresas();
+    const empRegime = empresas.find(e => e.id === empresaEmissoraId)?.regimeTributario || 'Simples Nacional';
+
+    setRoleteItem(prev => calcItem({ ...prev, ...partial }, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF, empRegime, cliRegime));
   };
 
   // Cadastrar cliente rápido
@@ -512,6 +566,7 @@ export default function OrcamentosPage() {
     setCadCliente({
       nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
       compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
+      regimeTributario: 'Lucro Presumido',
       aniversarioEmpresa: '', redesSociais: '',
     });
     toast.success(`${categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'} cadastrado!`);
@@ -683,6 +738,8 @@ export default function OrcamentosPage() {
     const cleanOrcVendedor = (viewOrc.vendedor || '').trim().toLowerCase();
     const vendedorUser = usuarios.find(u => (u.nome || '').trim().toLowerCase() === cleanOrcVendedor || (u.login || '').trim().toLowerCase() === cleanOrcVendedor);
 
+    const empresaEmissora = store.getEmpresas().find(e => e.id === viewOrc.empresaEmissoraId) || store.getEmpresas()[0];
+
     return (
       <div>
         <div className="flex gap-2 mb-4 print:hidden">
@@ -711,17 +768,17 @@ export default function OrcamentosPage() {
           {/* ===== HEADER: Logo+Rollerport left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
-              <img src={logo} alt="Rollerport" className="h-16 object-contain" />
+              <img src={logo} alt={empresaEmissora.nome} className="h-16 object-contain" />
               <div>
-                <h2 className="text-base font-bold leading-tight">ROLLERPORT</h2>
-                <p className="text-[10px] font-semibold">Fábrica de Roletes</p>
-                <p className="text-[10px]">Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial</p>
-                <p className="text-[10px]">Franco da Rocha/SP – CEP: 07832-460</p>
-                <p className="text-[10px]">CNPJ: 58.234.180/0001-56</p>
-                <p className="text-[10px]">Tel: (11) 4441-3572 • contato@rollerport.com.br</p>
+                <h2 className="text-base font-bold leading-tight">{empresaEmissora.razaoSocial}</h2>
+                <p className="text-[10px] font-semibold">{empresaEmissora.nome} – Fábrica de Roletes</p>
+                <p className="text-[10px]">{empresaEmissora.endereco}</p>
+                <p className="text-[10px]">{empresaEmissora.cidade}/{empresaEmissora.estado} – CEP: {empresaEmissora.cep}</p>
+                <p className="text-[10px]">CNPJ: {empresaEmissora.cnpj}</p>
+                <p className="text-[10px]">Tel: {empresaEmissora.telefone} • {empresaEmissora.email}</p>
               </div>
               <div className="flex flex-col items-center ml-2">
-                <img src={qrcode} alt="QR Code Rollerport" className="h-14 w-14 object-contain" />
+                <img src={qrcode} alt="QR Code" className="h-14 w-14 object-contain" />
                 <p className="text-[7px] text-gray-500 mt-0.5 text-center leading-tight">Aponte a câmera<br/>para nossas redes</p>
               </div>
             </div>
@@ -805,11 +862,11 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{row.aliqCOFINS.toFixed(2)}%</td>
                   <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorCOFINS)}</td>
                   
-                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{Number(18.00).toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorLiquidoUnit * row.qtd * (18.00 / 100))}</td>
+                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqICMS.toFixed(2)}%</td>
+                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorICMS)}</td>
 
-                  <td className="border p-1 text-center whitespace-nowrap">{row.aliqICMS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorICMS)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{Number(0).toFixed(2)}%</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(0)}</td>
                   
                   <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorIPI)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold bg-green-100">{fmt(row.valorTotalComImpostos)}</td>
@@ -827,9 +884,9 @@ export default function OrcamentosPage() {
                 <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorCOFINS)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(allPrintItems.reduce((s, row) => s + (row.valorLiquidoUnit * row.qtd * (18.00/100)), 0))}</td>
-                <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorICMS)}</td>
+                <td className="border p-1"></td>
+                <td className="border p-1 text-right">{fmt(0)}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
                 <td className="border p-1 text-right bg-green-200">{fmt(totals.valorTotalComImpostos)}</td>
               </tr>
@@ -844,10 +901,10 @@ export default function OrcamentosPage() {
             <div className="mt-3 border rounded p-3 text-[10px]">
               <p className="font-bold mb-1">Dados Bancários para {viewOrc.condicaoPagamento === 'PIX' ? 'PIX' : 'Transferência Bancária'}:</p>
               <p>BANCO SANTANDER (033)</p>
-              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
-              <p>CNPJ: 10.311.350/0001-22</p>
-              <p>Agência: 3744 | Conta Corrente: 130094436</p>
-              {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): 10.311.350/0001-22</p>}
+              <p>{empresaEmissora.razaoSocial} ({empresaEmissora.nome})</p>
+              <p>CNPJ: {empresaEmissora.cnpj}</p>
+              <p>Agência: 3744 | Conta Corrente: {empresaEmissora.nome === 'ROLLERPORT' ? '130094436' : '130098877'}</p>
+              {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): {empresaEmissora.cnpj}</p>}
             </div>
           )}
 
@@ -1118,6 +1175,26 @@ export default function OrcamentosPage() {
             </div>
           )}
 
+          {/* Empresa Emissora Selection */}
+          <div className="p-3 border rounded-lg bg-primary/5 space-y-2">
+            <label className="text-sm font-bold text-primary flex items-center gap-2">
+              <Check className="h-4 w-4" /> Qual empresa emitirá este orçamento?
+            </label>
+            <div className="flex gap-3">
+              {store.getEmpresas().map(emp => (
+                <Button
+                  key={emp.id}
+                  variant={empresaEmissoraId === emp.id ? 'default' : 'outline'}
+                  onClick={() => setEmpresaEmissoraId(emp.id)}
+                  className={`flex-1 flex flex-col items-center py-6 h-auto transition-all ${empresaEmissoraId === emp.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                >
+                  <span className="text-lg font-bold">{emp.nome}</span>
+                  <span className="text-[10px] opacity-80">{emp.cnpj} • {emp.regimeTributario}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Frete, Pagamento, Vendedor */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -1166,19 +1243,19 @@ export default function OrcamentosPage() {
             <div className="bg-muted/20 rounded-lg p-3 border text-xs">
               <p className="font-semibold text-primary mb-1">Dados para PIX / Transferência:</p>
               <p>BANCO SANTANDER</p>
-              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
-              <p>CNPJ: 10.311.350/0001-22</p>
-              <p>Agência: 3744 | Conta Corrente: 130094436</p>
-              <p>PIX: 10.311.350/0001-22</p>
+              <p>{store.getEmpresas().find(e => e.id === empresaEmissoraId)?.razaoSocial} ({store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome})</p>
+              <p>CNPJ: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.cnpj}</p>
+              <p>Agência: 3744 | Conta Corrente: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome === 'ROLLERPORT' ? '130094436' : '130098877'}</p>
+              <p>PIX: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.cnpj}</p>
             </div>
           )}
           {condicaoPagamento === 'Transferência Bancária' && (
             <div className="bg-muted/20 rounded-lg p-3 border text-xs">
               <p className="font-semibold text-primary mb-1">Dados para Transferência Bancária:</p>
               <p>BANCO SANTANDER</p>
-              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
-              <p>CNPJ: 10.311.350/0001-22</p>
-              <p>Agência: 3744 | Conta Corrente: 130094436</p>
+              <p>{store.getEmpresas().find(e => e.id === empresaEmissoraId)?.razaoSocial} ({store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome})</p>
+              <p>CNPJ: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.cnpj}</p>
+              <p>Agência: 3744 | Conta Corrente: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome === 'ROLLERPORT' ? '130094436' : '130098877'}</p>
             </div>
           )}
 
@@ -1307,14 +1384,22 @@ export default function OrcamentosPage() {
               <div>
                 <span className="text-xs text-primary">Impostos (Destaque)</span><br />
                 <span className="text-[10px] text-muted-foreground">
-                  {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (PIS_FIXO + COFINS_FIXO + (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0))) / 100)}
+                  {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0)
+                  )) / 100)}
                 </span>
                 <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * produtoAliqIPI) / 100)}</span>
               </div>
               <div className="bg-primary/5 p-1 rounded border border-primary/10">
                 <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
                 <strong className="text-primary">
-                  {fmt((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (1 - (PIS_FIXO + COFINS_FIXO + (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0)) / 100))}
+                  {fmt((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (1 - (
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0)
+                  ) / 100))}
                 </strong>
               </div>
             </div>
@@ -1478,16 +1563,23 @@ export default function OrcamentosPage() {
               <div><span className="text-xs text-primary">Preço Unit. Final</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
               <div><span className="text-xs text-primary">Total Item</span><br /><strong>{fmt(roleteItem.valorTotal)}</strong></div>
               <div>
-                <span className="text-xs text-primary">Impostos (Destaque)</span><br />
                 <span className="text-[10px] text-muted-foreground">
-                  {fmt((roleteItem.valorTotal * (PIS_FIXO + COFINS_FIXO + (roleteItem.aliqICMS || 0))) / 100)}
+                  {fmt((roleteItem.valorTotal * (
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (roleteItem.aliqICMS || 0)
+                  )) / 100)}
                 </span>
                 <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt((roleteItem.valorTotal * (roleteItem.aliqIPI || 0)) / 100)}</span>
               </div>
               <div className="bg-primary/5 p-1 rounded border border-primary/10">
                 <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
                 <strong className="text-primary">
-                  {fmt(roleteItem.valorTotal * (1 - (PIS_FIXO + COFINS_FIXO + (roleteItem.aliqICMS || 0)) / 100))}
+                  {fmt(roleteItem.valorTotal * (1 - (
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (roleteItem.aliqICMS || 0)
+                  ) / 100))}
                 </strong>
               </div>
             </div>
@@ -1596,6 +1688,16 @@ export default function OrcamentosPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: e.target.value })} /></div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Regime Tributário</label>
+                  <select value={cadCliente.regimeTributario} onChange={e => setCadCliente({ ...cadCliente, regimeTributario: e.target.value as RegimeTributario })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="Simples Nacional">Simples Nacional</option>
+                    <option value="Lucro Presumido">Lucro Presumido</option>
+                    <option value="Lucro Real">Lucro Real</option>
+                    <option value="Isento">Isento</option>
+                  </select>
+                </div>
                 <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={cadCliente.email} onChange={e => setCadCliente({ ...cadCliente, email: e.target.value })} /></div>

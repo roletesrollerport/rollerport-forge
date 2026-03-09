@@ -1,7 +1,7 @@
 import type {
   Tubo, Eixo, Conjunto, Revestimento, Encaixe,
   Cliente, Fornecedor, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
-  Notificacao, MetaVendedor
+  Notificacao, MetaVendedor, EmpresaEmissora
 } from './types';
 
 function load<T>(key: string, fallback: T): T {
@@ -229,8 +229,39 @@ const SEED_ENCAIXES: Encaixe[] = [
 ];
 
 const SEED_CLIENTES: Cliente[] = [
-  { id: '1', nome: 'Polimix', cnpj: '12.345.678/0001-90', email: 'contato@polimix.com.br', telefone: '(11) 3456-7890', whatsapp: '(11) 93456-7890', endereco: 'Rua Industrial, 500', cidade: 'São Paulo', estado: 'SP', contato: 'João Silva', compradores: [{ nome: 'João Silva', telefone: '(11) 3456-7890', email: 'joao@polimix.com.br', whatsapp: '(11) 93456-7890' }], createdAt: '2025-01-15' },
-  { id: '2', nome: 'Votorantim Cimentos', cnpj: '22.333.444/0001-55', email: 'compras@votorantim.com', telefone: '(11) 2345-6789', whatsapp: '(11) 92345-6789', endereco: 'Av. Paulista, 1000', cidade: 'São Paulo', estado: 'SP', contato: 'Maria Souza', compradores: [{ nome: 'Maria Souza', telefone: '(11) 2345-6789', email: 'maria@votorantim.com', whatsapp: '(11) 92345-6789' }], createdAt: '2025-02-01' },
+  { id: '1', nome: 'Polimix', cnpj: '12.345.678/0001-90', email: 'contato@polimix.com.br', telefone: '(11) 3456-7890', whatsapp: '(11) 93456-7890', endereco: 'Rua Industrial, 500', cidade: 'São Paulo', estado: 'SP', contato: 'João Silva', compradores: [{ nome: 'João Silva', telefone: '(11) 3456-7890', email: 'joao@polimix.com.br', whatsapp: '(11) 93456-7890' }], regimeTributario: 'Lucro Presumido', createdAt: '2025-01-15' },
+  { id: '2', nome: 'Votorantim Cimentos', cnpj: '22.333.444/0001-55', email: 'compras@votorantim.com', telefone: '(11) 2345-6789', whatsapp: '(11) 92345-6789', endereco: 'Av. Paulista, 1000', cidade: 'São Paulo', estado: 'SP', contato: 'Maria Souza', compradores: [{ nome: 'Maria Souza', telefone: '(11) 2345-6789', email: 'maria@votorantim.com', whatsapp: '(11) 92345-6789' }], regimeTributario: 'Lucro Presumido', createdAt: '2025-02-01' },
+];
+
+const SEED_EMPRESAS: EmpresaEmissora[] = [
+  {
+    id: 'emp_1',
+    nome: 'ROLLERPORT',
+    razaoSocial: 'ROLLERPORT EQUIPAMENTOS INDUSTRIAIS LTDA',
+    cnpj: '58.234.180/0001-56',
+    ie: '307.032.222.110',
+    endereco: 'Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial',
+    cidade: 'Franco da Rocha',
+    estado: 'SP',
+    cep: '07832-460',
+    telefone: '(11) 4441-3572',
+    email: 'contato@rollerport.com.br',
+    regimeTributario: 'Simples Nacional'
+  },
+  {
+    id: 'emp_2',
+    nome: 'FERREIRA ROLETES',
+    razaoSocial: 'FERREIRA ROLETES IND. COM. SERV. LTDA',
+    cnpj: '10.311.350/0001-22',
+    ie: '312.044.555.110',
+    endereco: 'Rua João Marcos Pimenta Rocha, 18 – Pólo Industrial',
+    cidade: 'Franco da Rocha',
+    estado: 'SP',
+    cep: '07832-460',
+    telefone: '(11) 4441-3572',
+    email: 'comercial@ferreiraroletes.com.br',
+    regimeTributario: 'Lucro Presumido'
+  }
 ];
 
 const SEED_PRODUTOS: Produto[] = [
@@ -243,7 +274,7 @@ const SEED_PRODUTOS: Produto[] = [
 
 const SEED_USUARIOS: Usuario[] = [
   { id: '1', nome: 'Sistema Rollerport', email: 'gerente@rollerport.com.br', telefone: '(11) 4441-3572', whatsapp: '(11) 94441-3572', login: 'Gerente De sistema', senha: '••••••', nivel: 'master', ativo: true, createdAt: '2025-01-01' },
-  { id: '2', nome: 'Paulo Vendas', email: 'paulo@rollerport.com.br', telefone: '', whatsapp: '', login: 'paulo', senha: '••••••', nivel: 'vendedor', ativo: true, createdAt: '2025-01-10' },
+  { id: '2', nome: 'Paulo Vendas', email: 'paulo@rollerport.com.br', telefone: '', whatsapp: '', login: 'paulo', senha: '••••••', nivel: 'Vendas', ativo: true, createdAt: '2025-01-10' },
 ];
 
 // ===== Store functions =====
@@ -297,6 +328,9 @@ export const store = {
 
   getTaxaConversao: (): number => load('rp_taxa_conversao', 0),
   saveTaxaConversao: (v: number) => save('rp_taxa_conversao', v),
+
+  getEmpresas: (): EmpresaEmissora[] => load('rp_empresas', SEED_EMPRESAS),
+  saveEmpresas: (d: EmpresaEmissora[]) => save('rp_empresas', d),
 
   nextId: (prefix: string): string => {
     const key = `rp_counter_${prefix}`;

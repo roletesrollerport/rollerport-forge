@@ -35,6 +35,24 @@ export interface Encaixe {
   imagem?: string;
 }
 
+export type RegimeTributario = 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real' | 'Isento';
+
+export interface EmpresaEmissora {
+  id: string;
+  nome: string;
+  razaoSocial: string;
+  cnpj: string;
+  ie: string;
+  endereco: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  telefone: string;
+  email: string;
+  regimeTributario: RegimeTributario;
+  logo?: string;
+}
+
 // ======= CLIENTES =======
 export interface Comprador {
   nome: string;
@@ -57,6 +75,7 @@ export interface Cliente {
   estado: string;
   contato: string;
   compradores: Comprador[];
+  regimeTributario: RegimeTributario;
   aniversarioEmpresa?: string;
   redesSociais?: string;
   createdAt: string;
@@ -157,6 +176,7 @@ export interface Orcamento {
   itensRolete: ItemOrcamento[];
   itensProduto: ItemProdutoOrcamento[];
   status: StatusOrcamento;
+  empresaEmissoraId: string;
   valorTotal: number;
   createdAt: string;
   dataAprovacao?: string;
