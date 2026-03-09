@@ -132,6 +132,7 @@ export default function OrcamentosPage() {
   useEffect(() => {
     const reload = () => {
       setClientes(store.getClientes());
+      setRevendas(store.getFornecedores());
       setProdutos(store.getProdutos());
     };
     window.addEventListener('rp-data-synced', reload);
