@@ -176,7 +176,7 @@ export default function ProdutosPage() {
                 <td className="p-3">
                   <div className="flex gap-1">
                     <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => handleDelete(p.id)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </td>
               </tr>
