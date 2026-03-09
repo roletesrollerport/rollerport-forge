@@ -431,7 +431,7 @@ export default function UsuariosPage() {
             </div>
 
             {isMaster && (
-              <div className="mt-4 pt-3 border-t flex gap-1 justify-end flex-wrap">
+              <div className="mt-4 pt-3 border-t flex gap-1 justify-start flex-wrap">
                 <button onClick={() => openEdit(u)} disabled={openingEdit} className="p-1.5 rounded bg-muted/50 hover:bg-muted text-primary disabled:opacity-50" title="Editar"><Edit className="h-4 w-4" /></button>
                 {u.nivel !== 'master' && (
                   <>
