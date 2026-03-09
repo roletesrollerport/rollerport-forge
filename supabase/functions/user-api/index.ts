@@ -152,12 +152,11 @@ serve(async (req) => {
         });
       }
 
-      const tempPassword = Math.random().toString(36).slice(-8); // 8 chars random
-      const hashed = hashSync(tempPassword);
+      const tempPassword = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit number
 
       const { error } = await supabaseAdmin
         .from("usuarios")
-        .update({ senha: hashed })
+        .update({ senha: tempPassword })
         .eq("id", targetId);
 
       if (error) {
