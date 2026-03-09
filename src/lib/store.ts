@@ -1,6 +1,6 @@
 import type {
   Tubo, Eixo, Conjunto, Revestimento, Encaixe,
-  Cliente, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
+  Cliente, Fornecedor, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
   Notificacao, MetaVendedor
 } from './types';
 
@@ -265,6 +265,9 @@ export const store = {
 
   getClientes: (): Cliente[] => load('rp_clientes', SEED_CLIENTES),
   saveClientes: (d: Cliente[]) => save('rp_clientes', d),
+
+  getFornecedores: (): Fornecedor[] => load('rp_fornecedores', []),
+  saveFornecedores: (d: Fornecedor[]) => save('rp_fornecedores', d),
 
   getProdutos: (): Produto[] => load('rp_produtos', SEED_PRODUTOS),
   saveProdutos: (d: Produto[]) => save('rp_produtos', d),
