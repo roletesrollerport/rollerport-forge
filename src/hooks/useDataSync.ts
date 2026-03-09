@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Maps localStorage keys to Supabase table names and ID field names.
  */
-const SYNC_MAP: Record<string, { table: string; idField: string }> = {
+const SYNC_MAP: Record<string, { table: string; idField: string; isFlat?: boolean }> = {
   rp_orcamentos: { table: 'orcamentos', idField: 'id' },
   rp_pedidos: { table: 'pedidos', idField: 'id' },
   rp_os: { table: 'ordens_servico', idField: 'id' },
@@ -12,6 +12,7 @@ const SYNC_MAP: Record<string, { table: string; idField: string }> = {
   rp_produtos: { table: 'produtos', idField: 'id' },
   rp_estoque: { table: 'estoque', idField: 'id' },
   rp_metas: { table: 'metas_vendedores', idField: 'vendedor' },
+  rp_usuarios: { table: 'usuarios', idField: 'id', isFlat: true },
 };
 
 const SYNCED_KEYS = Object.keys(SYNC_MAP);
@@ -36,6 +37,10 @@ async function pushToDb(key: string) {
   const config = SYNC_MAP[key];
   if (!config) return;
 
+  // For usuarios, we skip background push to avoid overwriting with plain text passwords.
+  // User creation/updates happen via edge functions in useUsuarios.
+  if (key === 'rp_usuarios') return;
+
   const localData = getLocalData(key);
   
   // NEVER push empty data to DB - this would erase real data
@@ -48,7 +53,14 @@ async function pushToDb(key: string) {
   const rows = localData.map((item: any) => {
     const id = config.idField === 'vendedor' ? item.vendedor : item.id;
     currentIds.add(id);
-    return { [config.idField]: id, data: item, updated_at: new Date().toISOString() };
+    
+    if (config.isFlat) {
+      // Map properties directly (flat table)
+      return { ...item, [config.idField]: id };
+    } else {
+      // JSON blob pattern
+      return { [config.idField]: id, data: item, updated_at: new Date().toISOString() };
+    }
   });
 
   // Batch upsert in chunks of 50
@@ -87,7 +99,7 @@ async function pullFromDb(key: string): Promise<boolean> {
   const { data, error } = await supabase
     .from(config.table as any)
     .select('*')
-    .order('updated_at', { ascending: true });
+    .order(config.isFlat ? 'created_at' : 'updated_at', { ascending: true });
 
   if (error) {
     console.error(`[DataSync] Pull error for ${config.table}:`, error);
@@ -95,7 +107,16 @@ async function pullFromDb(key: string): Promise<boolean> {
   }
 
   if (data && data.length > 0) {
-    const items = (data as any[]).map((row: any) => row.data);
+    const items = (data as any[]).map((row: any) => {
+      if (config.isFlat) {
+        // Flat table: row is the item
+        return row;
+      } else {
+        // Blob table: item is in row.data
+        return row.data;
+      }
+    });
+
     localStorage.setItem(key, JSON.stringify(items));
 
     // Track IDs
@@ -185,7 +206,6 @@ export function useDataSync() {
     window.addEventListener('rp-store-save', handleStoreSave);
 
     // Subscribe to realtime for all synced tables
-    const tables = Object.values(SYNC_MAP).map(v => v.table);
     const channel = supabase
       .channel('data-sync-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos' }, () => handleRealtimeChange('orcamentos'))
@@ -195,6 +215,7 @@ export function useDataSync() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, () => handleRealtimeChange('produtos'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, () => handleRealtimeChange('estoque'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, () => handleRealtimeChange('metas_vendedores'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios' }, () => handleRealtimeChange('usuarios'))
       .subscribe();
 
     return () => {
@@ -203,3 +224,4 @@ export function useDataSync() {
     };
   }, [handleStoreSave, handleRealtimeChange]);
 }
+
