@@ -647,32 +647,32 @@ export default function OrcamentosPage() {
           <div className="h-6" />
 
           {/* ===== TABLE ===== */}
-          <table className="w-full text-[9px] border-collapse">
+          <table className="w-full text-[8px] border-collapse table-fixed">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border p-1 text-center whitespace-nowrap">Item</th>
-                <th className="border p-1 text-center whitespace-nowrap">Código</th>
-                <th className="border p-1 text-center whitespace-nowrap">Cód. Cliente</th>
-                <th className="border p-1 text-left whitespace-nowrap" style={{minWidth: '180px'}}>Descrição</th>
-                <th className="border p-1 text-center whitespace-nowrap">Qtd</th>
-                <th className="border p-1 text-right whitespace-nowrap">Vlr Unit.</th>
-                <th className="border p-1 text-right whitespace-nowrap">Vlr Líq.</th>
-                <th className="border p-1 text-right whitespace-nowrap">Vlr Total</th>
-                <th className="border p-1 text-center whitespace-nowrap">NCM</th>
-                <th className="border p-1 text-right whitespace-nowrap">PIS</th>
-                <th className="border p-1 text-right whitespace-nowrap">Cofins</th>
-                <th className="border p-1 text-right whitespace-nowrap">ICMS Orig.</th>
-                <th className="border p-1 text-right whitespace-nowrap">ICMS Dest.</th>
-                <th className="border p-1 text-right whitespace-nowrap">Vlr c/ IPI</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[30px]">Item</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[60px]">Código</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[60px]">Cód. Cliente</th>
+                <th className="border p-1 text-left w-auto">Descrição</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[40px]">Qtd</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[60px]">Vlr Unit.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[60px]">Vlr Líq.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[70px]">Vlr Total</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[45px]">NCM</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[45px]">PIS</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[45px]">Cofins</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[50px]">ICMS Orig.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[50px]">ICMS Dest.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[70px]">Vlr c/ IPI</th>
               </tr>
             </thead>
             <tbody>
               {allPrintItems.map((row) => (
                 <tr key={row.item}>
                   <td className="border p-1 text-center whitespace-nowrap">{String(row.item).padStart(2, '0')}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{row.codigo}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{row.codExterno || '-'}</td>
-                  <td className="border p-1 text-left whitespace-nowrap">{row.descricao}</td>
+                  <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codigo}>{row.codigo}</td>
+                  <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codExterno}>{row.codExterno || '-'}</td>
+                  <td className="border p-1 text-left break-words">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorUnitario)}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.qtd * row.valorUnitario)}</td>
