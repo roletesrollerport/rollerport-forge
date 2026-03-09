@@ -1195,7 +1195,7 @@ export default function OrcamentosPage() {
                 <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={cadComprador.aniversario || ''} onChange={e => setCadComprador({ ...cadComprador, aniversario: e.target.value })} /></div>
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={cadComprador.redesSociais || ''} onChange={e => setCadComprador({ ...cadComprador, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
               </div>
-              <Button onClick={salvarComprador} className="w-full">Salvar Comprador</Button>
+              <Button onClick={salvarComprador} className="w-full">Salvar {labelContato}</Button>
             </div>
           </div>
         )}
