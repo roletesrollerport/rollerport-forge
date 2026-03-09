@@ -1140,7 +1140,7 @@ export default function OrcamentosPage() {
         {showCadCliente && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
             <div className="bg-card rounded-lg border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-3">
-              <div className="flex justify-between"><h3 className="font-semibold text-lg">Cadastrar Cliente</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
+              <div className="flex justify-between"><h3 className="font-semibold text-lg">Cadastrar {categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'}</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: e.target.value })} /></div>
