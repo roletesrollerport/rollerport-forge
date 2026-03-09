@@ -580,7 +580,8 @@ export default function OrcamentosPage() {
 
     // Find vendedor info
     const usuarios = store.getUsuarios();
-    const vendedorUser = usuarios.find(u => u.nome === viewOrc.vendedor);
+    const cleanOrcVendedor = (viewOrc.vendedor || '').trim().toLowerCase();
+    const vendedorUser = usuarios.find(u => (u.nome || '').trim().toLowerCase() === cleanOrcVendedor || (u.login || '').trim().toLowerCase() === cleanOrcVendedor);
 
     return (
       <div>
