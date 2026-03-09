@@ -82,13 +82,9 @@ serve(async (req) => {
         permissoes: userData.permissoes,
       };
 
-      // Handle password - only update if provided and non-empty
+      // Handle password - save as plain text
       if (userData.senha && userData.senha.trim() !== "") {
-        if (!userData.senha.startsWith("$2")) {
-          payload.senha = hashSync(userData.senha);
-        } else {
-          payload.senha = userData.senha;
-        }
+        payload.senha = userData.senha.trim();
       }
 
       if (userData.id) {
