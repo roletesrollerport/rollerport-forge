@@ -834,15 +834,15 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-right whitespace-nowrap bg-green-200" style={{ width: '80px' }} rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
               </tr>
               <tr className="bg-gray-100 text-[6px] uppercase font-bold">
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '100px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '100px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '100px' }}>VALOR</th>
                 {/* ICMS D */}
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '100px' }}>VALOR</th>
               </tr>
             </thead>
             <tbody>
@@ -857,16 +857,16 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
                   
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqPIS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorPIS)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorPIS)}</td>
                   
                   <td className="border p-1 text-center whitespace-nowrap">{row.aliqCOFINS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorCOFINS)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap font-medium">{fmt(row.valorCOFINS)}</td>
                   
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqICMS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorICMS)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorICMS)}</td>
 
                   <td className="border p-1 text-center whitespace-nowrap">{Number(0).toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(0)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap font-medium">{fmt(0)}</td>
                   
                   <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorIPI)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold bg-green-100">{fmt(row.valorTotalComImpostos)}</td>
