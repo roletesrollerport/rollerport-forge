@@ -666,18 +666,18 @@ export default function OrcamentosPage() {
               {allPrintItems.map((row) => (
                 <tr key={row.item}>
                   <td className="border p-1 text-center">{String(row.item).padStart(2, '0')}</td>
-                  <td className="border p-1 text-center">{row.qtd}</td>
                   <td className="border p-1 text-center">{row.codigo}</td>
                   <td className="border p-1 text-center">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
+                  <td className="border p-1 text-center">{row.qtd}</td>
                   <td className="border p-1 text-right">{fmt(row.valorUnitario)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorLiquido)}</td>
+                  <td className="border p-1 text-right">{fmt(row.valorTotal)}</td>
                   <td className="border p-1 text-center">{row.ncm || '-'}</td>
                   <td className="border p-1 text-right">{fmt(row.pis)}</td>
                   <td className="border p-1 text-right">{fmt(row.cofins)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsOrigem)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsDestino)}</td>
-                  <td className="border p-1 text-right">{fmt(row.valorTotal)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorIPI)}</td>
                 </tr>
               ))}
