@@ -749,9 +749,9 @@ export default function OrcamentosPage() {
               <li>As opções de pagamento ou de faturamento, assim como os parcelamentos, também interferem nos descontos e valores repassados em orçamento;</li>
               <li><span className="text-red-600 font-bold">OBS: ORÇAMENTO SUJEITO A ALTERAÇÃO MEDIANTE A ANÁLISE DE CRÉDITO NO ATO DO FECHAMENTO DO PEDIDO.</span></li>
             </ol>
-            <div className="mt-3 bg-yellow-300 p-2 text-[8px] sm:text-[9px] font-bold text-center border border-yellow-500 rounded overflow-hidden">
-              <p className="underline mb-1 whitespace-nowrap tracking-tighter sm:tracking-normal">CONFERIR O ORÇAMENTO ANTES DO FECHAMENTO DO PEDIDO, E ATENÇÃO AS MEDIDAS SOLICITADAS. NO CASO DE PEÇAS DESENHADAS, CONFERIR O DESENHO ENVIADO ANTES DO FECHAMENTO DO PEDIDO.</p>
-              <p className="underline whitespace-nowrap tracking-tighter sm:tracking-normal">ATENÇÃO: OS VALORES DESTE ORÇAMENTO SÃO VÁLIDOS APENAS PARA A QUANTIDADE TOTAL SOLICITADA. PARA QUANTIDADES MENORES, OS PREÇOS SOFRERÃO ALTERAÇÕES.</p>
+            <div className="mt-3 bg-yellow-300 p-2 text-[8px] sm:text-[9px] font-bold text-right border border-yellow-500 rounded">
+              <p className="underline mb-1">CONFERIR O ORÇAMENTO ANTES DO FECHAMENTO DO PEDIDO, E ATENÇÃO AS MEDIDAS SOLICITADAS. NO CASO DE PEÇAS DESENHADAS, CONFERIR O DESENHO ENVIADO ANTES DO FECHAMENTO DO PEDIDO.</p>
+              <p className="underline">ATENÇÃO: OS VALORES DESTE ORÇAMENTO SÃO VÁLIDOS APENAS PARA A QUANTIDADE TOTAL SOLICITADA. PARA QUANTIDADES MENORES, OS PREÇOS SOFRERÃO ALTERAÇÕES.</p>
             </div>
           </div>
 
