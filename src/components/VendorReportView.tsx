@@ -7,6 +7,7 @@ import {
   ArrowLeft, Printer, FileText, ShoppingCart, Factory, Brain,
   Loader2, Save, Edit, Sparkles, ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
+import { store } from '@/lib/store';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -732,12 +733,8 @@ export default function VendorReportView({
                       <th className="border p-2 text-left">Código</th>
                       <th className="border p-2 text-left">Descrição</th>
                       <th className="border p-2 text-center w-12">Qtd</th>
-                      {selectedDocDetail.type !== 'os' && (
-                        <>
-                          <th className="border p-2 text-right">V. Unit</th>
-                          <th className="border p-2 text-right">V. Total</th>
-                        </>
-                      )}
+                      <th className="border p-2 text-right">V. Unit</th>
+                      <th className="border p-2 text-right">V. Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -745,8 +742,17 @@ export default function VendorReportView({
                       let renderedItens = [];
                       if (selectedDocDetail.type === 'os') {
                         renderedItens = Array.isArray(selectedDocDetail.doc.itens) ? selectedDocDetail.doc.itens : [];
+                      } else if (selectedDocDetail.type === 'pedido') {
+                        // Pedidos puxam os itens do Orçamento de origem
+                        const orcs = store.getOrcamentos();
+                        const originOrc = orcs.find(o => o.id === selectedDocDetail.doc.orcamentoId);
+                        if (originOrc) {
+                          const roletes = Array.isArray(originOrc.itensRolete) ? originOrc.itensRolete : [];
+                          const produtos = Array.isArray(originOrc.itensProduto) ? originOrc.itensProduto : [];
+                          renderedItens = [...produtos, ...roletes];
+                        }
                       } else {
-                        // Orçamentos e Pedidos possuem itensRolete e itensProduto
+                        // Orçamentos puxam direto de si mesmos
                         const roletes = Array.isArray(selectedDocDetail.doc.itensRolete) ? selectedDocDetail.doc.itensRolete : [];
                         const produtos = Array.isArray(selectedDocDetail.doc.itensProduto) ? selectedDocDetail.doc.itensProduto : [];
                         renderedItens = [...produtos, ...roletes];
@@ -757,9 +763,11 @@ export default function VendorReportView({
                       }
 
                       return renderedItens.map((item: any, idx: number) => {
-                        // Descrição condicional (Rolete vs Produto genérico)
+                        // Descrição condicional (Rolete vs Produto genérico) na OS o tipo é 'tipo', no Orçamento é 'tipoRolete'
                         const isProdutoGen = item.produtoNome !== undefined; 
-                        const descricao = item.descricao || (isProdutoGen ? item.produtoNome : `Rolete ${item.tipoRolete} - ø${item.diametroTubo} x ${item.comprimentoTubo}`);
+                        const tipoArmazenado = item.tipoRolete || item.tipo;
+                        const codigo = item.codigoProduto || tipoArmazenado || '-';
+                        const descricao = item.descricao || (isProdutoGen ? item.produtoNome : `Rolete ${tipoArmazenado} - ø${item.diametroTubo} x ${item.comprimentoTubo}`);
                         const unitarioSemImp = item.valorLiquidoUnit || item.valorUnitario || item.precoUnitario || item.valorPorPeca || 0;
                         const qtd = item.quantidade || item.qtd || 1;
                         const vlrTotalBase = item.valorTotal || (unitarioSemImp * qtd); // Tenta usar o valor total nativo, senão fallback
@@ -779,16 +787,12 @@ export default function VendorReportView({
                         return (
                           <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
                             <td className="border p-2 text-center font-mono text-[10px] text-muted-foreground">{String(idx + 1).padStart(2, '0')}</td>
-                            <td className="border p-2 font-medium font-mono text-[10px]">{item.codigoProduto || item.tipoRolete || '-'}</td>
+                            <td className="border p-2 font-medium font-mono text-[10px]">{codigo}</td>
                             <td className="border p-2 text-[11px] whitespace-pre-wrap">{descricao}</td>
                             <td className="border p-2 text-center font-bold text-xs">{qtd}</td>
                             
-                            {selectedDocDetail.type !== 'os' && (
-                              <>
-                                <td className="border p-2 text-right font-mono text-[10px]">{fmt(unitarioSemImp)}</td>
-                                <td className="border p-2 text-right font-mono font-bold text-primary text-[11px]">{fmt(vlrTotalBase)}</td>
-                              </>
-                            )}
+                            <td className="border p-2 text-right font-mono text-[10px]">{fmt(unitarioSemImp)}</td>
+                            <td className="border p-2 text-right font-mono font-bold text-primary text-[11px]">{fmt(vlrTotalBase)}</td>
                           </tr>
                         );
                       });
@@ -834,16 +838,14 @@ export default function VendorReportView({
                 </div>
               </div>
 
-              {selectedDocDetail.type !== 'os' && (
-                <div className="flex justify-end pt-2">
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 min-w-[300px]">
-                    <div className="flex justify-between items-center text-sm font-bold whitespace-nowrap gap-4">
-                      <span>Total do Documento:</span>
-                      <span className="text-lg text-primary">{fmt(selectedDocDetail.doc.valorTotal || 0)}</span>
-                    </div>
+              <div className="flex justify-end pt-2">
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 min-w-[300px]">
+                  <div className="flex justify-between items-center text-sm font-bold whitespace-nowrap gap-4">
+                    <span>Total do Documento:</span>
+                    <span className="text-lg text-primary">{fmt(selectedDocDetail.doc.valorTotal || 0)}</span>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </DialogContent>
