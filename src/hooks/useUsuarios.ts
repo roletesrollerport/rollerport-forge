@@ -166,10 +166,9 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const tempPassword = Math.random().toString(36).slice(-8); // 8 chars random
-    const hashed = bcrypt.hashSync(tempPassword, 10);
+    const tempPassword = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit number
 
-    const { error } = await supabase.from('usuarios').update({ senha: hashed }).eq('id', userId);
+    const { error } = await supabase.from('usuarios').update({ senha: tempPassword }).eq('id', userId);
     if (error) throw error;
 
     return { tempPassword };
