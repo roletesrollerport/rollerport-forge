@@ -103,6 +103,7 @@ export default function ProdutosPage() {
               <div><label className="text-xs text-muted-foreground">Código Interno</label><Input value={editing.codigo} onChange={e => setEditing({ ...editing, codigo: e.target.value })} placeholder="Ex: RC-001" /></div>
               <div><label className="text-xs text-muted-foreground">Código do Cliente (editável)</label><Input value={editing.codigoCliente || ''} onChange={e => setEditing({ ...editing, codigoCliente: e.target.value })} placeholder="Código do cliente" /></div>
               <div><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Nome Completo (aparece entre parênteses)</label><Input value={editing.nomeCompleto || ''} onChange={e => setEditing({ ...editing, nomeCompleto: e.target.value })} placeholder="Ex: Rolete de Carga" /></div>
               <div>
                 <label className="text-xs text-muted-foreground">Tipo do Rolete</label>
                 <select value={editing.tipo} onChange={e => setEditing({ ...editing, tipo: e.target.value as TipoRolete })}
