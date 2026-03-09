@@ -846,19 +846,36 @@ export default function OrcamentosPage() {
                 <div className="flex items-center gap-1 flex-wrap">
                   <span>• Rolos com pintura Eletrostática em poliéster cor</span>
                   <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[70px]" value={tecnicoData.corRolo} onChange={e => setTecnicoData({...tecnicoData, corRolo: e.target.value})} />
-                  <span className={`font-bold underline ${tecnicoData.corRolo.toLowerCase().includes('vermelha') ? 'text-red-600' : ''}`}>{tecnicoData.corRolo}</span>
+                  <span className={`font-bold underline ${
+                    tecnicoData.corRolo.toLowerCase().includes('vermelh') ? 'text-red-600' :
+                    tecnicoData.corRolo.toLowerCase().includes('azul') ? 'text-blue-600' :
+                    tecnicoData.corRolo.toLowerCase().includes('verd') ? 'text-green-600' :
+                    tecnicoData.corRolo.toLowerCase().includes('amarel') ? 'text-yellow-500' :
+                    tecnicoData.corRolo.toLowerCase().includes('pret') ? 'text-gray-900' :
+                    tecnicoData.corRolo.toLowerCase().includes('laranj') ? 'text-orange-500' :
+                    tecnicoData.corRolo.toLowerCase().includes('cinz') ? 'text-gray-500' : ''
+                  }`}>{tecnicoData.corRolo}</span>
                 </div>
 
                 {/* PINTURA CAVALETE */}
                 <div className="flex items-center gap-1 flex-wrap">
                   <span>• Cavaletes com pintura esmalte sintético cor</span>
                   <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[70px]" value={tecnicoData.corCavalete} onChange={e => setTecnicoData({...tecnicoData, corCavalete: e.target.value})} />
-                  <span className={`font-bold underline ${tecnicoData.corCavalete.toLowerCase().includes('azul') ? 'text-blue-600' : ''}`}>{tecnicoData.corCavalete}</span>
+                  <span className={`font-bold underline ${
+                    tecnicoData.corCavalete.toLowerCase().includes('vermelh') ? 'text-red-600' :
+                    tecnicoData.corCavalete.toLowerCase().includes('azul') ? 'text-blue-600' :
+                    tecnicoData.corCavalete.toLowerCase().includes('verd') ? 'text-green-600' :
+                    tecnicoData.corCavalete.toLowerCase().includes('amarel') ? 'text-yellow-500' :
+                    tecnicoData.corCavalete.toLowerCase().includes('pret') ? 'text-gray-900' :
+                    tecnicoData.corCavalete.toLowerCase().includes('laranj') ? 'text-orange-500' :
+                    tecnicoData.corCavalete.toLowerCase().includes('cinz') ? 'text-gray-500' : ''
+                  }`}>{tecnicoData.corCavalete}</span>
                 </div>
 
               </div>
             </div>
           )}
+
 
           <div className="text-center text-[10px] mt-2">
             <p className="font-semibold">ROLLERPORT – Fábrica de Roletes</p>
