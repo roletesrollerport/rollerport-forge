@@ -73,6 +73,7 @@ export interface Produto {
   codigo: string;
   codigoCliente?: string;
   nome: string;
+  nomeCompleto?: string;
   tipo: TipoRolete | 'GENERICO';
   medidas: string;
   descricao: string;

@@ -22,12 +22,12 @@ export default function ProdutosPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Produto | null>(null);
 
   const emptyRolete = (): Produto => ({
-    id: '', codigo: '', codigoCliente: '', nome: '', tipo: 'RC', medidas: '', descricao: '',
+    id: '', codigo: '', codigoCliente: '', nome: '', nomeCompleto: '', tipo: 'RC', medidas: '', descricao: '',
     miniDescricao: '', valor: 0, createdAt: new Date().toISOString().split('T')[0],
   });
 
   const emptyProduto = (): Produto => ({
-    id: '', codigo: '', nome: '', tipo: 'GENERICO', medidas: '', descricao: '', valor: '' as any,
+    id: '', codigo: '', nome: '', nomeCompleto: '', tipo: 'GENERICO', medidas: '', descricao: '', valor: '' as any,
     createdAt: new Date().toISOString().split('T')[0],
   });
 
