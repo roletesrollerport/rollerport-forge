@@ -695,6 +695,7 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsDestino)}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
+                <td className="border p-1 text-right">{fmt(totals.pis + totals.cofins + totals.icmsOrigem + totals.icmsDestino)}</td>
               </tr>
             </tbody>
           </table>
