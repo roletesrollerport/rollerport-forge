@@ -50,7 +50,13 @@ export interface EmpresaEmissora {
   telefone: string;
   email: string;
   regimeTributario: RegimeTributario;
+  bairro: string;
   logo?: string;
+  dadosBancarios?: {
+    banco: string;
+    agencia: string;
+    conta: string;
+  }[];
 }
 
 // ======= CLIENTES =======

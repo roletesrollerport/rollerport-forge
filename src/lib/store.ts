@@ -237,30 +237,39 @@ const SEED_EMPRESAS: EmpresaEmissora[] = [
   {
     id: 'emp_1',
     nome: 'ROLLERPORT',
-    razaoSocial: 'ROLLERPORT EQUIPAMENTOS INDUSTRIAIS LTDA',
+    razaoSocial: 'ROLLERPORT INDUSTRIA, COMERCIO SERVIÇOS DE ROLETES LTDA',
     cnpj: '58.234.180/0001-56',
-    ie: '307.032.222.110',
-    endereco: 'Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial',
+    ie: '312.259.169.119',
+    endereco: 'Rua: João Marcos Pimenta Rocha, 16.',
+    bairro: 'Polo Industrial',
     cidade: 'Franco da Rocha',
     estado: 'SP',
     cep: '07832-460',
-    telefone: '(11) 4441-3572',
-    email: 'contato@rollerport.com.br',
-    regimeTributario: 'Simples Nacional'
+    telefone: '11 4441-3572 / 11 4811-1588',
+    email: 'faturamento@rollerport.com.br',
+    regimeTributario: 'Simples Nacional',
+    dadosBancarios: [
+      { banco: 'SANTANDER', agencia: '0040', conta: '13.012244-5' }
+    ]
   },
   {
     id: 'emp_2',
-    nome: 'FERREIRA ROLETES',
-    razaoSocial: 'FERREIRA ROLETES IND. COM. SERV. LTDA',
+    nome: 'ROLLERPORT / FERREIRA ROLETES',
+    razaoSocial: 'FERREIRA ROLETES, INDÚSTRIA COMERCIO E SERVIÇO LTDA',
     cnpj: '10.311.350/0001-22',
-    ie: '312.044.555.110',
-    endereco: 'Rua João Marcos Pimenta Rocha, 18 – Pólo Industrial',
+    ie: '312.034.593.110',
+    endereco: 'Rua: João Marcos Pimenta Rocha, 16.',
+    bairro: 'Polo Industrial',
     cidade: 'Franco da Rocha',
     estado: 'SP',
     cep: '07832-460',
-    telefone: '(11) 4441-3572',
-    email: 'comercial@ferreiraroletes.com.br',
-    regimeTributario: 'Lucro Presumido'
+    telefone: '11 4441-3572 / 11 4811-1588',
+    email: 'contato@ferreiraroletes.com.br',
+    regimeTributario: 'Lucro Presumido',
+    dadosBancarios: [
+      { banco: 'BRADESCO', agencia: '1255', conta: '1158-6' },
+      { banco: 'BANCO DO BRASIL', agencia: '1700', conta: '903825' }
+    ]
   }
 ];
 

@@ -771,11 +771,13 @@ export default function OrcamentosPage() {
               <img src={logo} alt={empresaEmissora.nome} className="h-16 object-contain" />
               <div>
                 <h2 className="text-base font-bold leading-tight">{empresaEmissora.razaoSocial}</h2>
-                <p className="text-[10px] font-semibold">{empresaEmissora.nome} – Fábrica de Roletes</p>
-                <p className="text-[10px]">{empresaEmissora.endereco}</p>
-                <p className="text-[10px]">{empresaEmissora.cidade}/{empresaEmissora.estado} – CEP: {empresaEmissora.cep}</p>
-                <p className="text-[10px]">CNPJ: {empresaEmissora.cnpj}</p>
-                <p className="text-[10px]">Tel: {empresaEmissora.telefone} • {empresaEmissora.email}</p>
+                <p className="text-[10px] font-semibold">Nome Fantasia: {empresaEmissora.nome}</p>
+                <p className="text-[10px]">Endereço: {empresaEmissora.endereco}</p>
+                <p className="text-[10px]">Bairro: {empresaEmissora.bairro} <span className="ml-4">CEP: {empresaEmissora.cep}</span></p>
+                <p className="text-[10px]">Cidade: {empresaEmissora.cidade} - {empresaEmissora.estado}</p>
+                <p className="text-[10px]">CNPJ/MF n° {empresaEmissora.cnpj}</p>
+                <p className="text-[10px]">Inscrição Estadual: {empresaEmissora.ie}</p>
+                <p className="text-[10px]">Fone: {empresaEmissora.telefone} • E-mail: {empresaEmissora.email}</p>
               </div>
               <div className="flex flex-col items-center ml-2">
                 <img src={qrcode} alt="QR Code" className="h-14 w-14 object-contain" />
@@ -900,10 +902,16 @@ export default function OrcamentosPage() {
           {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
             <div className="mt-3 border rounded p-3 text-[10px]">
               <p className="font-bold mb-1">Dados Bancários para {viewOrc.condicaoPagamento === 'PIX' ? 'PIX' : 'Transferência Bancária'}:</p>
-              <p>BANCO SANTANDER (033)</p>
-              <p>{empresaEmissora.razaoSocial} ({empresaEmissora.nome})</p>
+              <p className="font-bold">{empresaEmissora.razaoSocial} ({empresaEmissora.nome})</p>
               <p>CNPJ: {empresaEmissora.cnpj}</p>
-              <p>Agência: 3744 | Conta Corrente: {empresaEmissora.nome === 'ROLLERPORT' ? '130094436' : '130098877'}</p>
+              <div className="mt-2 space-y-1">
+                {empresaEmissora.dadosBancarios?.map((db, idx) => (
+                  <div key={idx}>
+                    <p className="font-semibold text-primary">{db.banco}</p>
+                    <p>Agência: {db.agencia} | Conta Corrente: {db.conta}</p>
+                  </div>
+                ))}
+              </div>
               {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): {empresaEmissora.cnpj}</p>}
             </div>
           )}
@@ -932,8 +940,8 @@ export default function OrcamentosPage() {
           <div className="mt-2 border rounded p-2 text-[10px]">
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             <ol className="list-decimal list-inside text-[9px] space-y-1.5 font-medium">
-              <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A ROLLERPORT pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
-              <li>A ROLLERPORT fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
+              <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A {empresaEmissora.nome} pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
+              <li>A {empresaEmissora.nome} fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
               <li>A quantidade de peças solicitadas interfere e determina os valores cobrados e repassados na prestação de serviço, no valor da mercadoria (rolete, suporte, eixo e tubo) e nos descontos ofertados em orçamento;</li>
               <li>As opções de pagamento ou de faturamento, assim como os parcelamentos, também interferem nos descontos e valores repassados em orçamento;</li>
               <li><span className="text-red-600 font-bold">OBS: ORÇAMENTO SUJEITO A ALTERAÇÃO MEDIANTE A ANÁLISE DE CRÉDITO NO ATO DO FECHAMENTO DO PEDIDO.</span></li>
@@ -1042,6 +1050,31 @@ export default function OrcamentosPage() {
         </div>
 
         <div className="border rounded-lg p-5 bg-card space-y-4">
+          {/* Empresa Emissora Selection */}
+          <div className="p-3 border rounded-lg bg-primary/5 space-y-2">
+            <label className="text-sm font-bold text-primary flex items-center gap-2">
+              <Check className="h-4 w-4" /> Qual empresa emitirá este orçamento?
+            </label>
+            <div className="flex gap-3">
+              {store.getEmpresas().map(emp => (
+                <Button
+                  key={emp.id}
+                  variant={empresaEmissoraId === emp.id ? 'default' : 'outline'}
+                  onClick={() => setEmpresaEmissoraId(emp.id)}
+                  className={`flex-1 flex flex-col items-start p-4 h-auto transition-all text-left ${empresaEmissoraId === emp.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                >
+                  <span className="text-base font-bold mb-1">{emp.nome}</span>
+                  <p className="text-[10px] font-medium opacity-90 truncate w-full">{emp.razaoSocial}</p>
+                  <div className="grid grid-cols-1 gap-1 mt-2 w-full text-[9px] opacity-80">
+                    <p>CNPJ/MF n° {emp.cnpj}</p>
+                    <p>Inscrição Estadual: {emp.ie}</p>
+                    <p>Regime: <span className="font-bold">{emp.regimeTributario}</span></p>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Cliente / Revenda toggle + search */}
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -1175,26 +1208,6 @@ export default function OrcamentosPage() {
             </div>
           )}
 
-          {/* Empresa Emissora Selection */}
-          <div className="p-3 border rounded-lg bg-primary/5 space-y-2">
-            <label className="text-sm font-bold text-primary flex items-center gap-2">
-              <Check className="h-4 w-4" /> Qual empresa emitirá este orçamento?
-            </label>
-            <div className="flex gap-3">
-              {store.getEmpresas().map(emp => (
-                <Button
-                  key={emp.id}
-                  variant={empresaEmissoraId === emp.id ? 'default' : 'outline'}
-                  onClick={() => setEmpresaEmissoraId(emp.id)}
-                  className={`flex-1 flex flex-col items-center py-6 h-auto transition-all ${empresaEmissoraId === emp.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                >
-                  <span className="text-lg font-bold">{emp.nome}</span>
-                  <span className="text-[10px] opacity-80">{emp.cnpj} • {emp.regimeTributario}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-
           {/* Frete, Pagamento, Vendedor */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -1210,9 +1223,9 @@ export default function OrcamentosPage() {
               <select value={condicaoPagamento} onChange={e => setCondicaoPagamento(e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                 <option value="">Selecione...</option>
-                <option value="Boleto">Boleto</option>
-                <option value="PIX">PIX – CNPJ: 10.311.350/0001-22</option>
-                <option value="Transferência Bancária">Transferência – Santander Ag:3744 CC:130094436</option>
+                <option value="Boleto">Boleto Bancário</option>
+                <option value="PIX">PIX (Chave CNPJ)</option>
+                <option value="Transferência Bancária">Transferência Bancária</option>
                 <option value="Cheque">Cheque</option>
               </select>
             </div>
@@ -1252,10 +1265,16 @@ export default function OrcamentosPage() {
           {condicaoPagamento === 'Transferência Bancária' && (
             <div className="bg-muted/20 rounded-lg p-3 border text-xs">
               <p className="font-semibold text-primary mb-1">Dados para Transferência Bancária:</p>
-              <p>BANCO SANTANDER</p>
-              <p>{store.getEmpresas().find(e => e.id === empresaEmissoraId)?.razaoSocial} ({store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome})</p>
+              <p className="font-bold">{store.getEmpresas().find(e => e.id === empresaEmissoraId)?.razaoSocial} ({store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome})</p>
               <p>CNPJ: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.cnpj}</p>
-              <p>Agência: 3744 | Conta Corrente: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome === 'ROLLERPORT' ? '130094436' : '130098877'}</p>
+              <div className="mt-2 space-y-2">
+                {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.dadosBancarios?.map((db, idx) => (
+                  <div key={idx} className="border-l-2 border-primary/30 pl-2">
+                    <p className="font-semibold text-primary/80">{db.banco}</p>
+                    <p>Agência: {db.agencia} | Conta Corrente: {db.conta}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
