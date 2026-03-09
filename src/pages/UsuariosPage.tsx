@@ -358,10 +358,10 @@ export default function UsuariosPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm truncate">{u.nome || 'Sem nome'}</h3>
                 <p className="text-xs text-muted-foreground font-mono">{u.login}</p>
-                {isMaster && u.nivel !== 'master' && (
+                {isMaster && (
                   <div className="flex items-center gap-1">
                     <p className="text-[10px] text-muted-foreground/60 font-mono">
-                      Senha: {cardPassVisible[u.id] ? cardPassVisible[u.id] : '•'.repeat(8)}
+                      Senha: {cardPassVisible[u.id] ? cardPassVisible[u.id] : '•'.repeat(u.senha?.length || 8)}
                     </p>
                     <button
                       type="button"
