@@ -210,6 +210,10 @@ export default function ProducaoPage() {
 
   // ========== PRINT VIEW ==========
   if (view === 'print' && current) {
+    const pedido = store.getPedidos().find(p => p.id === current.pedidoId);
+    const orcamento = pedido ? store.getOrcamentos().find(o => o.id === pedido.orcamentoId) : null;
+    const vendedorNome = (orcamento as any)?.vendedor || 'Não informado';
+
     return (
       <div>
         <div className="flex gap-2 mb-4 print:hidden">
@@ -221,6 +225,7 @@ export default function ProducaoPage() {
           <div className="text-sm font-bold mb-1">O.S. Nº {current.numero}</div>
           <div className="grid grid-cols-4 gap-2 text-xs mb-2 border rounded p-2">
             <div><span className="font-semibold">EMPRESA:</span> {current.empresa}</div>
+            <div><span className="font-semibold">VENDEDOR:</span> {vendedorNome}</div>
             <div><span className="font-semibold">PEDIDO:</span> {current.pedidoNumero}</div>
             <div><span className="font-semibold">EMISSÃO:</span> {current.emissao}</div>
             <div><span className="font-semibold">ENTREGA:</span> {current.entrega}</div>
@@ -241,6 +246,10 @@ export default function ProducaoPage() {
 
   // ========== VIEW ==========
   if (view === 'view' && current) {
+    const pedido = store.getPedidos().find(p => p.id === current.pedidoId);
+    const orcamento = pedido ? store.getOrcamentos().find(o => o.id === pedido.orcamentoId) : null;
+    const vendedorNome = (orcamento as any)?.vendedor || 'Não informado';
+
     return (
       <div className="space-y-4">
         <div className="flex gap-2">
@@ -251,6 +260,7 @@ export default function ProducaoPage() {
           <h2 className="text-lg font-bold mb-4">O.S. {current.numero}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
             <div><span className="text-muted-foreground">Empresa:</span> <strong>{current.empresa}</strong></div>
+            <div><span className="text-muted-foreground">Vendedor:</span> <strong>{vendedorNome}</strong></div>
             <div><span className="text-muted-foreground">Pedido:</span> <strong>{current.pedidoNumero}</strong></div>
             <div><span className="text-muted-foreground">Emissão:</span> <strong>{current.emissao}</strong></div>
             <div><span className="text-muted-foreground">Entrega:</span> <strong>{current.entrega}</strong></div>
