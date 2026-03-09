@@ -819,30 +819,30 @@ export default function OrcamentosPage() {
           <table className="w-full text-[8px] border-collapse table-fixed">
             <thead>
               <tr className="bg-gray-100 uppercase text-[7px] font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[25px]" rowSpan={2}>ITEM</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[48px]" rowSpan={2}>CÓD.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[48px]" rowSpan={2}>CÓD. CLI.</th>
-                <th className="border p-1 text-left w-[280px]" rowSpan={2}>DESCRIÇÃO</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[38px]" rowSpan={2}>QTD</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[45px]" rowSpan={2}>VLR UNIT.<br/>(SEM IMP)</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[55px]" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '25px' }} rowSpan={2}>ITEM</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '48px' }} rowSpan={2}>CÓD.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '48px' }} rowSpan={2}>CÓD. CLI.</th>
+                <th className="border p-1 text-left" style={{ width: '280px' }} rowSpan={2}>DESCRIÇÃO</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '38px' }} rowSpan={2}>QTD</th>
+                <th className="border p-1 text-right whitespace-nowrap" style={{ width: '45px' }} rowSpan={2}>VLR UNIT.<br/>(SEM IMP)</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }} rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>PIS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS ORIGEM</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS DEST.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[35px]" rowSpan={2}>IPI</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[60px] bg-green-200" rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '35px' }} rowSpan={2}>IPI</th>
+                <th className="border p-1 text-right whitespace-nowrap bg-green-200" style={{ width: '80px' }} rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
               </tr>
               <tr className="bg-gray-100 text-[6px] uppercase font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
                 {/* ICMS D */}
-                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
               </tr>
             </thead>
             <tbody>
