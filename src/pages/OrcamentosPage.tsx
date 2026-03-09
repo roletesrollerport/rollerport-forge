@@ -1077,15 +1077,14 @@ export default function OrcamentosPage() {
                 <select value={roleteItem.tipoRolete} onChange={e => updateRoleteField({ tipoRolete: e.target.value as any })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                  {['RC', 'RR', 'RG', 'RI', 'RRA'].map(t => {
-                    const prod = produtos.find(p => p.tipo === t && p.nomeCompleto);
-                    return <option key={t} value={t}>{t}{prod?.nomeCompleto ? ` (${prod.nomeCompleto})` : ''}</option>;
-                  })}
+                  {['RC', 'RR', 'RG', 'RI', 'RRA'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
                 {roleteItem.tipoRolete && (() => {
+                  const defaultNames: Record<string, string> = { RC: 'Rolete de Carga', RR: 'Rolete de Retorno', RG: 'Rolete Guia', RI: 'Rolete de Impacto', RRA: 'Rolete de Retorno Auto-alinhante' };
                   const prod = produtos.find(p => p.tipo === roleteItem.tipoRolete && p.nomeCompleto);
-                  return prod?.nomeCompleto ? (
-                    <p className="text-xs text-muted-foreground mt-1 font-medium">{roleteItem.tipoRolete} — {prod.nomeCompleto}</p>
+                  const fullName = prod?.nomeCompleto || defaultNames[roleteItem.tipoRolete] || '';
+                  return fullName ? (
+                    <p className="text-[11px] text-primary/70 mt-1 font-semibold">({fullName})</p>
                   ) : null;
                 })()}
               </div>
