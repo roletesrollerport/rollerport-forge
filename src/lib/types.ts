@@ -110,6 +110,14 @@ export interface ItemOrcamento {
   ncm?: string;
   codigoExterno?: string;
   codigoProduto?: string;
+  aliqPIS?: number;
+  aliqCOFINS?: number;
+  aliqICMS?: number;
+  aliqIPI?: number;
+  valorPIS?: number;
+  valorCOFINS?: number;
+  valorICMS?: number;
+  valorIPI?: number;
 }
 
 export interface ItemProdutoOrcamento {
@@ -122,6 +130,14 @@ export interface ItemProdutoOrcamento {
   ncm?: string;
   medidas?: string;
   descricao?: string;
+  aliqPIS?: number;
+  aliqCOFINS?: number;
+  aliqICMS?: number;
+  aliqIPI?: number;
+  valorPIS?: number;
+  valorCOFINS?: number;
+  valorICMS?: number;
+  valorIPI?: number;
 }
 
 export interface Orcamento {

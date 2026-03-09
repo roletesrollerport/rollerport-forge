@@ -19,6 +19,7 @@ const emptyItem = (): ItemOrcamento => ({
   comprimentoEixo: '' as any, diametroEixo: '' as any, tipoEncaixe: '', medidaFresado: '', conjunto: '',
   tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: '' as any, custo: 0,
   multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '8431.39.00',
+  aliqPIS: 0, aliqCOFINS: 0, aliqICMS: 0, aliqIPI: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0
 });
 
 function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[]): ItemOrcamento {
@@ -59,13 +60,35 @@ function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: 
   }
 
   const custo = custoTubo + custoEixo + custoConj + custoEnc + custoRev;
-
-  // ETAPA 5 – Preço final (multiplicador padrão 1.8, inclui impostos)
+  const multiplicador = item.multiplicador || 1.8;
   const desconto = item.desconto || 0;
-  const valorPorPeca = custo * item.multiplicador * (1 - desconto / 100);
+  
+  // O valor total é o preço final de venda. Os impostos são destacados "por dentro".
+  const valorPorPeca = custo * multiplicador * (1 - desconto / 100);
   const valorTotal = valorPorPeca * item.quantidade;
 
-  return { ...item, custo: +custo.toFixed(2), valorPorPeca: +valorPorPeca.toFixed(2), valorTotal: +valorTotal.toFixed(2) };
+  // Extração informativa dos impostos (por dentro do total)
+  const aliqPIS = item.aliqPIS || 0;
+  const aliqCOFINS = item.aliqCOFINS || 0;
+  const aliqICMS = item.aliqICMS || 0;
+  const aliqIPI = item.aliqIPI || 0;
+
+  const valorPIS = valorTotal * (aliqPIS / 100);
+  const valorCOFINS = valorTotal * (aliqCOFINS / 100);
+  const valorICMS = valorTotal * (aliqICMS / 100);
+  const valorIPI = valorTotal * (aliqIPI / 100);
+
+  return { 
+    ...item, 
+    custo: +custo.toFixed(2), 
+    valorPorPeca: +valorPorPeca.toFixed(2), 
+    valorTotal: +valorTotal.toFixed(2),
+    aliqPIS, aliqCOFINS, aliqICMS, aliqIPI,
+    valorPIS: +valorPIS.toFixed(2),
+    valorCOFINS: +valorCOFINS.toFixed(2),
+    valorICMS: +valorICMS.toFixed(2),
+    valorIPI: +valorIPI.toFixed(2)
+  };
 }
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
@@ -104,6 +127,10 @@ export default function OrcamentosPage() {
   const [produtoQtd, setProdutoQtd] = useState(1);
   const [produtoNcm, setProdutoNcm] = useState('');
   const [produtoDesconto, setProdutoDesconto] = useState(0);
+  const [produtoAliqPIS, setProdutoAliqPIS] = useState(0);
+  const [produtoAliqCOFINS, setProdutoAliqCOFINS] = useState(0);
+  const [produtoAliqICMS, setProdutoAliqICMS] = useState(0);
+  const [produtoAliqIPI, setProdutoAliqIPI] = useState(0);
 
   // Estados para Orçamento Técnico
   const [showTecnico, setShowTecnico] = useState(false);
@@ -409,6 +436,14 @@ export default function OrcamentosPage() {
       ncm: produtoNcm,
       medidas: (selectedProduto as any).medidas || '',
       descricao: selectedProduto.descricao || '',
+      aliqPIS: produtoAliqPIS,
+      aliqCOFINS: produtoAliqCOFINS,
+      aliqICMS: produtoAliqICMS,
+      aliqIPI: produtoAliqIPI,
+      valorPIS: +((valorComDesc * produtoQtd) * (produtoAliqPIS / 100)).toFixed(2),
+      valorCOFINS: +((valorComDesc * produtoQtd) * (produtoAliqCOFINS / 100)).toFixed(2),
+      valorICMS: +((valorComDesc * produtoQtd) * (produtoAliqICMS / 100)).toFixed(2),
+      valorIPI: +((valorComDesc * produtoQtd) * (produtoAliqIPI / 100)).toFixed(2),
     };
     setItensProduto([...itensProduto, item]);
     setShowProdutoSearch(false);
@@ -417,6 +452,10 @@ export default function OrcamentosPage() {
     setProdutoQtd(1);
     setProdutoDesconto(0);
     setProdutoNcm('');
+    setProdutoAliqPIS(0);
+    setProdutoAliqCOFINS(0);
+    setProdutoAliqICMS(0);
+    setProdutoAliqIPI(0);
   };
 
   // Insert rolete into orçamento
@@ -552,52 +591,87 @@ export default function OrcamentosPage() {
     // Build all items for the table
     const allPrintItems: Array<{
       item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
-      ncm: string; valorLiquido: number; pis: number; cofins: number; icmsOrigem: number;
-      icmsDestino: number; valorUnitario: number; valorTotal: number; valorIPI: number;
+      valorLiquidoUnit: number;
+      aliqPIS: number; valorPIS: number;
+      aliqCOFINS: number; valorCOFINS: number;
+      aliqICMS: number; valorICMS: number;
+      aliqIPI: number; valorIPI: number;
+      valorTotalComImpostos: number;
     }> = [];
 
     let idx = 1;
     (viewOrc.itensProduto || []).forEach((ip) => {
       const prod = produtos.find(p => p.id === ip.produtoId);
       const vliq = ip.valorUnitario;
-      const pisVal = +(vliq * taxaPIS).toFixed(2);
-      const cofinsVal = +(vliq * taxaCOFINS).toFixed(2);
-      const icmsOrig = +(vliq * taxaICMSOrig).toFixed(2);
-      const icmsDest = +(vliq * taxaICMSDest).toFixed(2);
-      const ipiVal = +(vliq * taxaIPI).toFixed(2);
+      const aliqPIS = ip.aliqPIS !== undefined ? ip.aliqPIS : (taxaPIS * 100);
+      const aliqCOFINS = ip.aliqCOFINS !== undefined ? ip.aliqCOFINS : (taxaCOFINS * 100);
+      const aliqICMS = ip.aliqICMS !== undefined ? ip.aliqICMS : (taxaICMSOrig * 100);
+      
+      const aliqIPI = ip.aliqIPI !== undefined ? ip.aliqIPI : 0;
+      
+      const valorPISTotal = ip.valorPIS !== undefined ? ip.valorPIS : +((ip.valorUnitario * ip.quantidade) * (aliqPIS / 100)).toFixed(2);
+      const valorCOFINSTotal = ip.valorCOFINS !== undefined ? ip.valorCOFINS : +((ip.valorUnitario * ip.quantidade) * (aliqCOFINS / 100)).toFixed(2);
+      const valorICMSTotal = ip.valorICMS !== undefined ? ip.valorICMS : +((ip.valorUnitario * ip.quantidade) * (aliqICMS / 100)).toFixed(2);
+      const valorIPITotal = ip.valorIPI !== undefined ? ip.valorIPI : +((ip.valorUnitario * ip.quantidade) * (aliqIPI / 100)).toFixed(2);
+
+      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal;
+      const valorLiquidoTotal = (ip.valorUnitario * ip.quantidade) - impostosTotaisItem;
+      const valorLiquidoUnit = valorLiquidoTotal / ip.quantidade;
+
+      let desc = ip.produtoNome;
+      if (ip.ncm || (prod as any)?.ncm) {
+        desc += ` (NCM: ${ip.ncm || (prod as any)?.ncm})`;
+      }
+
       allPrintItems.push({
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
-        codExterno: (prod as any)?.codigoCliente || '', descricao: ip.produtoNome,
-        ncm: ip.ncm || (prod as any)?.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
-        icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ip.valorUnitario,
-        valorTotal: ip.valorTotal, valorIPI: ip.valorTotal,
+        codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
+        valorLiquidoUnit,
+        aliqPIS, valorPIS: valorPISTotal,
+        aliqCOFINS, valorCOFINS: valorCOFINSTotal,
+        aliqICMS, valorICMS: valorICMSTotal,
+        aliqIPI, valorIPI: valorIPITotal,
+        valorTotalComImpostos: ip.valorTotal + valorIPITotal,
       });
     });
     (viewOrc.itensRolete || []).forEach((ir) => {
-      const vliq = ir.valorPorPeca;
-      const pisVal = +(vliq * taxaPIS).toFixed(2);
-      const cofinsVal = +(vliq * taxaCOFINS).toFixed(2);
-      const icmsOrig = +(vliq * taxaICMSOrig).toFixed(2);
-      const icmsDest = +(vliq * taxaICMSDest).toFixed(2);
-      const ipiVal = +(vliq * taxaIPI).toFixed(2);
+      const aliqPIS = ir.aliqPIS !== undefined ? ir.aliqPIS : (taxaPIS * 100);
+      const aliqCOFINS = ir.aliqCOFINS !== undefined ? ir.aliqCOFINS : (taxaCOFINS * 100);
+      const aliqICMS = ir.aliqICMS !== undefined ? ir.aliqICMS : (taxaICMSOrig * 100);
+      
+      const aliqIPI = ir.aliqIPI !== undefined ? ir.aliqIPI : 0;
+      
+      const valorPISTotal = ir.valorPIS !== undefined ? ir.valorPIS : +((ir.valorPorPeca * ir.quantidade) * (aliqPIS / 100)).toFixed(2);
+      const valorCOFINSTotal = ir.valorCOFINS !== undefined ? ir.valorCOFINS : +((ir.valorPorPeca * ir.quantidade) * (aliqCOFINS / 100)).toFixed(2);
+      const valorICMSTotal = ir.valorICMS !== undefined ? ir.valorICMS : +((ir.valorPorPeca * ir.quantidade) * (aliqICMS / 100)).toFixed(2);
+      const valorIPITotal = ir.valorIPI !== undefined ? ir.valorIPI : +((ir.valorPorPeca * ir.quantidade) * (aliqIPI / 100)).toFixed(2);
+
+      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal;
+      const valorLiquidoTotal = (ir.valorPorPeca * ir.quantidade) - impostosTotaisItem;
+      const valorLiquidoUnit = valorLiquidoTotal / ir.quantidade;
+
+      let desc = `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`;
+      if (ir.ncm) desc += ` (NCM: ${ir.ncm})`;
+
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
-        codExterno: ir.codigoExterno || '', descricao: `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`,
-        ncm: ir.ncm || '', valorLiquido: vliq, pis: pisVal, cofins: cofinsVal,
-        icmsOrigem: icmsOrig, icmsDestino: icmsDest, valorUnitario: ir.valorPorPeca,
-        valorTotal: ir.valorTotal, valorIPI: ir.valorTotal,
+        codExterno: ir.codigoExterno || '-', descricao: desc,
+        valorLiquidoUnit,
+        aliqPIS, valorPIS: valorPISTotal,
+        aliqCOFINS, valorCOFINS: valorCOFINSTotal,
+        aliqICMS, valorICMS: valorICMSTotal,
+        aliqIPI, valorIPI: valorIPITotal,
+        valorTotalComImpostos: ir.valorTotal + valorIPITotal,
       });
     });
 
     const totals = allPrintItems.reduce((acc, i) => ({
-      valorLiquido: acc.valorLiquido + i.valorLiquido * i.qtd,
-      pis: acc.pis + i.pis * i.qtd,
-      cofins: acc.cofins + i.cofins * i.qtd,
-      icmsOrigem: acc.icmsOrigem + i.icmsOrigem * i.qtd,
-      icmsDestino: acc.icmsDestino + i.icmsDestino * i.qtd,
-      valorTotal: acc.valorTotal + i.valorTotal,
+      valorPIS: acc.valorPIS + i.valorPIS,
+      valorCOFINS: acc.valorCOFINS + i.valorCOFINS,
+      valorICMS: acc.valorICMS + i.valorICMS,
       valorIPI: acc.valorIPI + i.valorIPI,
-    }), { valorLiquido: 0, pis: 0, cofins: 0, icmsOrigem: 0, icmsDestino: 0, valorTotal: 0, valorIPI: 0 });
+      valorTotalComImpostos: acc.valorTotalComImpostos + i.valorTotalComImpostos,
+    }), { valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0, valorTotalComImpostos: 0 });
 
     // Find vendedor info
     const usuarios = store.getUsuarios();
@@ -682,21 +756,26 @@ export default function OrcamentosPage() {
           {/* ===== TABLE ===== */}
           <table className="w-full text-[8px] border-collapse table-fixed">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border p-1 text-center whitespace-nowrap w-[30px]">Item</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[60px]">Código</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[60px]">Cód. Cliente</th>
-                <th className="border p-1 text-left w-auto">Descrição</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[40px]">Qtd</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[60px]">Vlr Unit.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[60px]">Vlr Líq.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[75px]">Vlr Total</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[45px]">NCM</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[45px]">PIS</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[45px]">Cofins</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[50px]">ICMS Orig.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[50px]">ICMS Dest.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[70px]">Vlr c/ IPI</th>
+              <tr className="bg-gray-100 uppercase text-[7px] font-bold">
+                <th className="border p-1 text-center whitespace-nowrap w-[25px]" rowSpan={2}>ITEM</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[50px]" rowSpan={2}>CÓD.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[50px]" rowSpan={2}>CÓD. CLIENTE</th>
+                <th className="border p-1 text-left w-auto" rowSpan={2}>DESCRIÇÃO</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[30px]" rowSpan={2}>QTDE</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[50px]" rowSpan={2}>VLR UNIT. (SEM IMP)</th>
+                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>PIS</th>
+                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
+                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[40px]" rowSpan={2}>IPI</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[60px] bg-green-200" rowSpan={2}>VLR TOTAL COM IMPOS.</th>
+              </tr>
+              <tr className="bg-gray-100 text-[6.5px] uppercase font-bold">
+                <th className="border p-1 text-center whitespace-nowrap w-[35px]">ALÍQ.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[40px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[35px]">ALÍQ.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[40px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[35px]">ALÍQ.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[40px]">VALOR</th>
               </tr>
             </thead>
             <tbody>
@@ -706,32 +785,42 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codigo}>{row.codigo}</td>
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codExterno}>{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left break-words">{row.descricao}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{row.qtd}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorUnitario)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.qtd * row.valorUnitario)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorTotal)}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{row.ncm || '-'}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.pis)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.cofins)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.icmsOrigem)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.icmsDestino)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorIPI)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
+                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
+                  
+                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqPIS.toFixed(2)}%</td>
+                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorPIS)}</td>
+                  
+                  <td className="border p-1 text-center whitespace-nowrap">{row.aliqCOFINS.toFixed(2)}%</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorCOFINS)}</td>
+                  
+                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqICMS.toFixed(2)}%</td>
+                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorICMS)}</td>
+                  
+                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorIPI)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold bg-green-100">{fmt(row.valorTotalComImpostos)}</td>
                 </tr>
               ))}
-              <tr className="bg-gray-100 font-bold">
-                <td className="border p-1 text-center" colSpan={5}>TOTAL</td>
-                <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(allPrintItems.reduce((s, r) => s + r.qtd * r.valorUnitario, 0))}</td>
-                <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
-                <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.pis)}</td>
-                <td className="border p-1 text-right">{fmt(totals.cofins)}</td>
-                <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
-                <td className="border p-1 text-right">{fmt(totals.icmsDestino)}</td>
-                <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
-              </tr>
             </tbody>
+            <tfoot>
+              <tr className="bg-gray-100 font-bold uppercase">
+                <td className="border p-1 text-center" colSpan={4}>TOTAL</td>
+                <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
+                <td className="border p-1"></td>
+                <td className="border p-1"></td>
+                <td className="border p-1 text-right">{fmt(totals.valorPIS)}</td>
+                <td className="border p-1"></td>
+                <td className="border p-1 text-right">{fmt(totals.valorCOFINS)}</td>
+                <td className="border p-1"></td>
+                <td className="border p-1 text-right">{fmt(totals.valorICMS)}</td>
+                <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
+                <td className="border p-1 text-right bg-green-200">{fmt(totals.valorTotalComImpostos)}</td>
+              </tr>
+            </tfoot>
           </table>
+          <p className="text-[7px] text-muted-foreground mt-1 italic font-medium">
+            * Valores de impostos destacados apenas para fins informativos, já inclusos no preço final conforme legislação vigente.
+          </p>
 
           {/* PIX / Transferência data on print */}
           {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
@@ -1171,15 +1260,44 @@ export default function OrcamentosPage() {
                 <label className="text-xs text-primary font-medium">NCM</label>
                 <Input placeholder="Digite o NCM" value={produtoNcm} onChange={e => setProdutoNcm(e.target.value)} />
               </div>
+              <div className="col-span-3 sm:col-span-4 h-px bg-muted my-1" />
+              <div>
+                <label className="text-xs text-primary font-medium">PIS (%)</label>
+                <Input type="number" step="0.01" value={produtoAliqPIS} onChange={e => setProdutoAliqPIS(+e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">COFINS (%)</label>
+                <Input type="number" step="0.01" value={produtoAliqCOFINS} onChange={e => setProdutoAliqCOFINS(+e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">ICMS (%)</label>
+                <Input type="number" step="0.01" value={produtoAliqICMS} onChange={e => setProdutoAliqICMS(+e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">IPI (%)</label>
+                <Input type="number" step="0.01" value={produtoAliqIPI} onChange={e => setProdutoAliqIPI(+e.target.value)} />
+              </div>
             </div>
             <div>
               <label className="text-xs text-primary font-medium">Descrição da Peça</label>
               <Input value={selectedProduto.nome} readOnly className="bg-muted/30" />
             </div>
-            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-3 gap-3 text-sm">
-              <div><span className="text-xs text-primary">Valor Unit.</span><br /><strong>{fmt(selectedProduto.valor)}</strong></div>
-              <div><span className="text-xs text-primary">Valor c/ Desc.</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100))}</strong></div>
-              <div><span className="text-xs text-primary">Total</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd)}</strong></div>
+            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-4 gap-3 text-sm">
+              <div><span className="text-xs text-primary">Valor Unit. Final</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100))}</strong></div>
+              <div><span className="text-xs text-primary">Total Item</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd)}</strong></div>
+              <div>
+                <span className="text-xs text-primary">Impostos (Destaque)</span><br />
+                <span className="text-[10px] text-muted-foreground">
+                  {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (produtoAliqPIS + produtoAliqCOFINS + produtoAliqICMS)) / 100)}
+                </span>
+                <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * produtoAliqIPI) / 100)}</span>
+              </div>
+              <div className="bg-primary/5 p-1 rounded border border-primary/10">
+                <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
+                <strong className="text-primary">
+                  {fmt((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (1 - (produtoAliqPIS + produtoAliqCOFINS + produtoAliqICMS) / 100))}
+                </strong>
+              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <Button onClick={insertProduto} className="gap-2">✓ Inserir no Orçamento</Button>
@@ -1325,11 +1443,40 @@ export default function OrcamentosPage() {
                 <label className="text-xs text-primary font-medium">Desconto (%)</label>
                 <Input type="number" value={roleteItem.desconto || ''} onChange={e => updateRoleteField({ desconto: e.target.value ? +e.target.value : '' as any })} />
               </div>
+              <div className="col-span-2 sm:col-span-6 h-px bg-muted my-1" />
+              <div>
+                <label className="text-xs text-primary font-medium">PIS (%)</label>
+                <Input type="number" step="0.01" value={roleteItem.aliqPIS || 0} onChange={e => updateRoleteField({ aliqPIS: +e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">COFINS (%)</label>
+                <Input type="number" step="0.01" value={roleteItem.aliqCOFINS || 0} onChange={e => updateRoleteField({ aliqCOFINS: +e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">ICMS (%)</label>
+                <Input type="number" step="0.01" value={roleteItem.aliqICMS || 0} onChange={e => updateRoleteField({ aliqICMS: +e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-primary font-medium">IPI (%)</label>
+                <Input type="number" step="0.01" value={roleteItem.aliqIPI || 0} onChange={e => updateRoleteField({ aliqIPI: +e.target.value })} />
+              </div>
             </div>
-            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-3 gap-3 text-sm">
-              <div><span className="text-xs text-primary">Custo Unit.</span><br /><strong>{fmt(roleteItem.custo)}</strong></div>
-              <div><span className="text-xs text-primary">Valor/Peça</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
-              <div><span className="text-xs text-primary">Total</span><br /><strong>{fmt(roleteItem.valorTotal)}</strong></div>
+            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-4 gap-3 text-sm">
+              <div><span className="text-xs text-primary">Preço Unit. Final</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
+              <div><span className="text-xs text-primary">Total Item</span><br /><strong>{fmt(roleteItem.valorTotal)}</strong></div>
+              <div>
+                <span className="text-xs text-primary">Impostos (Destaque)</span><br />
+                <span className="text-[10px] text-muted-foreground">
+                  {fmt((roleteItem.valorTotal * ((roleteItem.aliqPIS || 0) + (roleteItem.aliqCOFINS || 0) + (roleteItem.aliqICMS || 0))) / 100)}
+                </span>
+                <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt((roleteItem.valorTotal * (roleteItem.aliqIPI || 0)) / 100)}</span>
+              </div>
+              <div className="bg-primary/5 p-1 rounded border border-primary/10">
+                <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
+                <strong className="text-primary">
+                  {fmt(roleteItem.valorTotal * (1 - ((roleteItem.aliqPIS || 0) + (roleteItem.aliqCOFINS || 0) + (roleteItem.aliqICMS || 0)) / 100))}
+                </strong>
+              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <Button onClick={insertRolete} className="gap-2">✓ Inserir no Orçamento</Button>
@@ -1340,54 +1487,81 @@ export default function OrcamentosPage() {
 
         {/* ===== Itens do Orçamento ===== */}
         {(itensProduto.length > 0 || itensRolete.length > 0) && (
-          <div className="border rounded-lg p-4 bg-card">
+          <div className="border rounded-lg p-4 bg-card overflow-x-auto">
             <h3 className="font-semibold mb-3">Itens do Orçamento - {clienteSelecionado?.nome || clienteSearch || 'Cliente'}</h3>
-            <div className="space-y-2">
-              {itensProduto.map((item, i) => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
-                  <div className="flex items-center gap-3">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium text-sm">{produtos.find(p => p.id === item.produtoId)?.codigo || ''} – {item.produtoNome}</p>
-                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorUnitario)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-primary">{fmt(item.valorTotal)}</span>
-                    <button onClick={() => {
-                      const prod = produtos.find(p => p.id === item.produtoId);
-                      if (prod) { setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); }
-                    }} className="text-muted-foreground hover:text-primary" title="Ver"><Eye className="h-4 w-4" /></button>
-                    <button onClick={() => {
-                      const prod = produtos.find(p => p.id === item.produtoId);
-                      if (prod) { setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); setItensProduto(itensProduto.filter((_, idx) => idx !== i)); }
-                    }} className="text-muted-foreground hover:text-primary" title="Editar"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => setItensProduto(itensProduto.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive" title="Excluir">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {itensRolete.map((item, i) => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border">
-                  <div className="flex items-center gap-3">
-                    <Settings2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium text-sm">Rolete {item.tipoRolete} - Tubo ø{item.diametroTubo} Comp.{item.comprimentoTubo}mm - Eixo ø{item.diametroEixo} Comp.{item.comprimentoEixo}mm{item.tipoEncaixe ? ` - Enc: ${item.tipoEncaixe}` : ''}{item.medidaFresado ? ` ${item.medidaFresado}` : ''}{item.especificacaoRevestimento ? ` - Rev: ${item.especificacaoRevestimento}` : ''}</p>
-                      <p className="text-xs text-muted-foreground">Qtd: {item.quantidade} • Valor/Peça: {fmt(item.valorPorPeca)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-primary">{fmt(item.valorTotal)}</span>
-                    <button onClick={() => { setRoleteItem(item); setCodigoRolete(item.codigoProduto || ''); setShowRoleteForm(true); }} className="text-muted-foreground hover:text-primary" title="Ver"><Eye className="h-4 w-4" /></button>
-                    <button onClick={() => { setRoleteItem(item); setCodigoRolete(item.codigoProduto || ''); setShowRoleteForm(true); setItensRolete(itensRolete.filter((_, idx) => idx !== i)); }} className="text-muted-foreground hover:text-primary" title="Editar"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => setItensRolete(itensRolete.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive" title="Excluir">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-muted/50 text-primary uppercase text-[10px] font-bold">
+                  <th className="border p-2 text-center w-8">#</th>
+                  <th className="border p-2 text-left">Código</th>
+                  <th className="border p-2 text-left">Descrição</th>
+                  <th className="border p-2 text-center w-12">Qtd</th>
+                  <th className="border p-2 text-right">Vlr Unit</th>
+                  <th className="border p-2 text-center w-12 text-[9px]">PIS%</th>
+                  <th className="border p-2 text-center w-12 text-[9px]">COF%</th>
+                  <th className="border p-2 text-center w-12 text-[9px]">ICM%</th>
+                  <th className="border p-2 text-center w-12 text-[9px]">IPI%</th>
+                  <th className="border p-2 text-right">Total Item</th>
+                  <th className="border p-2 text-center w-24">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...itensProduto.map(it => ({ ...it, isProd: true })), ...itensRolete.map(it => ({ ...it, isProd: false }))].map((item, i) => {
+                  const aliqPIS = item.aliqPIS || 0;
+                  const aliqCOFINS = item.aliqCOFINS || 0;
+                  const aliqICMS = item.aliqICMS || 0;
+                  const aliqIPI = item.aliqIPI || 0;
+                  const valorUnit = 'isProd' in item && item.isProd ? (item as any).valorUnitario : (item as any).valorPorPeca;
+                  const codigo = 'isProd' in item && item.isProd ? (produtos.find(p => p.id === (item as any).produtoId)?.codigo || '') : (item as any).codigoProduto || (item as any).tipoRolete;
+                  const descricao = 'isProd' in item && item.isProd ? (item as any).produtoNome : `Rolete ${(item as any).tipoRolete} ${(item as any).diametroTubo}x${(item as any).paredeTubo} T:${(item as any).comprimentoTubo} E:${(item as any).diametroEixo} ${(item as any).comprimentoEixo}`;
+
+                  return (
+                    <tr key={item.id} className="hover:bg-muted/30 border-b">
+                      <td className="p-2 text-center font-mono">{i + 1}</td>
+                      <td className="p-2 font-medium">{codigo}</td>
+                      <td className="p-2 text-[11px] max-w-[200px] truncate" title={descricao}>{descricao}</td>
+                      <td className="p-2 text-center font-bold">{item.quantidade}</td>
+                      <td className="p-2 text-right">{fmt(valorUnit)}</td>
+                      <td className="p-2 text-center text-muted-foreground">{aliqPIS}%</td>
+                      <td className="p-2 text-center text-muted-foreground">{aliqCOFINS}%</td>
+                      <td className="p-2 text-center text-muted-foreground">{aliqICMS}%</td>
+                      <td className="p-2 text-center text-muted-foreground">{aliqIPI}%</td>
+                      <td className="p-2 text-right font-bold text-primary">{fmt(item.valorTotal)}</td>
+                      <td className="p-2 text-center">
+                        <div className="flex justify-center gap-1">
+                          <button onClick={() => {
+                            if ('isProd' in item && item.isProd) {
+                              const prod = produtos.find(p => p.id === (item as any).produtoId);
+                              if (prod) { setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); }
+                            } else {
+                              setRoleteItem(item as any); setCodigoRolete((item as any).codigoProduto || ''); setShowRoleteForm(true);
+                            }
+                          }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Ver"><Eye className="h-4 w-4" /></button>
+                          
+                          <button onClick={() => {
+                            if ('isProd' in item && item.isProd) {
+                              const prod = produtos.find(p => p.id === (item as any).produtoId);
+                              if (prod) { 
+                                setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); 
+                                setItensProduto(itensProduto.filter(it => it.id !== item.id));
+                              }
+                            } else {
+                              setRoleteItem(item as any); setCodigoRolete((item as any).codigoProduto || ''); setShowRoleteForm(true);
+                              setItensRolete(itensRolete.filter(it => it.id !== item.id));
+                            }
+                          }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Editar"><Edit className="h-4 w-4" /></button>
+                          
+                          <button onClick={() => {
+                            if ('isProd' in item && item.isProd) setItensProduto(itensProduto.filter(it => it.id !== item.id));
+                            else setItensRolete(itensRolete.filter(it => it.id !== item.id));
+                          }} className="p-1 text-muted-foreground hover:text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
