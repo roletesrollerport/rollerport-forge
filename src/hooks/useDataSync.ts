@@ -9,6 +9,7 @@ const SYNC_MAP: Record<string, { table: string; idField: string; isFlat?: boolea
   rp_pedidos: { table: 'pedidos', idField: 'id' },
   rp_os: { table: 'ordens_servico', idField: 'id' },
   rp_clientes: { table: 'clientes', idField: 'id' },
+  rp_fornecedores: { table: 'fornecedores', idField: 'id' },
   rp_produtos: { table: 'produtos', idField: 'id' },
   rp_estoque: { table: 'estoque', idField: 'id' },
   rp_metas: { table: 'metas_vendedores', idField: 'vendedor' },

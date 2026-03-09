@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { hashSync, compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import { compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,22 +71,20 @@ serve(async (req) => {
         });
       }
 
-      // Check if password is hashed (bcrypt hashes start with $2)
+      // Support both plain text and legacy bcrypt hashed passwords
       let valid = false;
       if (user.senha.startsWith("$2")) {
+        // Legacy bcrypt hash - compare and migrate to plain text
         valid = compareSync(password, user.senha);
-      } else {
-        // Legacy plaintext comparison (for migration period)
-        valid = user.senha === password;
         if (valid) {
-          // Auto-migrate: hash the plaintext password
-          const hashed = hashSync(password);
+          // Migrate to plain text
           await supabaseAdmin
             .from("usuarios")
-            .update({ senha: hashed })
+            .update({ senha: password })
             .eq("id", user.id);
-          user.senha = hashed;
         }
+      } else {
+        valid = user.senha === password;
       }
 
       if (!valid) {
