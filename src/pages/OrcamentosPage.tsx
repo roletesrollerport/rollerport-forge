@@ -777,7 +777,7 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-right whitespace-nowrap w-[60px] bg-green-200" rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
               </tr>
               <tr className="bg-gray-100 text-[6px] uppercase font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[10px]">ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[5px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[15px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[45px]">VALOR</th>
