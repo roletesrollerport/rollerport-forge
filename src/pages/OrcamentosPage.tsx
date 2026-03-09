@@ -701,9 +701,8 @@ export default function OrcamentosPage() {
           </table>
 
           {/* ===== Footer ===== */}
-          <div className="mt-4 grid grid-cols-2 gap-4 text-[10px] border-t pt-3">
+          <div className="mt-4 text-[10px] border-t pt-3">
             <div>Previsão de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></div>
-            <div>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></div>
           </div>
 
           {/* PIX / Transferência data on print */}
