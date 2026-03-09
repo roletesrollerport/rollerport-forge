@@ -166,8 +166,31 @@ export function useUsuarios() {
     return data;
   };
 
+  const logoutUser = async (userId: string) => {
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'logout_user', sessionToken, userId },
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const logoutAllCommonUsers = async () => {
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'logout_all_common', sessionToken },
+    });
+    if (error) throw error;
+    return data;
+  };
+
   return { 
     usuarios, loading, fetchUsuarios, saveUsuario, deleteUsuario, login, getById,
-    requestPasswordReset, verifyResetCode, resetPassword, getUserCredentials, generateTempPassword
+    requestPasswordReset, verifyResetCode, resetPassword, getUserCredentials, 
+    generateTempPassword, logoutUser, logoutAllCommonUsers
   };
 }

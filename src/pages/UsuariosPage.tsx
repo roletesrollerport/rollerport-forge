@@ -4,7 +4,7 @@ import type { NivelAcesso, Genero, PermissaoModulo } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail, Loader2, Lock } from 'lucide-react';
+import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail, Loader2, Lock, LogOut, ShieldAlert, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -43,7 +43,10 @@ const emptyEditing = () => ({
 type EditingState = ReturnType<typeof emptyEditing>;
 
 export default function UsuariosPage() {
-  const { usuarios, loading, saveUsuario, deleteUsuario, getUserCredentials, generateTempPassword } = useUsuarios();
+  const { 
+    usuarios, loading, saveUsuario, deleteUsuario, getUserCredentials, 
+    generateTempPassword, logoutUser, logoutAllCommonUsers 
+  } = useUsuarios();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EditingState>(emptyEditing());
   const [showSenha, setShowSenha] = useState(false);
@@ -67,6 +70,37 @@ export default function UsuariosPage() {
       setViewingPass({ id: userId, pass: data.tempPassword, isPlain: true });
     } catch (e: any) {
       toast.error(e.message || 'Erro ao gerar senha');
+    }
+  };
+
+  const handleLogoutUser = async (userId: string) => {
+    if (!confirm('Deseja deslogar este usuário remotamente?')) return;
+    try {
+      await logoutUser(userId);
+      toast.success('Solicitação de logout enviada!');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao deslogar usuário');
+    }
+  };
+
+  const handleLogoutAll = async () => {
+    if (!confirm('Deseja deslogar TODOS os usuários comuns do sistema?')) return;
+    try {
+      await logoutAllCommonUsers();
+      toast.success('Todos os usuários comuns foram deslogados!');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao deslogar todos');
+    }
+  };
+
+  const handleToggleActive = async (u: UsuarioDB) => {
+    const novoStatus = !u.ativo;
+    if (!confirm(`Deseja ${novoStatus ? 'ativar' : 'bloquear'} o usuário ${u.nome}?`)) return;
+    try {
+      await saveUsuario({ ...u, ativo: novoStatus });
+      toast.success(`Usuário ${novoStatus ? 'ativado' : 'bloqueado'}!`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao alterar status');
     }
   };
 
@@ -164,10 +198,14 @@ export default function UsuariosPage() {
           <p className="page-subtitle">Gerenciamento de acesso e login</p>
         </div>
         {isMaster && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setEditing(emptyEditing())} className="gap-2"><Plus className="h-4 w-4" /> Novo Usuário</Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleLogoutAll} className="gap-2 text-amber-600 border-amber-200 hover:bg-amber-50">
+              <LogOut className="h-4 w-4" /> Deslogar Todos
+            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => setEditing(emptyEditing())} className="gap-2"><Plus className="h-4 w-4" /> Novo Usuário</Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo'} Usuário</DialogTitle></DialogHeader>
               <div className="space-y-3">
@@ -270,7 +308,8 @@ export default function UsuariosPage() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         )}
       </div>
 
@@ -303,6 +342,10 @@ export default function UsuariosPage() {
                     <>
                       <button onClick={() => handleViewPass(u.id)} className="p-1 rounded hover:bg-muted text-amber-600" title="Ver Senha"><Eye className="h-3.5 w-3.5" /></button>
                       <button onClick={() => handleGenTempPass(u.id)} className="p-1 rounded hover:bg-muted text-blue-600" title="Gerar Senha Temporária"><Lock className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => handleToggleActive(u)} className={`p-1 rounded hover:bg-muted ${u.ativo ? 'text-orange-600' : 'text-green-600'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
+                        {u.ativo ? <ShieldAlert className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                      </button>
+                      <button onClick={() => handleLogoutUser(u.id)} className="p-1 rounded hover:bg-muted text-red-500" title="Forçar Logout"><LogOut className="h-3.5 w-3.5" /></button>
                       <button onClick={() => handleDelete(u.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
                     </>
                   )}
