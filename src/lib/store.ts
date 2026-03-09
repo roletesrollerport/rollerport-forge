@@ -1,6 +1,6 @@
 import type {
   Tubo, Eixo, Conjunto, Revestimento, Encaixe,
-  Cliente, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
+  Cliente, Fornecedor, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
   Notificacao, MetaVendedor
 } from './types';
 
