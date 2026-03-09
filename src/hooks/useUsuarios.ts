@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import bcrypt from 'bcryptjs';
 import type { NivelAcesso, Genero, PermissoesUsuario } from '@/lib/types';
 
 export interface UsuarioDB {
@@ -72,11 +71,7 @@ export function useUsuarios() {
     };
 
     if (u.senha && u.senha.trim() !== '') {
-      if (!u.senha.startsWith('$2')) {
-        payload.senha = bcrypt.hashSync(u.senha, 10);
-      } else {
-        payload.senha = u.senha;
-      }
+      payload.senha = u.senha.trim();
     }
 
     if (u.id) {
@@ -160,10 +155,9 @@ export function useUsuarios() {
     if (error) throw error;
     if (!targetUser) throw new Error('User not found');
 
-    const isPlain = !targetUser.senha.startsWith('$2');
     return {
-      password: isPlain ? targetUser.senha : '••••••',
-      isPlain
+      password: targetUser.senha,
+      isPlain: true
     };
   };
 
@@ -171,10 +165,9 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const tempPassword = Math.random().toString(36).slice(-8); // 8 chars random
-    const hashed = bcrypt.hashSync(tempPassword, 10);
+    const tempPassword = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit number
 
-    const { error } = await supabase.from('usuarios').update({ senha: hashed }).eq('id', userId);
+    const { error } = await supabase.from('usuarios').update({ senha: tempPassword }).eq('id', userId);
     if (error) throw error;
 
     return { tempPassword };

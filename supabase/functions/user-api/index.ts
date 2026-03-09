@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { hashSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,13 +82,9 @@ serve(async (req) => {
         permissoes: userData.permissoes,
       };
 
-      // Handle password - only update if provided and non-empty
+      // Handle password - save as plain text
       if (userData.senha && userData.senha.trim() !== "") {
-        if (!userData.senha.startsWith("$2")) {
-          payload.senha = hashSync(userData.senha);
-        } else {
-          payload.senha = userData.senha;
-        }
+        payload.senha = userData.senha.trim();
       }
 
       if (userData.id) {
@@ -139,10 +135,9 @@ serve(async (req) => {
         });
       }
 
-      const isPlain = !targetUser.senha.startsWith("$2");
       return new Response(JSON.stringify({ 
-        password: isPlain ? targetUser.senha : "••••••", 
-        isPlain 
+        password: targetUser.senha, 
+        isPlain: true 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -156,12 +151,11 @@ serve(async (req) => {
         });
       }
 
-      const tempPassword = Math.random().toString(36).slice(-8); // 8 chars random
-      const hashed = hashSync(tempPassword);
+      const tempPassword = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit number
 
       const { error } = await supabaseAdmin
         .from("usuarios")
-        .update({ senha: hashed })
+        .update({ senha: tempPassword })
         .eq("id", targetId);
 
       if (error) {

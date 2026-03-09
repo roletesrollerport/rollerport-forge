@@ -53,6 +53,7 @@ export default function UsuariosPage() {
   const [showSenha, setShowSenha] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewingPass, setViewingPass] = useState<{ id: string, pass: string, isPlain: boolean } | null>(null);
+  const [cardPassVisible, setCardPassVisible] = useState<Record<string, string | null>>({});
 
   const handleViewPass = async (userId: string) => {
     try {
@@ -254,9 +255,20 @@ export default function UsuariosPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-muted-foreground">Login</label><Input value={editing.login} onChange={e => setEditing({ ...editing, login: e.target.value })} placeholder="Nome, email ou número" /></div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Senha</label>
+                      <label className="text-xs text-muted-foreground">Senha (até 8 números)</label>
                       <div className="relative">
-                        <Input type={showSenha ? 'text' : 'password'} value={editing.senha} onChange={e => setEditing({ ...editing, senha: e.target.value })} placeholder={editing.id ? 'Protegida (digite p/ alterar)' : 'Senha'} />
+                        <Input 
+                          type={showSenha ? 'text' : 'password'} 
+                          value={editing.senha} 
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 8);
+                            setEditing({ ...editing, senha: val });
+                          }} 
+                          placeholder={editing.id ? 'Digite p/ alterar' : 'Senha numérica'}
+                          maxLength={8}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
                         <button type="button" onClick={() => setShowSenha(!showSenha)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                           {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -340,8 +352,30 @@ export default function UsuariosPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm truncate">{u.nome || 'Sem nome'}</h3>
                 <p className="text-xs text-muted-foreground font-mono">{u.login}</p>
-                {isMaster && (
-                  <p className="text-[10px] text-muted-foreground/60 font-mono">Senha: ••••••</p>
+                {isMaster && u.nivel !== 'master' && (
+                  <div className="flex items-center gap-1">
+                    <p className="text-[10px] text-muted-foreground/60 font-mono">
+                      Senha: {cardPassVisible[u.id] ? cardPassVisible[u.id] : '•'.repeat(8)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (cardPassVisible[u.id]) {
+                          setCardPassVisible(prev => ({ ...prev, [u.id]: null }));
+                        } else {
+                          try {
+                            const data = await getUserCredentials(u.id);
+                            setCardPassVisible(prev => ({ ...prev, [u.id]: data.password }));
+                          } catch {
+                            toast.error('Erro ao buscar senha');
+                          }
+                        }
+                      }}
+                      className="text-muted-foreground/60 hover:text-muted-foreground"
+                    >
+                      {cardPassVisible[u.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </button>
+                  </div>
                 )}
                 <div className="flex items-center gap-2 mt-1">
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span>
