@@ -42,20 +42,63 @@ function StatusChip({ label, count, colorClass, onClick }: { label: string; coun
 /* ------------------------------------------------------------------ */
 /*  Top-level stat card (Orçamentos / Pedidos / Clientes / O.S.)       */
 /* ------------------------------------------------------------------ */
-function StatCard({ icon: Icon, label, value, color, onClick }: { icon: any; label: string; value: string | number; color: string; onClick?: () => void }) {
+function StatCard({ 
+  icon: Icon, 
+  label, 
+  value, 
+  color, 
+  onClick, 
+  items, 
+  onViewAll 
+}: { 
+  icon: any; 
+  label: string; 
+  value: string | number; 
+  color: string; 
+  onClick?: () => void; 
+  items?: { id: string, label: string, user: string }[];
+  onViewAll?: () => void;
+}) {
   return (
-    <div
-      className={`stat-card flex items-center gap-4 ${onClick ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all' : ''}`}
-      onClick={onClick}
-    >
-      <div className={`flex items-center justify-center h-12 w-12 rounded-lg ${color}`}>
-        <Icon className="h-6 w-6" />
-      </div>
-      <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-bold">{value}</p>
-      </div>
-    </div>
+    <Card className="flex flex-col h-full hover:shadow-md transition-all">
+      <CardHeader className="flex flex-row items-center gap-4 pb-2">
+        <div className={`flex items-center justify-center h-12 w-12 rounded-lg ${color}`}>
+          <Icon className="h-6 w-6" />
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-2xl font-bold">{value}</p>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1 pb-2">
+        {items && items.length > 0 ? (
+          <div className="space-y-1.5 border-t pt-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex justify-between items-center text-[11px] gap-2">
+                <span className="font-mono text-muted-foreground shrink-0">{item.label}</span>
+                <span className="font-medium truncate text-right">{item.user}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-[11px] text-muted-foreground border-t pt-2 italic">Nenhum registro recente</div>
+        )}
+      </CardContent>
+      <CardFooter className="pt-0">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full h-8 text-xs text-muted-foreground hover:text-primary"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onViewAll) onViewAll();
+            else if (onClick) onClick();
+          }}
+        >
+          Ver Tudo <Eye className="ml-1.5 h-3.5 w-3.5" />
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -703,10 +746,69 @@ export default function DashboardPage() {
 
       {/* 4 Cards globais - contagens persistentes e clicáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={FileText} label="Orçamentos" value={globalOrc.total} color="bg-primary/10 text-primary" onClick={() => navigate('/orcamentos')} />
-        <StatCard icon={ShoppingCart} label="Pedidos" value={globalPed.total} color="bg-secondary/20 text-secondary" onClick={() => navigate('/pedidos')} />
-        <StatCard icon={Users} label="Clientes" value={data.clientes.length} color="bg-info/10 text-info" onClick={() => navigate('/clientes')} />
-        <StatCard icon={Factory} label="Ordens de Serviço" value={globalOs.total} color="bg-accent/10 text-accent" onClick={() => navigate('/producao')} />
+        {/* ORÇAMENTOS */}
+        <StatCard 
+          icon={FileText} 
+          label="Orçamentos" 
+          value={(isMaster ? data.orcamentos : getUserOrcs(currentUserName)).length} 
+          color="bg-primary/10 text-primary" 
+          onViewAll={() => navigate(isMaster ? '/orcamentos' : `/orcamentos?vendedor=${currentUserName}`)}
+          items={(isMaster ? data.orcamentos : getUserOrcs(currentUserName))
+            .slice(-3).reverse()
+            .map(o => ({ id: o.id, label: o.numero, user: o.vendedor }))}
+        />
+
+        {/* PEDIDOS */}
+        <StatCard 
+          icon={ShoppingCart} 
+          label="Pedidos" 
+          value={(isMaster ? data.pedidos : getUserPeds(currentUserName)).length} 
+          color="bg-secondary/20 text-secondary" 
+          onViewAll={() => navigate(isMaster ? '/pedidos' : `/pedidos?vendedor=${currentUserName}`)}
+          items={(isMaster ? data.pedidos : getUserPeds(currentUserName))
+            .slice(-3).reverse()
+            .map(p => {
+              const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
+              return { id: p.id, label: p.numero, user: orc?.vendedor || 'Sistema' };
+            })}
+        />
+
+        {/* CLIENTES */}
+        <StatCard 
+          icon={Users} 
+          label="Clientes" 
+          value={(isMaster ? data.clientes : data.clientes.filter(c => {
+            // ACL: For common users, show clients they have budgets/orders with
+            const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
+            const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
+            return hasOrc || hasPed;
+          })).length} 
+          color="bg-info/10 text-info" 
+          onViewAll={() => navigate('/clientes')}
+          items={(isMaster ? data.clientes : data.clientes.filter(c => {
+            const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
+            const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
+            return hasOrc || hasPed;
+          }))
+            .slice(-3).reverse()
+            .map(c => ({ id: c.id, label: 'CLI', user: c.nome }))}
+        />
+
+        {/* ORDENS DE SERVIÇO */}
+        <StatCard 
+          icon={Factory} 
+          label="Ordens de Serviço" 
+          value={(isMaster ? data.os : getUserOS(currentUserName)).length} 
+          color="bg-accent/10 text-accent" 
+          onViewAll={() => navigate('/producao')}
+          items={(isMaster ? data.os : getUserOS(currentUserName))
+            .slice(-3).reverse()
+            .map(os => {
+              const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
+              const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
+              return { id: os.id, label: os.numero, user: orc?.vendedor || 'Manual' };
+            })}
+        />
       </div>
 
       {/* Espaço de 2 linhas */}
