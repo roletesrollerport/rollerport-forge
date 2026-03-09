@@ -345,7 +345,7 @@ export default function UsuariosPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {usuarios.map(u => (
+        {[...usuarios].sort((a, b) => (a.nivel === 'master' ? -1 : b.nivel === 'master' ? 1 : 0)).map(u => (
           <div key={u.id} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start gap-3 mb-3">
               <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-primary/20">
