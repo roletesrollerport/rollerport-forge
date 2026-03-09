@@ -22,12 +22,12 @@ export default function ProdutosPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Produto | null>(null);
 
   const emptyRolete = (): Produto => ({
-    id: '', codigo: '', codigoCliente: '', nome: '', tipo: 'RC', medidas: '', descricao: '',
+    id: '', codigo: '', codigoCliente: '', nome: '', nomeCompleto: '', tipo: 'RC', medidas: '', descricao: '',
     miniDescricao: '', valor: 0, createdAt: new Date().toISOString().split('T')[0],
   });
 
   const emptyProduto = (): Produto => ({
-    id: '', codigo: '', nome: '', tipo: 'GENERICO', medidas: '', descricao: '', valor: '' as any,
+    id: '', codigo: '', nome: '', nomeCompleto: '', tipo: 'GENERICO', medidas: '', descricao: '', valor: '' as any,
     createdAt: new Date().toISOString().split('T')[0],
   });
 
@@ -103,6 +103,7 @@ export default function ProdutosPage() {
               <div><label className="text-xs text-muted-foreground">Código Interno</label><Input value={editing.codigo} onChange={e => setEditing({ ...editing, codigo: e.target.value })} placeholder="Ex: RC-001" /></div>
               <div><label className="text-xs text-muted-foreground">Código do Cliente (editável)</label><Input value={editing.codigoCliente || ''} onChange={e => setEditing({ ...editing, codigoCliente: e.target.value })} placeholder="Código do cliente" /></div>
               <div><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Nome Completo (aparece entre parênteses)</label><Input value={editing.nomeCompleto || ''} onChange={e => setEditing({ ...editing, nomeCompleto: e.target.value })} placeholder="Ex: Rolete de Carga" /></div>
               <div>
                 <label className="text-xs text-muted-foreground">Tipo do Rolete</label>
                 <select value={editing.tipo} onChange={e => setEditing({ ...editing, tipo: e.target.value as TipoRolete })}
@@ -127,6 +128,7 @@ export default function ProdutosPage() {
             <div className="space-y-3">
               <div><label className="text-xs text-muted-foreground">Código</label><Input value={editing.codigo} onChange={e => setEditing({ ...editing, codigo: e.target.value })} placeholder="Ex: PRD-001" /></div>
               <div><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Nome Completo (aparece entre parênteses)</label><Input value={editing.nomeCompleto || ''} onChange={e => setEditing({ ...editing, nomeCompleto: e.target.value })} placeholder="Ex: Bucha de Desgaste" /></div>
               <div><label className="text-xs text-muted-foreground">Medidas</label><Input value={editing.medidas} onChange={e => setEditing({ ...editing, medidas: e.target.value })} placeholder="Ex: 100x50x30mm" /></div>
               <div><label className="text-xs text-muted-foreground">Descrição</label><Textarea value={editing.descricao} onChange={e => setEditing({ ...editing, descricao: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Valor (R$)</label><Input type="number" step="0.01" value={editing.valor || ''} placeholder="Deixe vazio se necessário" onChange={e => setEditing({ ...editing, valor: e.target.value ? +e.target.value : '' as any })} /></div>
@@ -165,7 +167,8 @@ export default function ProdutosPage() {
                 <td className="p-3 font-mono text-xs">{p.codigo}</td>
                 <td className="p-3 font-medium">
                   {p.nome}
-                  {p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
+                  {p.nomeCompleto && <span className="text-xs text-muted-foreground ml-2">({p.nomeCompleto})</span>}
+                  {!p.nomeCompleto && p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
                 </td>
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
