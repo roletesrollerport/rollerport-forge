@@ -124,6 +124,9 @@ export default function OrcamentosPage() {
   const [showCadProduto, setShowCadProduto] = useState(false);
   const [cadProduto, setCadProduto] = useState({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0, ncm: '' });
 
+  // Histórico de orçamentos do cliente
+  const [showClienteHistory, setShowClienteHistory] = useState(false);
+
   const [clientes, setClientes] = useState(store.getClientes());
   const [revendas, setRevendas] = useState(store.getFornecedores());
   const [produtos, setProdutos] = useState(store.getProdutos());
