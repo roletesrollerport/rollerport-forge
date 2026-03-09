@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Edit, Search, Settings2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ export default function ProdutosPage() {
   const [openRolete, setOpenRolete] = useState(false);
   const [openProduto, setOpenProduto] = useState(false);
   const [editing, setEditing] = useState<Produto | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Produto | null>(null);
 
   const emptyRolete = (): Produto => ({
     id: '', codigo: '', codigoCliente: '', nome: '', tipo: 'RC', medidas: '', descricao: '',
