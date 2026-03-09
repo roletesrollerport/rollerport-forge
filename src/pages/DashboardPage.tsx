@@ -241,8 +241,7 @@ export default function DashboardPage() {
   const getOrcStats = (orcs: any[]) => ({
     total: orcs.length,
     rascunho: countByStatus(orcs, 'status', 'RASCUNHO'),
-    enviado: countByStatus(orcs, 'status', 'ENVIADO'),
-    aguardando: countByStatus(orcs, 'status', 'AGUARDANDO'),
+    pendente: countByStatus(orcs, 'status', 'PENDENTE') + countByStatus(orcs, 'status', 'ENVIADO') + countByStatus(orcs, 'status', 'AGUARDANDO'),
     aprovado: countByStatus(orcs, 'status', 'APROVADO'),
     reprovado: countByStatus(orcs, 'status', 'REPROVADO'),
   });
