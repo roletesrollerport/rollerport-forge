@@ -638,7 +638,7 @@ export default function OrcamentosPage() {
             {vendedorUser?.telefone && <span>Tel: <strong>{vendedorUser.telefone}</strong></span>}
             {vendedorUser?.whatsapp && <span>WhatsApp: <strong>{vendedorUser.whatsapp}</strong></span>}
             {vendedorUser?.email && <span>E-mail: <strong>{vendedorUser.email}</strong></span>}
-            <span>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF' : 'FOB'}</strong></span>
+            <span>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></span>
             <span>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></span>
           </div>
 
@@ -701,10 +701,9 @@ export default function OrcamentosPage() {
           </table>
 
           {/* ===== Footer ===== */}
-          <div className="mt-4 grid grid-cols-3 gap-4 text-[10px] border-t pt-3">
+          <div className="mt-4 grid grid-cols-2 gap-4 text-[10px] border-t pt-3">
             <div>Previsão de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></div>
             <div>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></div>
-            <div>Tipo de Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></div>
           </div>
 
           {/* PIX / Transferência data on print */}
