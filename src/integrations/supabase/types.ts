@@ -224,24 +224,6 @@ export type Database = {
         }
         Relationships: []
       }
-      fornecedores: {
-        Row: {
-          data: Json
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          data?: Json
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          data?: Json
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       metas_vendedores: {
         Row: {
           data: Json

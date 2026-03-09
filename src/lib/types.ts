@@ -62,9 +62,6 @@ export interface Cliente {
   createdAt: string;
 }
 
-// ======= FORNECEDORES (mesma estrutura, "compradores" = vendedores do fornecedor) =======
-export type Fornecedor = Cliente;
-
 // ======= PRODUTOS =======
 export type TipoRolete = 'RC' | 'RR' | 'RG' | 'RI' | 'RRA';
 
@@ -73,7 +70,6 @@ export interface Produto {
   codigo: string;
   codigoCliente?: string;
   nome: string;
-  nomeCompleto?: string;
   tipo: TipoRolete | 'GENERICO';
   medidas: string;
   descricao: string;

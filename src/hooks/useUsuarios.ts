@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import bcrypt from 'bcryptjs';
 import type { NivelAcesso, Genero, PermissoesUsuario } from '@/lib/types';
 
 export interface UsuarioDB {
@@ -57,8 +58,7 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const userData: any = {
-      id: u.id || undefined,
+    const payload: any = {
       nome: u.nome,
       email: u.email,
       telefone: u.telefone,
@@ -72,14 +72,17 @@ export function useUsuarios() {
     };
 
     if (u.senha && u.senha.trim() !== '') {
-      userData.senha = u.senha.trim();
+      payload.senha = u.senha.trim();
     }
 
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'save_user', sessionToken, userData },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    if (u.id) {
+      const { error } = await supabase.from('usuarios').update(payload).eq('id', u.id);
+      if (error) throw error;
+    } else {
+      if (!payload.senha) throw new Error('Password required for new user');
+      const { error } = await supabase.from('usuarios').insert(payload);
+      if (error) throw error;
+    }
 
     await fetchUsuarios();
   };
@@ -88,11 +91,13 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'delete_user', sessionToken, userId: id },
-    });
+    const { data: target } = await supabase.from('usuarios').select('nivel').eq('id', id).maybeSingle();
+    if (target?.nivel === 'master') {
+      throw new Error('Cannot delete master user');
+    }
+
+    const { error } = await supabase.from('usuarios').delete().eq('id', id);
     if (error) throw error;
-    if (data?.error) throw new Error(data.error);
 
     await fetchUsuarios();
   };
@@ -174,15 +179,14 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'get_user_credentials', sessionToken, userId },
-    });
+    const { data: targetUser, error } = await supabase.from('usuarios').select('senha').eq('id', userId).maybeSingle();
     if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    if (!targetUser) throw new Error('User not found');
 
+    const isPlain = !targetUser.senha.startsWith('$2');
     return {
-      password: data.password,
-      isPlain: data.isPlain
+      password: targetUser.senha,
+      isPlain
     };
   };
 
@@ -190,13 +194,16 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'generate_temp_password', sessionToken, userId },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    const length = Math.floor(Math.random() * 5) + 4; // 4 to 8 characters
+    let tempPassword = '';
+    for (let i = 0; i < length; i++) {
+      tempPassword += Math.floor(Math.random() * 10).toString();
+    }
 
-    return { tempPassword: data.tempPassword };
+    const { error } = await supabase.from('usuarios').update({ senha: tempPassword }).eq('id', userId);
+    if (error) throw error;
+
+    return { tempPassword };
   };
 
   const logoutUser = async (userId: string) => {

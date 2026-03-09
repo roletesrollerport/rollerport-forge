@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import { hashSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,16 +82,13 @@ serve(async (req) => {
         permissoes: userData.permissoes,
       };
 
-      // Handle password - save as plain text
+      // Handle password - only update if provided and non-empty
       if (userData.senha && userData.senha.trim() !== "") {
-        const trimmedPass = userData.senha.trim();
-        // Common users: numeric only, max 8 digits
-        if (payload.nivel !== "master" && !/^\d{1,8}$/.test(trimmedPass)) {
-          return new Response(JSON.stringify({ error: "Senha para usuários comuns deve conter apenas números (máx. 8 dígitos)" }), {
-            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+        if (!userData.senha.startsWith("$2")) {
+          payload.senha = hashSync(userData.senha);
+        } else {
+          payload.senha = userData.senha;
         }
-        payload.senha = trimmedPass;
       }
 
       if (userData.id) {
@@ -144,7 +141,7 @@ serve(async (req) => {
 
       const isPlain = !targetUser.senha.startsWith("$2");
       return new Response(JSON.stringify({ 
-        password: isPlain ? targetUser.senha : "••••••••", 
+        password: isPlain ? targetUser.senha : "••••••", 
         isPlain 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -159,11 +156,12 @@ serve(async (req) => {
         });
       }
 
-      const tempPassword = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit number
+      const tempPassword = Math.random().toString(36).slice(-8); // 8 chars random
+      const hashed = hashSync(tempPassword);
 
       const { error } = await supabaseAdmin
         .from("usuarios")
-        .update({ senha: tempPassword })
+        .update({ senha: hashed })
         .eq("id", targetId);
 
       if (error) {

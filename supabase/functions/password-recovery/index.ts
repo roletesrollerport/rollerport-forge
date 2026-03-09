@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import { hashSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -125,10 +125,11 @@ serve(async (req) => {
         });
       }
 
-      // Save plain text password
+      // Hash and update
+      const hashed = hashSync(newPassword);
       const { error: updateError } = await supabaseAdmin
         .from("usuarios")
-        .update({ senha: newPassword })
+        .update({ senha: hashed })
         .eq("id", user.id);
 
       if (updateError) throw updateError;

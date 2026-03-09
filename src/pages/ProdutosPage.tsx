@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Edit, Search, Settings2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,15 +18,14 @@ export default function ProdutosPage() {
   const [openRolete, setOpenRolete] = useState(false);
   const [openProduto, setOpenProduto] = useState(false);
   const [editing, setEditing] = useState<Produto | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Produto | null>(null);
 
   const emptyRolete = (): Produto => ({
-    id: '', codigo: '', codigoCliente: '', nome: '', nomeCompleto: '', tipo: 'RC', medidas: '', descricao: '',
+    id: '', codigo: '', codigoCliente: '', nome: '', tipo: 'RC', medidas: '', descricao: '',
     miniDescricao: '', valor: 0, createdAt: new Date().toISOString().split('T')[0],
   });
 
   const emptyProduto = (): Produto => ({
-    id: '', codigo: '', nome: '', nomeCompleto: '', tipo: 'GENERICO', medidas: '', descricao: '', valor: '' as any,
+    id: '', codigo: '', nome: '', tipo: 'GENERICO', medidas: '', descricao: '', valor: '' as any,
     createdAt: new Date().toISOString().split('T')[0],
   });
 
@@ -58,11 +56,10 @@ export default function ProdutosPage() {
     toast.success('Produto salvo!');
   };
 
-  const handleDelete = (produto: Produto) => {
-    const updated = produtos.filter(p => p.id !== produto.id);
+  const handleDelete = (id: string) => {
+    const updated = produtos.filter(p => p.id !== id);
     store.saveProdutos(updated);
     setProdutos(updated);
-    setDeleteConfirm(null);
     toast.success('Produto removido!');
   };
 
@@ -103,7 +100,6 @@ export default function ProdutosPage() {
               <div><label className="text-xs text-muted-foreground">Código Interno</label><Input value={editing.codigo} onChange={e => setEditing({ ...editing, codigo: e.target.value })} placeholder="Ex: RC-001" /></div>
               <div><label className="text-xs text-muted-foreground">Código do Cliente (editável)</label><Input value={editing.codigoCliente || ''} onChange={e => setEditing({ ...editing, codigoCliente: e.target.value })} placeholder="Código do cliente" /></div>
               <div><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Nome Completo (aparece entre parênteses)</label><Input value={editing.nomeCompleto || ''} onChange={e => setEditing({ ...editing, nomeCompleto: e.target.value })} placeholder="Ex: Rolete de Carga" /></div>
               <div>
                 <label className="text-xs text-muted-foreground">Tipo do Rolete</label>
                 <select value={editing.tipo} onChange={e => setEditing({ ...editing, tipo: e.target.value as TipoRolete })}
@@ -128,7 +124,6 @@ export default function ProdutosPage() {
             <div className="space-y-3">
               <div><label className="text-xs text-muted-foreground">Código</label><Input value={editing.codigo} onChange={e => setEditing({ ...editing, codigo: e.target.value })} placeholder="Ex: PRD-001" /></div>
               <div><label className="text-xs text-muted-foreground">Nome</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Nome Completo (aparece entre parênteses)</label><Input value={editing.nomeCompleto || ''} onChange={e => setEditing({ ...editing, nomeCompleto: e.target.value })} placeholder="Ex: Bucha de Desgaste" /></div>
               <div><label className="text-xs text-muted-foreground">Medidas</label><Input value={editing.medidas} onChange={e => setEditing({ ...editing, medidas: e.target.value })} placeholder="Ex: 100x50x30mm" /></div>
               <div><label className="text-xs text-muted-foreground">Descrição</label><Textarea value={editing.descricao} onChange={e => setEditing({ ...editing, descricao: e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Valor (R$)</label><Input type="number" step="0.01" value={editing.valor || ''} placeholder="Deixe vazio se necessário" onChange={e => setEditing({ ...editing, valor: e.target.value ? +e.target.value : '' as any })} /></div>
@@ -167,8 +162,7 @@ export default function ProdutosPage() {
                 <td className="p-3 font-mono text-xs">{p.codigo}</td>
                 <td className="p-3 font-medium">
                   {p.nome}
-                  {p.nomeCompleto && <span className="text-xs text-muted-foreground ml-2">({p.nomeCompleto})</span>}
-                  {!p.nomeCompleto && p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
+                  {p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
                 </td>
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -179,7 +173,7 @@ export default function ProdutosPage() {
                 <td className="p-3">
                   <div className="flex gap-1">
                     <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => handleDelete(p.id)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </td>
               </tr>
@@ -188,26 +182,6 @@ export default function ProdutosPage() {
           </tbody>
         </table>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o produto <strong>{deleteConfirm?.nome}</strong>?
-              <br />
-              Esta ação não pode ser desfeita e o produto será removido para todos os usuários.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

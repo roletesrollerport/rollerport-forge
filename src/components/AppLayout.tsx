@@ -236,30 +236,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
 
         <nav className="flex-1 overflow-y-auto py-2">
           {visibleNavItems.map(item => {
-            const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
-            
-            if (item.modulo === 'chat') {
-              return (
-                <button
-                  key={item.to}
-                  onClick={() => { setMobileOpen(false); setChatOpen(true); }}
-                  className={`
-                    flex items-center gap-3 mx-2 px-3 py-2.5 rounded-md text-sm font-medium w-[calc(100%-1rem)]
-                    transition-colors duration-150
-                    text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
-                  `}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-                  {!collapsed && unreadChatCount > 0 && (
-                    <span className="h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-                      {unreadChatCount}
-                    </span>
-                  )}
-                </button>
-              );
-            }
-
+            const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
             return (
               <Link
                 key={item.to}
@@ -276,6 +253,11 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
                 {!collapsed && <span className="flex-1">{item.label}</span>}
+                {!collapsed && item.modulo === 'chat' && unreadChatCount > 0 && (
+                  <span className="h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                    {unreadChatCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -370,6 +352,21 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         </PresenceContext.Provider>
       </div>
 
+      {/* Floating chat button */}
+      {!chatOpen && (
+        <button
+          onClick={() => setChatOpen(true)}
+          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
+          title="Abrir Bate-Papo"
+        >
+          <MessageCircle className="h-6 w-6" />
+          {unreadChatCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+              {unreadChatCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Chat Widget */}
       <ChatWidget

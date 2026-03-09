@@ -16,7 +16,6 @@ import {
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
   ClipboardList
 } from 'lucide-react';
-import VendorReportView from '@/components/VendorReportView';
 import { toast } from 'sonner';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
@@ -131,7 +130,6 @@ export default function DashboardPage() {
   const [dashView, setDashView] = useState<DashView>('main');
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
-  const [masterAiPrompt, setMasterAiPrompt] = useState<string>(() => localStorage.getItem('rp_master_ai_prompt') || '');
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -240,14 +238,14 @@ export default function DashboardPage() {
   /* ---------------------------------------------------------------- */
   const countByStatus = (items: any[], field: string, status: string) => items.filter(i => i[field] === status).length;
 
-  const getOrcStats = (orcs: any[]) => {
-    const aprovado = countByStatus(orcs, 'status', 'APROVADO');
-    const cancelado = countByStatus(orcs, 'status', 'REPROVADO');
-    const restantes = orcs.filter(o => o.status !== 'APROVADO' && o.status !== 'REPROVADO');
-    const rascunho = restantes.filter(o => !o.valorTotal || o.valorTotal === 0 || !o.clienteNome).length;
-    const pendente = restantes.length - rascunho;
-    return { total: orcs.length, rascunho, pendente, aprovado, cancelado };
-  };
+  const getOrcStats = (orcs: any[]) => ({
+    total: orcs.length,
+    rascunho: countByStatus(orcs, 'status', 'RASCUNHO'),
+    enviado: countByStatus(orcs, 'status', 'ENVIADO'),
+    aguardando: countByStatus(orcs, 'status', 'AGUARDANDO'),
+    aprovado: countByStatus(orcs, 'status', 'APROVADO'),
+    reprovado: countByStatus(orcs, 'status', 'REPROVADO'),
+  });
 
   const getPedStats = (peds: any[]) => ({
     total: peds.length,
@@ -365,27 +363,99 @@ export default function DashboardPage() {
   if ((dashView === 'vendor-detail' || dashView === 'vendor-print') && selectedVendor) {
     const userOrcs = getUserOrcs(selectedVendor);
     const userPeds = getUserPeds(selectedVendor);
-    const userOS = getUserOS(selectedVendor);
-
-    const handleSaveMasterPrompt = (prompt: string) => {
-      setMasterAiPrompt(prompt);
-      localStorage.setItem('rp_master_ai_prompt', prompt);
-    };
+    const orcS = getOrcStats(userOrcs);
+    const pedS = getPedStats(userPeds);
+    const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
+    const meta = metas.find(m => m.vendedor === selectedVendor);
+    const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    const conversao = orcS.total > 0 ? ((orcS.aprovado / orcS.total) * 100).toFixed(1) : '0';
 
     return (
-      <VendorReportView
-        vendorName={selectedVendor}
-        orcamentos={userOrcs}
-        pedidos={userPeds}
-        ordensServico={userOS}
-        metas={metas}
-        isMaster={isMaster}
-        isPrint={dashView === 'vendor-print'}
-        onBack={() => { setDashView('main'); setSelectedVendor(null); }}
-        onPrint={() => dashView === 'vendor-detail' ? setDashView('vendor-print') : window.print()}
-        masterPrompt={masterAiPrompt || undefined}
-        onSaveMasterPrompt={handleSaveMasterPrompt}
-      />
+      <div>
+        <div className="flex gap-2 mb-4 print:hidden">
+          <Button variant="outline" onClick={() => { setDashView('main'); setSelectedVendor(null); }} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+          {dashView === 'vendor-detail' && (
+            <Button variant="outline" onClick={() => setDashView('vendor-print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
+          )}
+          {dashView === 'vendor-print' && (
+            <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
+          )}
+        </div>
+        <div className="bg-card border rounded-lg p-6 max-w-4xl mx-auto print:border-0 print:shadow-none">
+          <h2 className="text-xl font-bold mb-6">Vendedor: {selectedVendor}</h2>
+          <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+            <div className="border rounded p-3"><span className="text-muted-foreground">Orçamentos:</span> <strong>{orcS.total}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">Aprovados:</span> <strong className="text-success">{orcS.aprovado}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">Pedidos:</span> <strong>{pedS.total}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">Total Vendido:</span> <strong>{fmt(totalVendido)}</strong></div>
+            <div className="border rounded p-3"><span className="text-muted-foreground">% Conversão:</span> <strong>{conversao}%</strong></div>
+            <div className="border rounded p-3">
+              <span className="text-muted-foreground">Meta:</span>
+              {meta && meta.metaMensal > 0 ? (
+                <div className="flex items-center gap-2 mt-1"><Progress value={metaPct} className="h-3 flex-1" /><strong>{metaPct.toFixed(0)}%</strong></div>
+              ) : <strong> Não definida</strong>}
+            </div>
+          </div>
+
+          <h3 className="font-semibold text-sm mt-4 mb-2">Orçamentos</h3>
+          <table className="w-full text-xs border-collapse mb-4">
+            <thead><tr className="border-b bg-muted/50">
+              <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th><th className="text-left p-2">Data</th>
+              <th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
+              {isMaster && <th className="p-2 w-20 print:hidden">Ações</th>}
+            </tr></thead>
+            <tbody>
+              {userOrcs.map((o: any) => (
+                <tr key={o.id} className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-mono">{o.numero}</td><td className="p-2">{o.clienteNome}</td>
+                  <td className="p-2">{o.dataOrcamento || o.createdAt}</td>
+                  <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
+                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
+                  {isMaster && (
+                    <td className="p-2 print:hidden">
+                      <div className="flex gap-1">
+                        <button onClick={() => navigate('/orcamentos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
+                        <button onClick={() => deleteOrcamento(o.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {userOrcs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhum orçamento.</td></tr>}
+            </tbody>
+          </table>
+
+          <h3 className="font-semibold text-sm mt-4 mb-2">Pedidos</h3>
+          <table className="w-full text-xs border-collapse">
+            <thead><tr className="border-b bg-muted/50">
+              <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th>
+              <th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
+              {isMaster && <th className="p-2 w-20 print:hidden">Ações</th>}
+            </tr></thead>
+            <tbody>
+              {userPeds.map((p: any) => (
+                <tr key={p.id} className="border-b hover:bg-muted/30">
+                  <td className="p-2 font-mono">{p.numero}</td><td className="p-2">{p.clienteNome}</td>
+                  <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
+                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{p.status}</span></td>
+                  {isMaster && (
+                    <td className="p-2 print:hidden">
+                      <div className="flex gap-1">
+                        <button onClick={() => navigate('/pedidos')} className="p-1 hover:bg-muted rounded" title="Ver"><Eye className="h-3 w-3" /></button>
+                        <button onClick={() => deletePedido(p.id)} className="p-1 hover:bg-muted rounded text-destructive" title="Excluir"><Trash2 className="h-3 w-3" /></button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {userPeds.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        {dashView === 'vendor-print' && (
+          <style>{`@media print { @page { margin: 1cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+        )}
+      </div>
     );
   }
 
@@ -752,9 +822,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
-            <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
             <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
-            <StatusBar label="Cancelado" value={globalOrc.cancelado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
+            <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
           </CardContent>
         </Card>
 
