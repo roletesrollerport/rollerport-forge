@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
-  ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History
+  ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History,
+  FileText, Mail, Settings2 as SettingsIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
@@ -103,6 +104,20 @@ export default function OrcamentosPage() {
   const [produtoQtd, setProdutoQtd] = useState(1);
   const [produtoNcm, setProdutoNcm] = useState('');
   const [produtoDesconto, setProdutoDesconto] = useState(0);
+
+  // Estados para Orçamento Técnico
+  const [showTecnico, setShowTecnico] = useState(false);
+  const [tecnicoData, setTecnicoData] = useState({
+    tubo: 'Tubo industrial com costura em aço carbono conforme NBR-6591 ø101,6x2,25mm',
+    eixo: 'Eixo trefilado SAE-1020 ø20mm',
+    rolamento: 'Rolamento rígido de uma carreira de esferas 6204 2RS C3 marca GBR ou similar',
+    portaRolamento: 'Porta rolamento estampado em chapa de aço soldado no tubo',
+    lubrificacao: 'Lubrificação permanente com graxa especial a base de lítio',
+    vedacao: 'Vedação composta por múltiplos labirintos fabricados em poliamida, projetados para uso em ambientes agressivos',
+    garantia: 'Rolos com garantia contra defeitos de fabricação 08 meses',
+    pinturaRolo: 'Rolos com pintura Eletrostática em poliéster cor vermelha',
+    pinturaCavalete: 'Cavaletes com pintura esmalte sintético cor azul',
+  });
 
   const [showRoleteForm, setShowRoleteForm] = useState(false);
   const [roleteItem, setRoleteItem] = useState<ItemOrcamento>(emptyItem());
@@ -497,6 +512,12 @@ export default function OrcamentosPage() {
     toast.success('Produto cadastrado!');
   };
 
+  const handleSendEmail = (orc: Orcamento) => {
+    const subject = encodeURIComponent(`Orçamento Rollerport - Nº ${orc.numero}`);
+    const body = encodeURIComponent(`Olá,\n\nSegue os dados principais do Orçamento Nº ${orc.numero}:\n\nCliente: ${orc.clienteNome}\nValor Total: R$ ${orc.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\n\nAtenciosamente,\nRollerport`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
   const filteredOrcamentos = orcamentos.filter(o =>
     o.clienteNome.toLowerCase().includes(searchList.toLowerCase()) ||
     o.numero.includes(searchList)
@@ -590,7 +611,20 @@ export default function OrcamentosPage() {
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
           <Button variant="outline" onClick={() => window.print()} className="gap-2">
-            <Printer className="h-4 w-4" /> Imprimir / PDF
+            <Printer className="h-4 w-4" /> Imprimir
+          </Button>
+          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+            <FileText className="h-4 w-4" /> Gerar PDF
+          </Button>
+          <Button 
+            variant={showTecnico ? "default" : "outline"} 
+            onClick={() => setShowTecnico(!showTecnico)} 
+            className="gap-2"
+          >
+            <SettingsIcon className="h-4 w-4" /> Orçamento Técnico
+          </Button>
+          <Button variant="outline" onClick={() => handleSendEmail(viewOrc)} className="gap-2">
+            <Mail className="h-4 w-4" /> Enviar por E-mail
           </Button>
         </div>
 
@@ -745,6 +779,53 @@ export default function OrcamentosPage() {
               <p className="underline whitespace-nowrap">ATENÇÃO: OS VALORES DESTE ORÇAMENTO SÃO VÁLIDOS APENAS PARA A QUANTIDADE TOTAL SOLICITADA. PARA QUANTIDADES MENORES, OS PREÇOS SOFRERÃO ALTERAÇÕES.</p>
             </div>
           </div>
+
+          {/* ===== Seção Técnica (Opcional) ===== */}
+          {showTecnico && (
+            <div className="mt-4 border rounded p-3 text-[10px] break-inside-avoid bg-gray-50/30">
+              <h3 className="text-center font-bold text-xs mb-3">ESPECIFICAÇÕES TÉCNICAS GERAIS DO ROLO</h3>
+              <div className="grid grid-cols-1 gap-y-2">
+                {[
+                  { key: 'tubo', label: 'Tubo' },
+                  { key: 'eixo', label: 'Eixo' },
+                  { key: 'rolamento', label: 'Rolamento' },
+                  { key: 'portaRolamento', label: 'Porta Rolamento' },
+                  { key: 'lubrificacao', label: 'Lubrificação' },
+                  { key: 'vedacao', label: 'Vedação' },
+                  { key: 'garantia', label: 'Garantia' },
+                  { key: 'pinturaRolo', label: 'Pintura Rolo' },
+                  { key: 'pinturaCavalete', label: 'Pintura Cavalete' },
+                ].map(({ key }) => {
+                  const content = tecnicoData[key as keyof typeof tecnicoData];
+                  let displayContent: React.ReactNode = content;
+                  
+                  if (key === 'pinturaRolo') {
+                    const parts = content.split(/(vermelha)/i);
+                    displayContent = parts.map((p, i) => 
+                      p.toLowerCase() === 'vermelha' ? <span key={i} className="text-red-600 font-bold">{p}</span> : p
+                    );
+                  } else if (key === 'pinturaCavalete') {
+                    const parts = content.split(/(azul)/i);
+                    displayContent = parts.map((p, i) => 
+                      p.toLowerCase() === 'azul' ? <span key={i} className="text-blue-600 font-bold">{p}</span> : p
+                    );
+                  }
+
+                  return (
+                    <div key={key} className="flex flex-col">
+                      <p className="leading-tight">• {displayContent}</p>
+                      <input 
+                        type="text" 
+                        className="print:hidden mt-0.5 p-1 border rounded text-[9px] w-full bg-blue-50/50" 
+                        value={content} 
+                        onChange={e => setTecnicoData({...tecnicoData, [key as keyof typeof tecnicoData]: e.target.value})}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="text-center text-[10px] mt-2">
             <p className="font-semibold">ROLLERPORT – Fábrica de Roletes</p>
