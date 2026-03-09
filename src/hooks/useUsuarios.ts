@@ -156,10 +156,9 @@ export function useUsuarios() {
     if (error) throw error;
     if (!targetUser) throw new Error('User not found');
 
-    const isPlain = !targetUser.senha.startsWith('$2');
     return {
-      password: isPlain ? targetUser.senha : '••••••',
-      isPlain
+      password: targetUser.senha,
+      isPlain: true
     };
   };
 
