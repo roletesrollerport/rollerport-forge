@@ -222,8 +222,6 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
     return true;
   });
 
-  if (!isOpen) return null;
-
   // Dragging logic
   const dragRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -250,7 +248,6 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
     return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
   }, [dragging]);
 
-  // Reset position when opening
   useEffect(() => {
     if (isOpen) {
       setPos({ x: window.innerWidth - 400, y: window.innerHeight - 540 });
