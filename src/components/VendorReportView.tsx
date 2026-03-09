@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import {
   ArrowLeft, Printer, FileText, ShoppingCart, Factory, Brain,
   Loader2, Save, Edit, Sparkles, ChevronLeft, ChevronRight, Calendar
@@ -44,7 +45,6 @@ function formatDayKey(key: string): string {
   return `${d}/${m}/${y}`;
 }
 
-/** Elapsed time from dateStr to now */
 function elapsedTime(dateStr: string | undefined | null): string {
   if (!dateStr) return '-';
   const d = parseDocDate(dateStr);
@@ -57,6 +57,17 @@ function elapsedTime(dateStr: string | undefined | null): string {
   if (days > 0) return `${days}d ${hours}h ${mins}m`;
   if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m`;
+}
+
+function formatDateTime(dateStr: string | undefined | null): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) return dateStr;
+    return dateStr;
+  }
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function statusColor(status: string) {
@@ -209,11 +220,13 @@ function CalendarGrid({ year, month, dayActivity, selectedDay, onDayClick, onPre
 }
 
 /* ── table component ─────────────────────────────────────────────── */
-function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg }: {
+function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }: {
   title: string; icon: any; iconColor: string; docs: any[]; emptyMsg: string;
+  onItemClick?: (doc: any, type: 'orcamento' | 'pedido' | 'os') => void;
 }) {
   const isOrc = title.startsWith('Orç');
   const isPed = title.startsWith('Ped');
+  const typeStr = isOrc ? 'orcamento' : isPed ? 'pedido' : 'os';
   return (
     <div>
       <h3 className={`font-semibold text-sm mb-2 flex items-center gap-2`}>
@@ -239,7 +252,11 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg }: {
                 : isPed ? d.createdAt
                 : (d.emissao || d.createdAt);
               return (
-                <tr key={d.id} className="border-b hover:bg-muted/30">
+                <tr 
+                  key={d.id} 
+                  className={`border-b hover:bg-muted/30 ${onItemClick ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                  onClick={() => onItemClick && onItemClick(d, typeStr)}
+                >
                   <td className="p-2 font-mono">{d.numero || d.id}</td>
                   <td className="p-2">{isOrc || isPed ? d.clienteNome : d.empresa}</td>
                   {!isOrc && !isPed && <td className="p-2 font-mono">{d.pedidoNumero}</td>}
@@ -250,8 +267,8 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg }: {
                       {statusLabel(d.status)}
                     </span>
                   </td>
-                  <td className="p-2 font-mono text-[10px] text-muted-foreground">{elapsedTime(dateRaw)}</td>
-                  <td className="p-2 text-[10px] max-w-[180px] truncate text-muted-foreground"
+                  <td className="p-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{elapsedTime(dateRaw)}</td>
+                  <td className="p-2 text-[10px] max-w-[150px] truncate text-muted-foreground"
                     title={d.motivoCancelamento || ''}>
                     {d.motivoCancelamento ? d.motivoCancelamento : '-'}
                   </td>
@@ -279,6 +296,11 @@ export default function VendorReportView({
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth()); // 0-indexed
   const [selectedDay, setSelectedDay] = useState<string | null>(null); // 'YYYY-MM-DD' or null
+
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  /* Doc Detail state */
+  const [selectedDocDetail, setSelectedDocDetail] = useState<{ doc: any; type: 'orcamento' | 'pedido' | 'os' } | null>(null);
 
   /* AI state */
   const [aiResponse, setAiResponse] = useState('');
@@ -500,7 +522,7 @@ export default function VendorReportView({
 
         {/* Year selector */}
         <div className="flex gap-2 ml-2 items-center">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Calendar className="h-4 w-4 text-muted-foreground mr-1" />
           <select
             value={selectedYear}
             onChange={e => { setSelectedYear(+e.target.value); setSelectedDay(null); }}
@@ -516,6 +538,28 @@ export default function VendorReportView({
               Ver todo o mês
             </button>
           )}
+
+          <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2 ml-2">
+                <Calendar className="h-4 w-4" /> Ver Calendário
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
+              <CalendarGrid
+                year={selectedYear}
+                month={selectedMonth}
+                dayActivity={dayActivity}
+                selectedDay={selectedDay}
+                onDayClick={(day) => {
+                  setSelectedDay(day);
+                  setCalendarOpen(false); // fecha o calendário ao selecionar um dia
+                }}
+                onPrevMonth={handlePrevMonth}
+                onNextMonth={handleNextMonth}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* AI button (right-aligned) */}
@@ -590,25 +634,11 @@ export default function VendorReportView({
         </Card>
       )}
 
-      {/* ── calendar + report layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* ── calendar (left column) ── */}
-        <div className="lg:col-span-1 print:hidden">
-          <CalendarGrid
-            year={selectedYear}
-            month={selectedMonth}
-            dayActivity={dayActivity}
-            selectedDay={selectedDay}
-            onDayClick={setSelectedDay}
-            onPrevMonth={handlePrevMonth}
-            onNextMonth={handleNextMonth}
-          />
-        </div>
-
-        {/* ── report tables (right column) ── */}
-        <div className="lg:col-span-2">
-          <div className="bg-card border rounded-lg p-5 space-y-6 print:border-0 print:shadow-none print:p-0">
+      {/* ── report layout ── */}
+      <div className="grid grid-cols-1 gap-4">
+        {/* ── report tables ── */}
+        <div className="col-span-1">
+          <div className="bg-card border rounded-lg p-5 space-y-6 print:border-0 print:shadow-none print:p-0 max-w-6xl mx-auto">
             {/* header */}
             <div>
               <h2 className="text-lg font-bold">{vendorName}</h2>
@@ -646,6 +676,7 @@ export default function VendorReportView({
               iconColor="text-primary"
               docs={displayOrcs}
               emptyMsg="Nenhum orçamento no período."
+              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
             />
 
             {/* Pedidos */}
@@ -655,6 +686,7 @@ export default function VendorReportView({
               iconColor="text-secondary"
               docs={displayPeds}
               emptyMsg="Nenhum pedido no período."
+              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
             />
 
             {/* Ordens de Serviço */}
@@ -664,10 +696,123 @@ export default function VendorReportView({
               iconColor="text-accent"
               docs={displayOS}
               emptyMsg="Nenhuma O.S. no período."
+              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
             />
           </div>
         </div>
       </div>
+
+      {/* ── Document Details Modal ── */}
+      <Dialog open={!!selectedDocDetail} onOpenChange={(open) => !open && setSelectedDocDetail(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {selectedDocDetail && (
+            <div className="space-y-4">
+              <div className="border-b pb-3">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  {selectedDocDetail.type === 'orcamento' && <FileText className="h-5 w-5 text-primary" />}
+                  {selectedDocDetail.type === 'pedido' && <ShoppingCart className="h-5 w-5 text-secondary" />}
+                  {selectedDocDetail.type === 'os' && <Factory className="h-5 w-5 text-accent" />}
+                  {selectedDocDetail.type === 'orcamento' ? 'Orçamento' : selectedDocDetail.type === 'pedido' ? 'Pedido' : 'Ordem de Serviço'} 
+                  <span className="text-muted-foreground ml-1 font-mono">#{selectedDocDetail.doc.numero}</span>
+                </h2>
+                <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 text-sm text-muted-foreground">
+                  <div><span className="font-semibold text-foreground">Cliente/Empresa:</span> {selectedDocDetail.doc.clienteNome || selectedDocDetail.doc.empresa}</div>
+                  <div><span className="font-semibold text-foreground">Status:</span> <span className={`px-2 py-0.5 rounded text-xs font-medium ml-1 bg-muted ${statusColor(selectedDocDetail.doc.status)}`}>{statusLabel(selectedDocDetail.doc.status)}</span></div>
+                  <div><span className="font-semibold text-foreground">Data:</span> {selectedDocDetail.doc.dataOrcamento || selectedDocDetail.doc.createdAt}</div>
+                </div>
+              </div>
+
+              {/* Itens List */}
+              <div className="bg-muted/10 border rounded-lg overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="p-2 w-10 text-center">Item</th>
+                      <th className="p-2">Cód.</th>
+                      <th className="p-2">Descrição</th>
+                      <th className="p-2 text-center">Qtd</th>
+                      {selectedDocDetail.type !== 'os' && (
+                        <>
+                          <th className="p-2 text-right">V. Unit</th>
+                          <th className="p-2 text-right">V. Total</th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDocDetail.doc.itens && Array.isArray(selectedDocDetail.doc.itens) ? (
+                      selectedDocDetail.doc.itens.map((item: any, idx: number) => (
+                        <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="p-2 text-center font-mono text-[10px] text-muted-foreground">{idx + 1}</td>
+                          <td className="p-2 font-mono text-[10px]">{item.codigoProduto || item.tipoRolete || '-'}</td>
+                          <td className="p-2 whitespace-pre-wrap">{item.descricao || `Rolete ${item.tipoRolete} - ø${item.diametroTubo} x ${item.comprimentoTubo}`}</td>
+                          <td className="p-2 text-center font-bold">{item.quantidade || item.qtd || 1}</td>
+                          {selectedDocDetail.type !== 'os' && (
+                            <>
+                              <td className="p-2 text-right font-mono text-[10px]">{fmt(item.valorLiquidoUnit || item.valorUnitario || item.precoUnitario || 0)}</td>
+                              <td className="p-2 text-right font-mono font-medium">{fmt((item.valorLiquidoUnit || item.valorUnitario || item.precoUnitario || 0) * (item.quantidade || item.qtd || 1))}</td>
+                            </>
+                          )}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhum item detalhado neste documento.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Histórico / Eventos */}
+              <div className="mt-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold mb-3">Histórico de Eventos</h3>
+                <div className="space-y-3">
+                  {/* Evento de Criação */}
+                  <div className="flex gap-3 text-sm">
+                    <div className="w-32 text-muted-foreground text-xs">{formatDateTime(selectedDocDetail.doc.dataOrcamento || selectedDocDetail.doc.createdAt)}</div>
+                    <div className="flex flex-col">
+                      <span className="font-medium">Criado</span>
+                      <span className="text-xs text-muted-foreground">Documento gerado e salvo</span>
+                    </div>
+                  </div>
+
+                  {/* Histórico de Status Registrado */}
+                  {selectedDocDetail.doc.statusHistory && selectedDocDetail.doc.statusHistory.map((hist: any, idx: number) => (
+                    <div key={idx} className="flex gap-3 text-sm">
+                      <div className="w-32 text-muted-foreground text-xs">{formatDateTime(hist.date)}</div>
+                      <div className="flex flex-col">
+                        <span className="font-medium">Status <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ml-1 ${statusColor(hist.status)}`}>{statusLabel(hist.status)}</span></span>
+                        <span className="text-xs text-muted-foreground">O status do documento foi atualizado</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Evento de Cancelamento (se houver) */}
+                  {selectedDocDetail.doc.motivoCancelamento && (
+                    <div className="flex gap-3 text-sm">
+                      <div className="w-32 text-muted-foreground text-xs">{formatDateTime(selectedDocDetail.doc.dataCancelamento || selectedDocDetail.doc.updatedAt || undefined)}</div>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-destructive">Cancelado / Reprovado</span>
+                        <span className="text-xs text-muted-foreground max-w-lg">Motivo: {selectedDocDetail.doc.motivoCancelamento}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedDocDetail.type !== 'os' && (
+                <div className="flex justify-end pt-2">
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 w-64">
+                    <div className="flex justify-between items-center text-sm font-bold">
+                      <span>Total do Documento:</span>
+                      <span className="text-lg text-primary">{fmt(selectedDocDetail.doc.valorTotal || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {isPrint && (
         <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
