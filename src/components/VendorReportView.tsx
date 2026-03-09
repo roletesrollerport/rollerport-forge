@@ -591,7 +591,7 @@ export default function VendorReportView({
       )}
 
       {/* ── calendar + report layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* ── calendar (left column) ── */}
         <div className="lg:col-span-1 print:hidden">
@@ -607,7 +607,7 @@ export default function VendorReportView({
         </div>
 
         {/* ── report tables (right column) ── */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-4">
           <div className="bg-card border rounded-lg p-5 space-y-6 print:border-0 print:shadow-none print:p-0">
             {/* header */}
             <div>
