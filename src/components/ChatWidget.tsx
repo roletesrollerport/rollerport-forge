@@ -231,7 +231,6 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   const dragOffset = useRef({ x: 0, y: 0 });
 
   const onMouseDown = (e: React.MouseEvent) => {
-    // Only drag from header area
     setDragging(true);
     dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
     e.preventDefault();
@@ -257,6 +256,8 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
       setPos({ x: window.innerWidth - 400, y: window.innerHeight - 540 });
     }
   }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div
