@@ -239,11 +239,12 @@ export default function DashboardPage() {
   const countByStatus = (items: any[], field: string, status: string) => items.filter(i => i[field] === status).length;
 
   const getOrcStats = (orcs: any[]) => {
-    const rascunho = orcs.filter(o => o.status === 'RASCUNHO' || !o.valorTotal || o.valorTotal === 0).length;
     const aprovado = countByStatus(orcs, 'status', 'APROVADO');
     const cancelado = countByStatus(orcs, 'status', 'REPROVADO');
-    const pendente = orcs.length - rascunho - aprovado - cancelado;
-    return { total: orcs.length, rascunho, pendente: Math.max(pendente, 0), aprovado, cancelado };
+    const restantes = orcs.filter(o => o.status !== 'APROVADO' && o.status !== 'REPROVADO');
+    const rascunho = restantes.filter(o => !o.valorTotal || o.valorTotal === 0 || !o.cliente).length;
+    const pendente = restantes.length - rascunho;
+    return { total: orcs.length, rascunho, pendente, aprovado, cancelado };
   };
 
   const getPedStats = (peds: any[]) => ({
