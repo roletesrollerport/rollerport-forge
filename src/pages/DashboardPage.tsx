@@ -88,7 +88,7 @@ function StatCard({
         <Button 
           variant="ghost" 
           size="sm" 
-          className="w-full h-8 text-xs text-muted-foreground hover:text-primary"
+          className="w-full h-8 text-xs text-muted-foreground hover:bg-red-600 hover:text-white transition-colors"
           onClick={(e) => {
             e.stopPropagation();
             if (onViewAll) onViewAll();
