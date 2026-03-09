@@ -1077,8 +1077,17 @@ export default function OrcamentosPage() {
                 <select value={roleteItem.tipoRolete} onChange={e => updateRoleteField({ tipoRolete: e.target.value as any })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                  {['RC', 'RR', 'RG', 'RI', 'RRA'].map(t => <option key={t} value={t}>{t}</option>)}
+                  {['RC', 'RR', 'RG', 'RI', 'RRA'].map(t => {
+                    const prod = produtos.find(p => p.tipo === t && p.nomeCompleto);
+                    return <option key={t} value={t}>{t}{prod?.nomeCompleto ? ` (${prod.nomeCompleto})` : ''}</option>;
+                  })}
                 </select>
+                {roleteItem.tipoRolete && (() => {
+                  const prod = produtos.find(p => p.tipo === roleteItem.tipoRolete && p.nomeCompleto);
+                  return prod?.nomeCompleto ? (
+                    <p className="text-xs text-muted-foreground mt-1 font-medium">{roleteItem.tipoRolete} — {prod.nomeCompleto}</p>
+                  ) : null;
+                })()}
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Diâmetro do Tubo</label>
