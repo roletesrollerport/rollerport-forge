@@ -836,8 +836,8 @@ export default function VendorReportView({
 
               {selectedDocDetail.type !== 'os' && (
                 <div className="flex justify-end pt-2">
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 w-64">
-                    <div className="flex justify-between items-center text-sm font-bold">
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 min-w-[300px]">
+                    <div className="flex justify-between items-center text-sm font-bold whitespace-nowrap gap-4">
                       <span>Total do Documento:</span>
                       <span className="text-lg text-primary">{fmt(selectedDocDetail.doc.valorTotal || 0)}</span>
                     </div>
