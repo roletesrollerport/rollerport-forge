@@ -5,6 +5,7 @@ import { useCustos } from '@/hooks/useCustos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ICMS_INTERESTADUAL_SP, PIS_FIXO, COFINS_FIXO } from '@/lib/utils';
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
@@ -143,6 +144,7 @@ export default function OrcamentosPage() {
   const [condicaoPagamento, setCondicaoPagamento] = useState('');
   const [vendedor, setVendedor] = useState('');
   const [empresaEmissoraId, setEmpresaEmissoraId] = useState('emp_1'); // Default Rollerport
+  const [empresaPreview, setEmpresaPreview] = useState<EmpresaEmissora | null>(null);
   const [dataOrcamento, setDataOrcamento] = useState(new Date().toLocaleDateString('pt-BR'));
   const [previsaoEntrega, setPrevisaoEntrega] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -1060,20 +1062,47 @@ export default function OrcamentosPage() {
                 <Button
                   key={emp.id}
                   variant={empresaEmissoraId === emp.id ? 'default' : 'outline'}
-                  onClick={() => setEmpresaEmissoraId(emp.id)}
-                  className={`flex-1 flex flex-col items-start p-4 h-auto transition-all text-left ${empresaEmissoraId === emp.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                  onClick={() => { setEmpresaEmissoraId(emp.id); setEmpresaPreview(emp); }}
+                  className={`flex-1 py-6 text-lg font-bold transition-all ${empresaEmissoraId === emp.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                 >
-                  <span className="text-base font-bold mb-1">{emp.nome}</span>
-                  <p className="text-[10px] font-medium opacity-90 truncate w-full">{emp.razaoSocial}</p>
-                  <div className="grid grid-cols-1 gap-1 mt-2 w-full text-[9px] opacity-80">
-                    <p>CNPJ/MF n° {emp.cnpj}</p>
-                    <p>Inscrição Estadual: {emp.ie}</p>
-                    <p>Regime: <span className="font-bold">{emp.regimeTributario}</span></p>
-                  </div>
+                  {emp.nome}
                 </Button>
               ))}
             </div>
           </div>
+
+          {/* Dialog Info Empresa */}
+          {empresaPreview && (
+            <Dialog open={!!empresaPreview} onOpenChange={(open) => !open && setEmpresaPreview(null)}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Dados do Cabeçalho ({empresaPreview.nome})</DialogTitle>
+                  <DialogDescription>
+                    Estas informações serão impressas no topo e rodapé do orçamento.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-sm mb-2">{empresaPreview.razaoSocial}</p>
+                  <p><span className="font-semibold">Nome Fantasia:</span> {empresaPreview.nome}</p>
+                  <p><span className="font-semibold">Endereço:</span> {empresaPreview.endereco}</p>
+                  <p><span className="font-semibold">Bairro:</span> {empresaPreview.bairro} <span className="ml-4 font-semibold">CEP:</span> {empresaPreview.cep}</p>
+                  <p><span className="font-semibold">Cidade:</span> {empresaPreview.cidade} - {empresaPreview.estado}</p>
+                  <p><span className="font-semibold">CNPJ/MF n°:</span> {empresaPreview.cnpj}</p>
+                  <p><span className="font-semibold">Inscrição Estadual:</span> {empresaPreview.ie}</p>
+                  <p><span className="font-semibold">Fone:</span> {empresaPreview.telefone}</p>
+                  <p><span className="font-semibold">E-mail:</span> {empresaPreview.email}</p>
+                  <p><span className="font-semibold">Regime Tributário:</span> {empresaPreview.regimeTributario}</p>
+                  
+                  <div className="mt-3 bg-muted/30 p-2 rounded">
+                    <p className="font-bold mb-1">Dados Bancários Associados:</p>
+                    {empresaPreview.dadosBancarios?.map((db, idx) => (
+                      <p key={idx}>{db.banco} - Ag: {db.agencia} | CC: {db.conta}</p>
+                    ))}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {/* Cliente / Revenda toggle + search */}
           <div>
