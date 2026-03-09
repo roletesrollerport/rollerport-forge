@@ -57,7 +57,8 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const payload: any = {
+    const userData: any = {
+      id: u.id || undefined,
       nome: u.nome,
       email: u.email,
       telefone: u.telefone,
@@ -71,17 +72,14 @@ export function useUsuarios() {
     };
 
     if (u.senha && u.senha.trim() !== '') {
-      payload.senha = u.senha.trim();
+      userData.senha = u.senha.trim();
     }
 
-    if (u.id) {
-      const { error } = await supabase.from('usuarios').update(payload).eq('id', u.id);
-      if (error) throw error;
-    } else {
-      if (!payload.senha) throw new Error('Password required for new user');
-      const { error } = await supabase.from('usuarios').insert(payload);
-      if (error) throw error;
-    }
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'save_user', sessionToken, userData },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
     await fetchUsuarios();
   };
@@ -90,13 +88,11 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data: target } = await supabase.from('usuarios').select('nivel').eq('id', id).maybeSingle();
-    if (target?.nivel === 'master') {
-      throw new Error('Cannot delete master user');
-    }
-
-    const { error } = await supabase.from('usuarios').delete().eq('id', id);
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'delete_user', sessionToken, userId: id },
+    });
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
     await fetchUsuarios();
   };
@@ -151,13 +147,15 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data: targetUser, error } = await supabase.from('usuarios').select('senha').eq('id', userId).maybeSingle();
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'get_user_credentials', sessionToken, userId },
+    });
     if (error) throw error;
-    if (!targetUser) throw new Error('User not found');
+    if (data?.error) throw new Error(data.error);
 
     return {
-      password: targetUser.senha,
-      isPlain: true
+      password: data.password,
+      isPlain: data.isPlain
     };
   };
 
@@ -165,12 +163,13 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const tempPassword = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit number
-
-    const { error } = await supabase.from('usuarios').update({ senha: tempPassword }).eq('id', userId);
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'generate_temp_password', sessionToken, userId },
+    });
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
-    return { tempPassword };
+    return { tempPassword: data.tempPassword };
   };
 
   const logoutUser = async (userId: string) => {

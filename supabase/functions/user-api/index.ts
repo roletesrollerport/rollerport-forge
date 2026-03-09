@@ -135,9 +135,10 @@ serve(async (req) => {
         });
       }
 
+      const isPlain = !targetUser.senha.startsWith("$2");
       return new Response(JSON.stringify({ 
-        password: targetUser.senha, 
-        isPlain: true 
+        password: isPlain ? targetUser.senha : "••••••••", 
+        isPlain 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
