@@ -814,7 +814,7 @@ export default function OrcamentosPage() {
               <Input placeholder="Ex: 15 dias úteis" value={previsaoEntrega} onChange={e => setPrevisaoEntrega(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs text-primary font-medium">Comprador</label>
+              <label className="text-xs text-primary font-medium">{labelContato}</label>
               <div className="flex gap-2">
                 <select value={compradorSelecionado} onChange={e => setCompradorSelecionado(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
@@ -823,7 +823,7 @@ export default function OrcamentosPage() {
                     <option key={i} value={comp.nome}>{comp.nome}</option>
                   ))}
                 </select>
-                <Button variant="outline" size="icon" onClick={() => setShowCadComprador(true)} title="Cadastrar comprador" disabled={!clienteId}>
+                <Button variant="outline" size="icon" onClick={() => setShowCadComprador(true)} title={`Cadastrar ${labelContato.toLowerCase()}`} disabled={!clienteId}>
                   <UserPlus className="h-4 w-4" />
                 </Button>
               </div>
