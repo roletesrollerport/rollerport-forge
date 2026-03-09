@@ -874,8 +874,8 @@ export default function OrcamentosPage() {
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-gray-100 font-bold uppercase">
-                <td className="border p-1 text-center" colSpan={4}>TOTAL</td>
+              <tr className="bg-gray-100 font-bold">
+                <td className="border p-1 text-left" colSpan={4}>Valor Total</td>
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
                 <td className="border p-1"></td>
                 <td className="border p-1 text-center">{fmt(totals.valorTotalSemImpostos)}</td>
