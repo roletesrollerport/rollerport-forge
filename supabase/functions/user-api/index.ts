@@ -84,7 +84,14 @@ serve(async (req) => {
 
       // Handle password - save as plain text
       if (userData.senha && userData.senha.trim() !== "") {
-        payload.senha = userData.senha.trim();
+        const trimmedPass = userData.senha.trim();
+        // Common users: numeric only, max 8 digits
+        if (payload.nivel !== "master" && !/^\d{1,8}$/.test(trimmedPass)) {
+          return new Response(JSON.stringify({ error: "Senha para usuários comuns deve conter apenas números (máx. 8 dígitos)" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        payload.senha = trimmedPass;
       }
 
       if (userData.id) {
