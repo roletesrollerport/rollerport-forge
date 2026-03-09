@@ -167,7 +167,8 @@ export default function ProdutosPage() {
                 <td className="p-3 font-mono text-xs">{p.codigo}</td>
                 <td className="p-3 font-medium">
                   {p.nome}
-                  {p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
+                  {p.nomeCompleto && <span className="text-xs text-muted-foreground ml-2">({p.nomeCompleto})</span>}
+                  {!p.nomeCompleto && p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
                 </td>
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
