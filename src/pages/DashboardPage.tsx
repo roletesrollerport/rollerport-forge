@@ -16,6 +16,7 @@ import {
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
   ClipboardList
 } from 'lucide-react';
+import VendorReportView from '@/components/VendorReportView';
 import { toast } from 'sonner';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
