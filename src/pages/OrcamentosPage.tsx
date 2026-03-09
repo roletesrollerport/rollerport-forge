@@ -108,16 +108,15 @@ export default function OrcamentosPage() {
   // Estados para Orçamento Técnico
   const [showTecnico, setShowTecnico] = useState(false);
   const [tecnicoData, setTecnicoData] = useState({
-    tubo: 'ø101,6x2,25mm',
-    eixo: 'ø20mm',
-    rolamentoMarca: 'GBR',
-    portaRolamentoFix: 'soldado',
-    graxa: 'graxa especial a base de lítio',
-    vedacaoMaterial: 'poliamida',
-    vedacaoAmbiente: 'ambientes agressivos',
-    garantiaMeses: '08',
-    corRolo: 'vermelha',
-    corCavalete: 'azul',
+    tubo: 'Tubo industrial com costura em aço carbono conforme NBR-6591 ø101,6x2,25mm',
+    eixo: 'Eixo trefilado SAE-1020 ø20mm',
+    rolamento: 'Rolamento rígido de uma carreira de esferas 6204 2RS C3 marca GBR ou similar',
+    portaRolamento: 'Porta rolamento estampado em chapa de aço soldado no tubo',
+    lubrificacao: 'Lubrificação permanente com graxa especial a base de lítio',
+    vedacao: 'Vedação composta por múltiplos labirintos fabricados em poliamida, projetados para uso em ambientes agressivos',
+    garantia: 'Rolos com garantia contra defeitos de fabricação 08 meses',
+    pinturaRolo: 'Rolos com pintura Eletrostática em poliéster cor vermelha',
+    pinturaCavalete: 'Cavaletes com pintura esmalte sintético cor azul',
   });
 
   const [showRoleteForm, setShowRoleteForm] = useState(false);
@@ -788,90 +787,58 @@ export default function OrcamentosPage() {
               <h3 className="text-center font-bold text-xs mb-3">ESPECIFICAÇÕES TÉCNICAS GERAIS DO ROLO</h3>
               <div className="grid grid-cols-1 gap-y-1.5">
                 
-                {/* TUBO */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Tubo industrial com costura em aço carbono conforme NBR-6591</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[120px]" value={tecnicoData.tubo} onChange={e => setTecnicoData({...tecnicoData, tubo: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.tubo}</span>
-                </div>
+                {[
+                  { key: 'tubo', icon: 'Tubo' },
+                  { key: 'eixo', icon: 'Eixo' },
+                  { key: 'rolamento', icon: 'Rolamento' },
+                  { key: 'portaRolamento', icon: 'Porta Rolamento' },
+                  { key: 'lubrificacao', icon: 'Lubrificação' },
+                  { key: 'vedacao', icon: 'Vedação' },
+                  { key: 'garantia', icon: 'Garantia' },
+                  { key: 'pinturaRolo', icon: 'Pintura Rolo' },
+                  { key: 'pinturaCavalete', icon: 'Pintura Cavalete' },
+                ].map(({ key }) => {
+                  const content = tecnicoData[key as keyof typeof tecnicoData];
+                  
+                  // Color highlighting logic for the display text (used when printing)
+                  let displayContent: React.ReactNode = content;
+                  if (key === 'pinturaRolo' || key === 'pinturaCavalete') {
+                    const colors = [
+                      { name: 'vermelh', class: 'text-red-600' },
+                      { name: 'azul', class: 'text-blue-600' },
+                      { name: 'verd', class: 'text-green-600' },
+                      { name: 'amarel', class: 'text-yellow-500' },
+                      { name: 'pret', class: 'text-gray-900' },
+                      { name: 'laranj', class: 'text-orange-500' },
+                      { name: 'cinz', class: 'text-gray-500' }
+                    ];
 
-                {/* EIXO */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Eixo trefilado SAE-1020</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[80px]" value={tecnicoData.eixo} onChange={e => setTecnicoData({...tecnicoData, eixo: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.eixo}</span>
-                </div>
+                    let highlighted: any = content;
+                    for (const color of colors) {
+                      if (content.toLowerCase().includes(color.name)) {
+                        // This is a simple highlighting. For complex nested highlighting we might need regex bits.
+                        // But since we're just matching one color usually, this works:
+                        const parts = content.split(new RegExp(`(${color.name}[a-z]*)`, 'gi'));
+                        displayContent = parts.map((p, i) => 
+                          p.toLowerCase().includes(color.name) ? <span key={i} className={`${color.class} font-bold`}>{p}</span> : p
+                        );
+                        break;
+                      }
+                    }
+                  }
 
-                {/* ROLAMENTO */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Rolamento rígido de uma carreira de esferas 6204 2RS C3 marca</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[60px]" value={tecnicoData.rolamentoMarca} onChange={e => setTecnicoData({...tecnicoData, rolamentoMarca: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.rolamentoMarca}</span>
-                  <span>ou similar</span>
-                </div>
-
-                {/* PORTA ROLAMENTO */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Porta rolamento estampado em chapa de aço</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[70px]" value={tecnicoData.portaRolamentoFix} onChange={e => setTecnicoData({...tecnicoData, portaRolamentoFix: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.portaRolamentoFix}</span>
-                  <span>no tubo</span>
-                </div>
-
-                {/* LUBRIFICAÇÃO */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Lubrificação permanente com</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[180px]" value={tecnicoData.graxa} onChange={e => setTecnicoData({...tecnicoData, graxa: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.graxa}</span>
-                </div>
-
-                {/* VEDAÇÃO */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Vedação composta por múltiplos labirintos fabricados em</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[80px]" value={tecnicoData.vedacaoMaterial} onChange={e => setTecnicoData({...tecnicoData, vedacaoMaterial: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.vedacaoMaterial}</span>
-                  <span>, projetados para uso em</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[120px]" value={tecnicoData.vedacaoAmbiente} onChange={e => setTecnicoData({...tecnicoData, vedacaoAmbiente: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.vedacaoAmbiente}</span>
-                </div>
-
-                {/* GARANTIA */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Rolos com garantia contra defeitos de fabricação</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[30px] text-center" value={tecnicoData.garantiaMeses} onChange={e => setTecnicoData({...tecnicoData, garantiaMeses: e.target.value})} />
-                  <span className="hidden print:inline font-bold underline">{tecnicoData.garantiaMeses}</span>
-                  <span>meses</span>
-                </div>
-
-                {/* PINTURA ROLO */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Rolos com pintura Eletrostática em poliéster cor</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[70px]" value={tecnicoData.corRolo} onChange={e => setTecnicoData({...tecnicoData, corRolo: e.target.value})} />
-                  <span className={`font-bold underline ${
-                    tecnicoData.corRolo.toLowerCase().includes('vermelh') ? 'text-red-600' :
-                    tecnicoData.corRolo.toLowerCase().includes('azul') ? 'text-blue-600' :
-                    tecnicoData.corRolo.toLowerCase().includes('verd') ? 'text-green-600' :
-                    tecnicoData.corRolo.toLowerCase().includes('amarel') ? 'text-yellow-500' :
-                    tecnicoData.corRolo.toLowerCase().includes('pret') ? 'text-gray-900' :
-                    tecnicoData.corRolo.toLowerCase().includes('laranj') ? 'text-orange-500' :
-                    tecnicoData.corRolo.toLowerCase().includes('cinz') ? 'text-gray-500' : ''
-                  }`}>{tecnicoData.corRolo}</span>
-                </div>
-
-                {/* PINTURA CAVALETE */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>• Cavaletes com pintura esmalte sintético cor</span>
-                  <input type="text" className="print:hidden h-5 px-1 border rounded text-[9px] bg-blue-50/50 w-[70px]" value={tecnicoData.corCavalete} onChange={e => setTecnicoData({...tecnicoData, corCavalete: e.target.value})} />
-                  <span className={`font-bold underline ${
-                    tecnicoData.corCavalete.toLowerCase().includes('vermelh') ? 'text-red-600' :
-                    tecnicoData.corCavalete.toLowerCase().includes('azul') ? 'text-blue-600' :
-                    tecnicoData.corCavalete.toLowerCase().includes('verd') ? 'text-green-600' :
-                    tecnicoData.corCavalete.toLowerCase().includes('amarel') ? 'text-yellow-500' :
-                    tecnicoData.corCavalete.toLowerCase().includes('pret') ? 'text-gray-900' :
-                    tecnicoData.corCavalete.toLowerCase().includes('laranj') ? 'text-orange-500' :
-                    tecnicoData.corCavalete.toLowerCase().includes('cinz') ? 'text-gray-500' : ''
-                  }`}>{tecnicoData.corCavalete}</span>
-                </div>
+                  return (
+                    <div key={key} className="flex flex-col">
+                      <p className="leading-tight">• <span className="hidden print:inline font-bold underline">{displayContent}</span></p>
+                      <input 
+                        type="text" 
+                        className="print:hidden h-5 px-2 border rounded text-[9px] bg-blue-50/20 w-full" 
+                        value={content} 
+                        onChange={e => setTecnicoData({...tecnicoData, [key]: e.target.value})}
+                      />
+                    </div>
+                  );
+                })}
 
               </div>
             </div>
