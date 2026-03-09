@@ -302,8 +302,12 @@ export const store = {
     return `${prefix}_${n}`;
   },
   nextNumero: (prefix: string): string => {
-    const n = parseInt(localStorage.getItem(`rp_num_${prefix}`) || '0') + 1;
-    localStorage.setItem(`rp_num_${prefix}`, String(n));
-    return `${String(n).padStart(4, '0')}/2025`;
+    const year = new Date().getFullYear();
+    const key = `rp_num_${prefix}_${year}`;
+    const defaultStart = prefix === 'orc' ? 825 : 0;
+    const stored = localStorage.getItem(key);
+    const n = (stored !== null ? parseInt(stored) : defaultStart) + 1;
+    localStorage.setItem(key, String(n));
+    return `${String(n).padStart(4, '0')}/${year}`;
   },
 };
