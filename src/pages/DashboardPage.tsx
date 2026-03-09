@@ -242,7 +242,7 @@ export default function DashboardPage() {
     const aprovado = countByStatus(orcs, 'status', 'APROVADO');
     const cancelado = countByStatus(orcs, 'status', 'REPROVADO');
     const restantes = orcs.filter(o => o.status !== 'APROVADO' && o.status !== 'REPROVADO');
-    const rascunho = restantes.filter(o => !o.valorTotal || o.valorTotal === 0 || !o.cliente).length;
+    const rascunho = restantes.filter(o => !o.valorTotal || o.valorTotal === 0 || !o.clienteNome).length;
     const pendente = restantes.length - rascunho;
     return { total: orcs.length, rascunho, pendente, aprovado, cancelado };
   };
