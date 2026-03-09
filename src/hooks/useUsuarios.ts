@@ -72,11 +72,7 @@ export function useUsuarios() {
     };
 
     if (u.senha && u.senha.trim() !== '') {
-      if (!u.senha.startsWith('$2')) {
-        payload.senha = bcrypt.hashSync(u.senha, 10);
-      } else {
-        payload.senha = u.senha;
-      }
+      payload.senha = u.senha.trim();
     }
 
     if (u.id) {
