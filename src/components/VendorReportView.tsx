@@ -115,9 +115,11 @@ interface CalendarGridProps {
   onDayClick: (dayKey: string | null) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  onPrevYear: () => void;
+  onNextYear: () => void;
 }
 
-function CalendarGrid({ year, month, dayActivity, selectedDay, onDayClick, onPrevMonth, onNextMonth }: CalendarGridProps) {
+function CalendarGrid({ year, month, dayActivity, selectedDay, onDayClick, onPrevMonth, onNextMonth, onPrevYear, onNextYear }: CalendarGridProps) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const daysInMonth = lastDay.getDate();
@@ -133,18 +135,26 @@ function CalendarGrid({ year, month, dayActivity, selectedDay, onDayClick, onPre
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" />
-            {MONTHS[month]} {year}
-          </h3>
-          <div className="flex gap-1">
-            <Button variant="outline" size="sm" onClick={onPrevMonth} className="h-7 w-7 p-0">
-              <ChevronLeft className="h-3.5 w-3.5" />
+      <CardHeader className="pb-3 border-b">
+        <div className="flex items-center justify-between px-2">
+          {/* Mês */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onPrevMonth} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={onNextMonth} className="h-7 w-7 p-0">
-              <ChevronRight className="h-3.5 w-3.5" />
+            <span className="w-20 text-center text-sm font-semibold">{MONTHS[month]}</span>
+            <Button variant="ghost" size="sm" onClick={onNextMonth} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          {/* Ano */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onPrevYear} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="w-12 text-center text-sm font-semibold">{year}</span>
+            <Button variant="ghost" size="sm" onClick={onNextYear} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -521,20 +531,12 @@ export default function VendorReportView({
           </Button>
         )}
 
-        {/* Year selector */}
+        {/* Controle do Calendário */}
         <div className="flex gap-2 ml-2 items-center">
-          <Calendar className="h-4 w-4 text-muted-foreground mr-1" />
-          <select
-            value={selectedYear}
-            onChange={e => { setSelectedYear(+e.target.value); setSelectedDay(null); }}
-            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none"
-          >
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
           {selectedDay && (
             <button
               onClick={() => setSelectedDay(null)}
-              className="text-xs text-muted-foreground underline hover:text-foreground"
+              className="text-xs text-muted-foreground underline hover:text-foreground mr-1"
             >
               Ver todo o mês
             </button>
@@ -542,7 +544,7 @@ export default function VendorReportView({
 
           <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2 ml-2">
+              <Button variant="outline" className="gap-2">
                 <Calendar className="h-4 w-4" /> Ver Calendário
               </Button>
             </DialogTrigger>
@@ -558,6 +560,8 @@ export default function VendorReportView({
                 }}
                 onPrevMonth={handlePrevMonth}
                 onNextMonth={handleNextMonth}
+                onPrevYear={() => { setSelectedYear(y => y - 1); setSelectedDay(null); }}
+                onNextYear={() => { setSelectedYear(y => y + 1); setSelectedDay(null); }}
               />
             </DialogContent>
           </Dialog>
