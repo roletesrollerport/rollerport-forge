@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle
+  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -296,8 +296,25 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           </button>
           <div className="flex-1" />
 
-          {/* Notification Bell */}
-          <div className="relative">
+          <div className="relative flex items-center gap-1">
+            <button 
+              onClick={() => {
+                if(confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
+                  localStorage.removeItem('rp_orcamentos');
+                  localStorage.removeItem('rp_pedidos');
+                  localStorage.removeItem('rp_clientes');
+                  localStorage.removeItem('rp_produtos');
+                  localStorage.removeItem('rp_os');
+                  localStorage.removeItem('rp_estoque');
+                  localStorage.removeItem('rp_metas');
+                  window.location.reload();
+                }
+              }} 
+              className="relative p-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary" 
+              title="Forçar Sincronização com Banco de Dados"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
             <button onClick={handleBellClick} className="relative p-2 rounded-md hover:bg-muted transition-colors">
               <Bell className={`h-5 w-5 ${naoLidas > 0 ? 'animate-bounce' : ''}`} />
               {naoLidas > 0 && (
