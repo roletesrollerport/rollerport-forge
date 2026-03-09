@@ -740,7 +740,7 @@ export default function OrcamentosPage() {
               <li>As opções de pagamento ou de faturamento, assim como os parcelamentos, também interferem nos descontos e valores repassados em orçamento;</li>
               <li><span className="text-red-600 font-bold">OBS: ORÇAMENTO SUJEITO A ALTERAÇÃO MEDIANTE A ANÁLISE DE CRÉDITO NO ATO DO FECHAMENTO DO PEDIDO.</span></li>
             </ol>
-            <div className="mt-3 bg-yellow-300 p-2 text-[7.5px] font-bold text-left border border-yellow-500 rounded">
+            <div className="mt-1 bg-yellow-300 p-2 text-[8.5px] font-bold text-left border border-yellow-500 rounded">
               <p className="underline mb-1 whitespace-nowrap">CONFERIR O ORÇAMENTO ANTES DO FECHAMENTO DO PEDIDO, E ATENÇÃO AS MEDIDAS SOLICITADAS. NO CASO DE PEÇAS DESENHADAS, CONFERIR O DESENHO ENVIADO ANTES DO FECHAMENTO DO PEDIDO.</p>
               <p className="underline whitespace-nowrap">ATENÇÃO: OS VALORES DESTE ORÇAMENTO SÃO VÁLIDOS APENAS PARA A QUANTIDADE TOTAL SOLICITADA. PARA QUANTIDADES MENORES, OS PREÇOS SOFRERÃO ALTERAÇÕES.</p>
             </div>
