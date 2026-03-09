@@ -125,6 +125,7 @@ export default function OrcamentosPage() {
   const [cadProduto, setCadProduto] = useState({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0, ncm: '' });
 
   const [clientes, setClientes] = useState(store.getClientes());
+  const [revendas, setRevendas] = useState(store.getFornecedores());
   const [produtos, setProdutos] = useState(store.getProdutos());
 
   // Re-read from store when data syncs from other users
