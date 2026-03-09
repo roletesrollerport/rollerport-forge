@@ -386,14 +386,20 @@ export default function OrcamentosPage() {
 
   // Cadastrar cliente rápido
   const salvarCliente = () => {
-    const id = store.nextId('cli');
+    const id = store.nextId(categoriaOrc === 'revenda' ? 'rev' : 'cli');
     const novo: Cliente = {
       ...cadCliente, id, contato: cadCliente.compradores?.[0]?.nome || cadCliente.nome,
       compradores: cadCliente.compradores || [],
       createdAt: new Date().toISOString().split('T')[0],
     };
-    const all = [...clientes, novo];
-    store.saveClientes(all);
+    if (categoriaOrc === 'revenda') {
+      const all = [...revendas, novo];
+      store.saveFornecedores(all);
+      setRevendas(all);
+    } else {
+      const all = [...clientes, novo];
+      store.saveClientes(all);
+    }
     setClienteId(id); setClienteSearch(cadCliente.nome);
     setShowCadCliente(false);
     setCadCliente({
@@ -401,21 +407,31 @@ export default function OrcamentosPage() {
       compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
       aniversarioEmpresa: '', redesSociais: '',
     });
-    toast.success('Cliente cadastrado!');
+    toast.success(`${categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'} cadastrado!`);
   };
 
-  // Cadastrar comprador rápido
+  // Cadastrar comprador/vendedor rápido
   const salvarComprador = () => {
     if (!clienteSelecionado) return;
-    const updated = clientes.map(c =>
-      c.id === clienteId
-        ? { ...c, compradores: [...c.compradores, cadComprador] }
-        : c
-    );
-    store.saveClientes(updated);
+    if (categoriaOrc === 'revenda') {
+      const updated = revendas.map(c =>
+        c.id === clienteId
+          ? { ...c, compradores: [...c.compradores, cadComprador] }
+          : c
+      );
+      store.saveFornecedores(updated);
+      setRevendas(updated);
+    } else {
+      const updated = clientes.map(c =>
+        c.id === clienteId
+          ? { ...c, compradores: [...c.compradores, cadComprador] }
+          : c
+      );
+      store.saveClientes(updated);
+    }
     setShowCadComprador(false);
     setCadComprador({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
-    toast.success('Comprador cadastrado!');
+    toast.success(`${categoriaOrc === 'revenda' ? 'Vendedor' : 'Comprador'} cadastrado!`);
   };
 
   // Cadastrar produto rápido
