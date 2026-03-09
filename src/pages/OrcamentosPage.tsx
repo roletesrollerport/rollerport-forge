@@ -671,7 +671,7 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-center">{row.qtd}</td>
                   <td className="border p-1 text-right">{fmt(row.valorUnitario)}</td>
-                  <td className="border p-1 text-right">{fmt(row.valorLiquido)}</td>
+                  <td className="border p-1 text-right">{fmt(row.qtd * row.valorUnitario)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorTotal)}</td>
                   <td className="border p-1 text-center">{row.ncm || '-'}</td>
                   <td className="border p-1 text-right">{fmt(row.pis)}</td>
