@@ -168,7 +168,7 @@ function CalendarGrid({ year, month, dayActivity, selectedDay, onDayClick, onPre
                   ${isSelected
                     ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-1'
                     : hasActivity
-                      ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                      ? 'bg-blue-500 text-white hover:bg-blue-600'
                       : 'bg-muted/30 text-muted-foreground hover:bg-muted'
                   }
                   ${isToday && !isSelected ? 'ring-1 ring-primary/50' : ''}
