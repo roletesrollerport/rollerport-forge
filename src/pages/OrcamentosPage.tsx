@@ -660,7 +660,6 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Orig.</th>
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Dest.</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr c/ IPI</th>
-                <th className="border p-1 text-right whitespace-nowrap">Tot. Impostos</th>
               </tr>
             </thead>
             <tbody>
@@ -680,7 +679,6 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-right">{fmt(row.icmsOrigem)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsDestino)}</td>
                   <td className="border p-1 text-right">{fmt(row.valorIPI)}</td>
-                  <td className="border p-1 text-right">{fmt(row.pis + row.cofins + row.icmsOrigem + row.icmsDestino)}</td>
                 </tr>
               ))}
               {/* TOTALS ROW */}
@@ -695,7 +693,6 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsDestino)}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
-                <td className="border p-1 text-right">{fmt(totals.pis + totals.cofins + totals.icmsOrigem + totals.icmsDestino)}</td>
               </tr>
             </tbody>
           </table>
