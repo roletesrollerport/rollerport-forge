@@ -723,40 +723,43 @@ export default function VendorReportView({
               </div>
 
               {/* Itens List */}
-              <div className="bg-muted/10 border rounded-lg overflow-hidden">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-muted/50 border-b">
+              <div className="bg-card border rounded-lg overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead className="bg-muted/50 text-primary uppercase text-[10px] font-bold">
                     <tr>
-                      <th className="p-2 w-10 text-center">Item</th>
-                      <th className="p-2">Cód.</th>
-                      <th className="p-2">Descrição</th>
-                      <th className="p-2 text-center">Qtd</th>
+                      <th className="border p-2 text-center w-8">#</th>
+                      <th className="border p-2 text-left">Código</th>
+                      <th className="border p-2 text-left">Descrição</th>
+                      <th className="border p-2 text-center w-12">Qtd</th>
                       {selectedDocDetail.type !== 'os' && (
                         <>
-                          <th className="p-2 text-right">V. Unit</th>
-                          <th className="p-2 text-right">V. Total</th>
+                          <th className="border p-2 text-right">Vlr Unit</th>
+                          <th className="border p-2 text-right">Total Item</th>
                         </>
                       )}
                     </tr>
                   </thead>
                   <tbody>
                     {selectedDocDetail.doc.itens && Array.isArray(selectedDocDetail.doc.itens) ? (
-                      selectedDocDetail.doc.itens.map((item: any, idx: number) => (
-                        <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
-                          <td className="p-2 text-center font-mono text-[10px] text-muted-foreground">{idx + 1}</td>
-                          <td className="p-2 font-mono text-[10px]">{item.codigoProduto || item.tipoRolete || '-'}</td>
-                          <td className="p-2 whitespace-pre-wrap">{item.descricao || `Rolete ${item.tipoRolete} - ø${item.diametroTubo} x ${item.comprimentoTubo}`}</td>
-                          <td className="p-2 text-center font-bold">{item.quantidade || item.qtd || 1}</td>
-                          {selectedDocDetail.type !== 'os' && (
-                            <>
-                              <td className="p-2 text-right font-mono text-[10px]">{fmt(item.valorLiquidoUnit || item.valorUnitario || item.precoUnitario || 0)}</td>
-                              <td className="p-2 text-right font-mono font-medium">{fmt((item.valorLiquidoUnit || item.valorUnitario || item.precoUnitario || 0) * (item.quantidade || item.qtd || 1))}</td>
-                            </>
-                          )}
-                        </tr>
-                      ))
+                      selectedDocDetail.doc.itens.map((item: any, idx: number) => {
+                        const descricao = item.descricao || `Rolete ${item.tipoRolete} - ø${item.diametroTubo} x ${item.comprimentoTubo}`;
+                        return (
+                          <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="border p-2 text-center font-mono text-[10px] text-muted-foreground">{idx + 1}</td>
+                            <td className="border p-2 font-medium">{item.codigoProduto || item.tipoRolete || '-'}</td>
+                            <td className="border p-2 text-[11px] max-w-[200px] truncate" title={descricao}>{descricao}</td>
+                            <td className="border p-2 text-center font-bold">{item.quantidade || item.qtd || 1}</td>
+                            {selectedDocDetail.type !== 'os' && (
+                              <>
+                                <td className="border p-2 text-right font-mono text-[10px]">{fmt(item.valorLiquidoUnit || item.valorUnitario || item.precoUnitario || 0)}</td>
+                                <td className="border p-2 text-right font-mono font-bold text-primary">{fmt((item.valorLiquidoUnit || item.valorUnitario || item.precoUnitario || 0) * (item.quantidade || item.qtd || 1))}</td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })
                     ) : (
-                      <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhum item detalhado neste documento.</td></tr>
+                      <tr><td colSpan={6} className="border p-4 text-center text-muted-foreground">Nenhum item detalhado neste documento.</td></tr>
                     )}
                   </tbody>
                 </table>
