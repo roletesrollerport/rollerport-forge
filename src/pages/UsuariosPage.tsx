@@ -49,6 +49,7 @@ export default function UsuariosPage() {
   } = useUsuarios();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EditingState>(emptyEditing());
+  const [openingEdit, setOpeningEdit] = useState(false);
   const [showSenha, setShowSenha] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewingPass, setViewingPass] = useState<{ id: string, pass: string, isPlain: boolean } | null>(null);
@@ -168,7 +169,18 @@ export default function UsuariosPage() {
     }
   };
 
-  const openEdit = (u: UsuarioDB) => {
+  const openEdit = async (u: UsuarioDB) => {
+    setOpeningEdit(true);
+    let currentPass = '';
+    try {
+      if (isMaster && u.nivel !== 'master') {
+        const data = await getUserCredentials(u.id);
+        currentPass = data.isPlain ? data.password : '';
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     setEditing({
       id: u.id,
       nome: u.nome,
@@ -176,13 +188,14 @@ export default function UsuariosPage() {
       telefone: u.telefone,
       whatsapp: u.whatsapp,
       login: u.login,
-      senha: '',
+      senha: currentPass,
       nivel: u.nivel,
       ativo: u.ativo,
       foto: u.foto,
       genero: u.genero,
       permissoes: u.permissoes || { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] },
     });
+    setOpeningEdit(false);
     setOpen(true);
   };
 
@@ -243,7 +256,7 @@ export default function UsuariosPage() {
                     <div>
                       <label className="text-xs text-muted-foreground">Senha</label>
                       <div className="relative">
-                        <Input type={showSenha ? 'text' : 'password'} value={editing.senha} onChange={e => setEditing({ ...editing, senha: e.target.value })} placeholder={editing.id ? 'Deixe vazio para manter' : 'Senha'} />
+                        <Input type={showSenha ? 'text' : 'password'} value={editing.senha} onChange={e => setEditing({ ...editing, senha: e.target.value })} placeholder={editing.id ? 'Protegida (digite p/ alterar)' : 'Senha'} />
                         <button type="button" onClick={() => setShowSenha(!showSenha)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                           {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -335,22 +348,6 @@ export default function UsuariosPage() {
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span>
                 </div>
               </div>
-              {isMaster && (
-                <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => openEdit(u)} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
-                  {u.nivel !== 'master' && (
-                    <>
-                      <button onClick={() => handleViewPass(u.id)} className="p-1 rounded hover:bg-muted text-amber-600" title="Ver Senha"><Eye className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => handleGenTempPass(u.id)} className="p-1 rounded hover:bg-muted text-blue-600" title="Gerar Senha Temporária"><Lock className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => handleToggleActive(u)} className={`p-1 rounded hover:bg-muted ${u.ativo ? 'text-orange-600' : 'text-green-600'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
-                        {u.ativo ? <ShieldAlert className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                      </button>
-                      <button onClick={() => handleLogoutUser(u.id)} className="p-1 rounded hover:bg-muted text-red-500" title="Forçar Logout"><LogOut className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => handleDelete(u.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
 
             {viewingPass?.id === u.id && (
@@ -359,12 +356,19 @@ export default function UsuariosPage() {
                   <span className="font-semibold text-amber-800 dark:text-amber-400">Credenciais:</span>
                   <button onClick={() => setViewingPass(null)} className="text-amber-800 dark:text-amber-400 hover:underline">Fechar</button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono bg-white dark:bg-black/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-xs">
-                    {viewingPass.pass}
-                  </span>
-                  {!viewingPass.isPlain && <span className="text-muted-foreground italic">(Hashed)</span>}
-                  {viewingPass.isPlain && <span className="text-green-600 font-medium">Original</span>}
+                <div className="flex flex-col gap-1 mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono bg-white dark:bg-black/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-xs">
+                      {viewingPass.pass}
+                    </span>
+                    {viewingPass.isPlain && <span className="text-green-600 font-medium whitespace-nowrap">Senha Original</span>}
+                  </div>
+                  {!viewingPass.isPlain && (
+                     <p className="text-muted-foreground/80 italic text-[9px] leading-tight">
+                       Por segurança, esta senha foi <b>criptografada (hashed)</b> e é irreversível.
+                       <br />Não é possível ver o texto original. Use "Gerar Senha Temporária" se precisar recuperar o acesso.
+                     </p>
+                  )}
                 </div>
               </div>
             )}
@@ -385,6 +389,23 @@ export default function UsuariosPage() {
                 </div>
               )}
             </div>
+
+            {isMaster && (
+              <div className="mt-4 pt-3 border-t flex gap-1 justify-end">
+                <button onClick={() => openEdit(u)} disabled={openingEdit} className="p-1.5 rounded bg-muted/50 hover:bg-muted text-primary disabled:opacity-50" title="Editar"><Edit className="h-4 w-4" /></button>
+                {u.nivel !== 'master' && (
+                  <>
+                    <button onClick={() => handleViewPass(u.id)} className="p-1.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40" title="Ver Senha"><Eye className="h-4 w-4" /></button>
+                    <button onClick={() => handleGenTempPass(u.id)} className="p-1.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40" title="Gerar Senha Temporária"><Lock className="h-4 w-4" /></button>
+                    <button onClick={() => handleToggleActive(u)} className={`p-1.5 rounded ${u.ativo ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:hover:bg-orange-900/40' : 'bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
+                      {u.ativo ? <ShieldAlert className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                    </button>
+                    <button onClick={() => handleLogoutUser(u.id)} className="p-1.5 rounded bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40" title="Forçar Logout"><LogOut className="h-4 w-4" /></button>
+                    <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         ))}
         {usuarios.length === 0 && (
