@@ -1162,7 +1162,7 @@ export default function OrcamentosPage() {
                 {cadCliente.compradores.map((comp, idx) => (
                   <div key={idx} className="border rounded-lg p-3 mb-2 bg-muted/20">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-medium text-muted-foreground">Comprador {idx + 1}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{labelContato} {idx + 1}</span>
                       {cadCliente.compradores.length > 1 && (
                         <button onClick={() => setCadCliente({ ...cadCliente, compradores: cadCliente.compradores.filter((_, i) => i !== idx) })} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       )}
