@@ -1156,7 +1156,7 @@ export default function OrcamentosPage() {
               {/* Compradores */}
               <div className="border-t pt-3 mt-3">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-sm">Compradores</h4>
+                  <h4 className="font-semibold text-sm">{labelContatos}</h4>
                   <Button variant="outline" size="sm" onClick={() => setCadCliente({ ...cadCliente, compradores: [...cadCliente.compradores, { nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }] })} className="gap-1"><Plus className="h-3.5 w-3.5" /> Adicionar</Button>
                 </div>
                 {cadCliente.compradores.map((comp, idx) => (
