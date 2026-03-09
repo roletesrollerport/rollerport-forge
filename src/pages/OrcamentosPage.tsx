@@ -804,6 +804,91 @@ export default function OrcamentosPage() {
             </div>
           </div>
 
+          {/* Histórico de orçamentos do cliente */}
+          {clienteId && clienteOrcamentos.length > 0 && (
+            <div className="bg-muted/30 rounded-lg p-3 border">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Últimos orçamentos de {clienteSearch}</span>
+                  <span className="text-xs text-muted-foreground">({clienteOrcamentos.length})</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowClienteHistory(!showClienteHistory)}
+                  className="text-xs"
+                >
+                  {showClienteHistory ? 'Ocultar' : 'Ver histórico'}
+                </Button>
+              </div>
+
+              {/* Último orçamento - sempre visível */}
+              {clienteOrcamentos[0] && (
+                <div className="flex items-center justify-between bg-card rounded p-2 border">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-medium">{clienteOrcamentos[0].numero}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        clienteOrcamentos[0].status === 'APROVADO' ? 'bg-success/10 text-success' :
+                        clienteOrcamentos[0].status === 'ENVIADO' ? 'bg-info/10 text-info' :
+                        clienteOrcamentos[0].status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
+                        'bg-muted text-muted-foreground'
+                      }`}>{clienteOrcamentos[0].status}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {clienteOrcamentos[0].dataOrcamento || clienteOrcamentos[0].createdAt} • {fmt(clienteOrcamentos[0].valorTotal)} • {(clienteOrcamentos[0].itensRolete?.length || 0) + (clienteOrcamentos[0].itensProduto?.length || 0)} itens
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cloneOrcamento(clienteOrcamentos[0])}
+                    className="gap-1.5 text-xs"
+                    title="Clonar orçamento com preços atualizados"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Clonar com preços atuais
+                  </Button>
+                </div>
+              )}
+
+              {/* Histórico expandido */}
+              {showClienteHistory && clienteOrcamentos.length > 1 && (
+                <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
+                  {clienteOrcamentos.slice(1).map(orc => (
+                    <div key={orc.id} className="flex items-center justify-between bg-card/50 rounded p-2 border text-sm">
+                      <div>
+                        <span className="font-mono text-xs">{orc.numero}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{orc.dataOrcamento || orc.createdAt}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{fmt(orc.valorTotal)}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setViewOrc(orc); setView('print'); }}
+                          className="h-7 px-2"
+                          title="Ver orçamento"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => cloneOrcamento(orc)}
+                          className="h-7 px-2"
+                          title="Clonar"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Frete, Pagamento, Vendedor */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
