@@ -651,7 +651,7 @@ export default function OrcamentosPage() {
       const valorLiquidoUnit = valorLiquidoTotal / ir.quantidade;
 
       let desc = `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`;
-      if (ir.ncm) desc += ` (NCM: ${ir.ncm})`;
+      if (ir.ncm) desc += `\n(NCM: ${ir.ncm})`;
 
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
@@ -666,12 +666,13 @@ export default function OrcamentosPage() {
     });
 
     const totals = allPrintItems.reduce((acc, i) => ({
+      valorTotalSemImpostos: acc.valorTotalSemImpostos + (i.valorLiquidoUnit * i.qtd),
       valorPIS: acc.valorPIS + i.valorPIS,
       valorCOFINS: acc.valorCOFINS + i.valorCOFINS,
       valorICMS: acc.valorICMS + i.valorICMS,
       valorIPI: acc.valorIPI + i.valorIPI,
       valorTotalComImpostos: acc.valorTotalComImpostos + i.valorTotalComImpostos,
-    }), { valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0, valorTotalComImpostos: 0 });
+    }), { valorTotalSemImpostos: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0, valorTotalComImpostos: 0 });
 
     // Find vendedor info
     const usuarios = store.getUsuarios();
@@ -757,25 +758,26 @@ export default function OrcamentosPage() {
           <table className="w-full text-[8px] border-collapse table-fixed">
             <thead>
               <tr className="bg-gray-100 uppercase text-[7px] font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[25px]" rowSpan={2}>ITEM</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[50px]" rowSpan={2}>CÓD.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[50px]" rowSpan={2}>CÓD. CLIENTE</th>
-                <th className="border p-1 text-left w-auto" rowSpan={2}>DESCRIÇÃO</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[30px]" rowSpan={2}>QTDE</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[50px]" rowSpan={2}>VLR UNIT. (SEM IMP)</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[28px]" rowSpan={2}>ITEM</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[35px]" rowSpan={2}>CÓD.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[40px]" rowSpan={2}>CÓD. CLI.</th>
+                <th className="border p-1 text-left w-[34%]" rowSpan={2}>DESCRIÇÃO</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[25px]" rowSpan={2}>QTD</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[55px]" rowSpan={2}>VLR UNIT.<br/>(SEM IMP)</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[55px]" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>PIS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[40px]" rowSpan={2}>IPI</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[60px] bg-green-200" rowSpan={2}>VLR TOTAL COM IMPOS.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[40px]" rowSpan={2}>IPI</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[65px] bg-green-200" rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
               </tr>
-              <tr className="bg-gray-100 text-[6.5px] uppercase font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[35px]">ALÍQ.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[40px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[35px]">ALÍQ.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[40px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[35px]">ALÍQ.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[40px]">VALOR</th>
+              <tr className="bg-gray-100 text-[6px] uppercase font-bold">
+                <th className="border p-1 text-center whitespace-nowrap w-[16px]">ALÍQ.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[42px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[16px]">ALÍQ.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[42px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[16px]">ALÍQ.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[42px]">VALOR</th>
               </tr>
             </thead>
             <tbody>
@@ -784,9 +786,10 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{String(row.item).padStart(2, '0')}</td>
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codigo}>{row.codigo}</td>
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codExterno}>{row.codExterno || '-'}</td>
-                  <td className="border p-1 text-left break-words">{row.descricao}</td>
+                  <td className="border p-1 text-left break-words whitespace-pre-wrap">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
                   
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqPIS.toFixed(2)}%</td>
                   <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorPIS)}</td>
@@ -807,6 +810,7 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-center" colSpan={4}>TOTAL</td>
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
                 <td className="border p-1"></td>
+                <td className="border p-1 text-right">{fmt(totals.valorTotalSemImpostos)}</td>
                 <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorPIS)}</td>
                 <td className="border p-1"></td>
