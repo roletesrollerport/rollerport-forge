@@ -741,7 +741,22 @@ export default function VendorReportView({
                     {(() => {
                       let renderedItens = [];
                       if (selectedDocDetail.type === 'os') {
-                        renderedItens = Array.isArray(selectedDocDetail.doc.itens) ? selectedDocDetail.doc.itens : [];
+                        // A OS só grava campos de produção. Vamos pegar de onde ela originou para exibir valores
+                        const peds = store.getPedidos();
+                        const originPed = peds.find(p => p.id === selectedDocDetail.doc.pedidoId);
+                        if (originPed) {
+                          const orcs = store.getOrcamentos();
+                          const originOrc = orcs.find(o => o.id === originPed.orcamentoId);
+                          if (originOrc) {
+                            const roletes = Array.isArray(originOrc.itensRolete) ? originOrc.itensRolete : [];
+                            const produtos = Array.isArray(originOrc.itensProduto) ? originOrc.itensProduto : [];
+                            renderedItens = [...produtos, ...roletes];
+                          } else {
+                            renderedItens = Array.isArray(selectedDocDetail.doc.itens) ? selectedDocDetail.doc.itens : [];
+                          }
+                        } else {
+                          renderedItens = Array.isArray(selectedDocDetail.doc.itens) ? selectedDocDetail.doc.itens : [];
+                        }
                       } else if (selectedDocDetail.type === 'pedido') {
                         // Pedidos puxam os itens do Orçamento de origem
                         const orcs = store.getOrcamentos();
@@ -842,7 +857,14 @@ export default function VendorReportView({
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 min-w-[300px]">
                   <div className="flex justify-between items-center text-sm font-bold whitespace-nowrap gap-4">
                     <span>Total do Documento:</span>
-                    <span className="text-lg text-primary">{fmt(selectedDocDetail.doc.valorTotal || 0)}</span>
+                    <span className="text-lg text-primary">
+                      {selectedDocDetail.type === 'os' ? (() => {
+                        // OS não tem valorTotal, então precisamos somar os itens ou pegar do pedido original
+                        const p = store.getPedidos().find(ped => ped.id === selectedDocDetail.doc.pedidoId);
+                        if (p && p.valorTotal) return fmt(p.valorTotal);
+                        return fmt(0);
+                      })() : fmt(selectedDocDetail.doc.valorTotal || 0)}
+                    </span>
                   </div>
                 </div>
               </div>
