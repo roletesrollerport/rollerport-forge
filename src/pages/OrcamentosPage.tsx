@@ -78,6 +78,9 @@ export default function OrcamentosPage() {
   const [editingOrc, setEditingOrc] = useState<Orcamento | null>(null);
   const [searchList, setSearchList] = useState('');
 
+  // Categoria: cliente ou revenda
+  const [categoriaOrc, setCategoriaOrc] = useState<'cliente' | 'revenda'>('cliente');
+
   // Form state
   const [clienteId, setClienteId] = useState('');
   const [clienteSearch, setClienteSearch] = useState('');
