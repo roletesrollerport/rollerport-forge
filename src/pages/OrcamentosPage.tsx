@@ -878,17 +878,17 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-right text-[11px]" colSpan={4}>Valor Total</td>
                 <td className="border p-1 text-center"></td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-center">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 text-center whitespace-nowrap">{fmt(totals.valorTotalSemImpostos)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorPIS)}</td>
+                <td className="border p-1 text-right whitespace-nowrap">{fmt(totals.valorPIS)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorCOFINS)}</td>
+                <td className="border p-1 text-right whitespace-nowrap">{fmt(totals.valorCOFINS)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorICMS)}</td>
+                <td className="border p-1 text-right whitespace-nowrap">{fmt(totals.valorICMS)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(0)}</td>
-                <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
-                <td className="border p-1 text-right font-bold bg-green-200 text-[11px]">{fmt(totals.valorTotalComImpostos)}</td>
+                <td className="border p-1 text-right whitespace-nowrap">{fmt(0)}</td>
+                <td className="border p-1 text-right whitespace-nowrap">{fmt(totals.valorIPI)}</td>
+                <td className="border p-1 text-right font-bold bg-green-200 text-[11px] whitespace-nowrap">{fmt(totals.valorTotalComImpostos)}</td>
               </tr>
             </tfoot>
           </table>
