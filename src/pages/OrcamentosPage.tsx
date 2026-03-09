@@ -652,8 +652,8 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center whitespace-nowrap">Cód. Cliente</th>
                 <th className="border p-1 text-left whitespace-nowrap" style={{minWidth: '180px'}}>Descrição</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr Unit.</th>
-                <th className="border p-1 text-center whitespace-nowrap">NCM</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr Líq.</th>
+                <th className="border p-1 text-center whitespace-nowrap">NCM</th>
                 <th className="border p-1 text-right whitespace-nowrap">PIS</th>
                 <th className="border p-1 text-right whitespace-nowrap">Cofins</th>
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Orig.</th>
@@ -671,8 +671,8 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-right">{fmt(row.valorUnitario)}</td>
-                  <td className="border p-1 text-center">{row.ncm || '-'}</td>
                   <td className="border p-1 text-right">{fmt(row.valorLiquido)}</td>
+                  <td className="border p-1 text-center">{row.ncm || '-'}</td>
                   <td className="border p-1 text-right">{fmt(row.pis)}</td>
                   <td className="border p-1 text-right">{fmt(row.cofins)}</td>
                   <td className="border p-1 text-right">{fmt(row.icmsOrigem)}</td>
@@ -684,9 +684,9 @@ export default function OrcamentosPage() {
               {/* TOTALS ROW */}
               <tr className="bg-gray-100 font-bold">
                 <td className="border p-1 text-center" colSpan={2}>TOTAL</td>
-                <td className="border p-1" colSpan={4}></td>
-                <td className="border p-1 text-center"></td>
+                <td className="border p-1" colSpan={3}></td>
                 <td className="border p-1 text-right">{fmt(totals.valorLiquido)}</td>
+                <td className="border p-1 text-center"></td>
                 <td className="border p-1 text-right">{fmt(totals.pis)}</td>
                 <td className="border p-1 text-right">{fmt(totals.cofins)}</td>
                 <td className="border p-1 text-right">{fmt(totals.icmsOrigem)}</td>
