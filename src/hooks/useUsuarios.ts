@@ -147,13 +147,15 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data: targetUser, error } = await supabase.from('usuarios').select('senha').eq('id', userId).maybeSingle();
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'get_user_credentials', sessionToken, userId },
+    });
     if (error) throw error;
-    if (!targetUser) throw new Error('User not found');
+    if (data?.error) throw new Error(data.error);
 
     return {
-      password: targetUser.senha,
-      isPlain: true
+      password: data.password,
+      isPlain: data.isPlain
     };
   };
 
@@ -161,12 +163,13 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const tempPassword = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit number
-
-    const { error } = await supabase.from('usuarios').update({ senha: tempPassword }).eq('id', userId);
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'generate_temp_password', sessionToken, userId },
+    });
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
-    return { tempPassword };
+    return { tempPassword: data.tempPassword };
   };
 
   const logoutUser = async (userId: string) => {
