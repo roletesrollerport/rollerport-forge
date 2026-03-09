@@ -628,10 +628,12 @@ export default function OrcamentosPage() {
           <div className="h-6" />
 
           {/* ===== Orçamento info line ===== */}
-          <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs border-y py-2">
+          <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs border-y py-2 bg-gray-50/50">
             <span>Orçamento Nº: <strong>{viewOrc.numero}</strong></span>
             <span>Data: <strong>{viewOrc.dataOrcamento}</strong></span>
-            <span>{vendedorUser?.genero === 'F' ? 'Vendedora' : (vendedorUser ? 'Vendedor' : 'Vendedor')}: <strong>{viewOrc.vendedor || '-'}</strong></span>
+            <span>
+              {vendedorUser?.genero === 'F' ? 'Vendedora' : 'Vendedor'}: <strong>{vendedorUser ? vendedorUser.nome : viewOrc.vendedor || '-'}</strong>
+            </span>
             {vendedorUser?.telefone && <span>Tel: <strong>{vendedorUser.telefone}</strong></span>}
             {vendedorUser?.whatsapp && <span>WhatsApp: <strong>{vendedorUser.whatsapp}</strong></span>}
             {vendedorUser?.email && <span>E-mail: <strong>{vendedorUser.email}</strong></span>}
