@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History,
-  FileText, Mail, Settings2 as SettingsIcon
+  FileText, Mail, Settings2 as SettingsIcon, Check, PlusCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
@@ -107,17 +107,17 @@ export default function OrcamentosPage() {
 
   // Estados para Orçamento Técnico
   const [showTecnico, setShowTecnico] = useState(false);
-  const [tecnicoData, setTecnicoData] = useState({
-    tubo: 'Tubo industrial com costura em aço carbono conforme NBR-6591 ø101,6x2,25mm',
-    eixo: 'Eixo trefilado SAE-1020 ø20mm',
-    rolamento: 'Rolamento rígido de uma carreira de esferas 6204 2RS C3 marca GBR ou similar',
-    portaRolamento: 'Porta rolamento estampado em chapa de aço soldado no tubo',
-    lubrificacao: 'Lubrificação permanente com graxa especial a base de lítio',
-    vedacao: 'Vedação composta por múltiplos labirintos fabricados em poliamida, projetados para uso em ambientes agressivos',
-    garantia: 'Rolos com garantia contra defeitos de fabricação 08 meses',
-    pinturaRolo: 'Rolos com pintura Eletrostática em poliéster cor vermelha',
-    pinturaCavalete: 'Cavaletes com pintura esmalte sintético cor azul',
-  });
+  const [tecnicoData, setTecnicoData] = useState<string[]>([
+    'Tubo industrial com costura em aço carbono conforme NBR-6591 ø101,6x2,25mm',
+    'Eixo trefilado SAE-1020 ø20mm',
+    'Rolamento rígido de uma carreira de esferas 6204 2RS C3 marca GBR ou similar',
+    'Porta rolamento estampado em chapa de aço soldado no tubo',
+    'Lubrificação permanente com graxa especial a base de lítio',
+    'Vedação composta por múltiplos labirintos fabricados em poliamida, projetados para uso em ambientes agressivos',
+    'Rolos com garantia contra defeitos de fabricação 08 meses',
+    'Rolos com pintura Eletrostática em poliéster cor vermelha',
+    'Cavaletes com pintura esmalte sintético cor azul',
+  ]);
 
   const [showRoleteForm, setShowRoleteForm] = useState(false);
   const [roleteItem, setRoleteItem] = useState<ItemOrcamento>(emptyItem());
@@ -781,61 +781,76 @@ export default function OrcamentosPage() {
             </div>
           </div>
 
-          {/* ===== Seção Técnica (Opcional) ===== */}
+          {/* ===== Seção Técnica (Dinâmica) ===== */}
           {showTecnico && (
             <div className="mt-4 border rounded p-3 text-[10px] break-inside-avoid bg-gray-50/30">
-              <h3 className="text-center font-bold text-xs mb-3">ESPECIFICAÇÕES TÉCNICAS GERAIS DO ROLO</h3>
+              <div className="flex justify-between items-center mb-3">
+                <div className="w-10"></div>
+                <h3 className="text-center font-bold text-xs">ESPECIFICAÇÕES TÉCNICAS GERAIS DO ROLO</h3>
+                <button 
+                  onClick={() => setTecnicoData([...tecnicoData, 'Nova especificação...'])}
+                  className="print:hidden text-primary hover:text-primary/80 transition-colors"
+                  title="Adicionar linha"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                </button>
+              </div>
+              
               <div className="grid grid-cols-1 gap-y-1.5">
-                
-                {[
-                  { key: 'tubo', icon: 'Tubo' },
-                  { key: 'eixo', icon: 'Eixo' },
-                  { key: 'rolamento', icon: 'Rolamento' },
-                  { key: 'portaRolamento', icon: 'Porta Rolamento' },
-                  { key: 'lubrificacao', icon: 'Lubrificação' },
-                  { key: 'vedacao', icon: 'Vedação' },
-                  { key: 'garantia', icon: 'Garantia' },
-                  { key: 'pinturaRolo', icon: 'Pintura Rolo' },
-                  { key: 'pinturaCavalete', icon: 'Pintura Cavalete' },
-                ].map(({ key }) => {
-                  const content = tecnicoData[key as keyof typeof tecnicoData];
-                  
-                  // Color highlighting logic for the display text (used when printing)
-                  let displayContent: React.ReactNode = content;
-                  if (key === 'pinturaRolo' || key === 'pinturaCavalete') {
-                    const colors = [
-                      { name: 'vermelh', class: 'text-red-600' },
-                      { name: 'azul', class: 'text-blue-600' },
-                      { name: 'verd', class: 'text-green-600' },
-                      { name: 'amarel', class: 'text-yellow-500' },
-                      { name: 'pret', class: 'text-gray-900' },
-                      { name: 'laranj', class: 'text-orange-500' },
-                      { name: 'cinz', class: 'text-gray-500' }
-                    ];
+                {tecnicoData.map((content, idx) => {
+                  // Color highlighting logic
+                  const colors = [
+                    { name: 'vermelh', class: 'text-red-600' },
+                    { name: 'azul', class: 'text-blue-600' },
+                    { name: 'verd', class: 'text-green-600' },
+                    { name: 'amarel', class: 'text-yellow-500' },
+                    { name: 'pret', class: 'text-gray-900' },
+                    { name: 'laranj', class: 'text-orange-500' },
+                    { name: 'cinz', class: 'text-gray-500' }
+                  ];
 
-                    let highlighted: any = content;
-                    for (const color of colors) {
-                      if (content.toLowerCase().includes(color.name)) {
-                        // This is a simple highlighting. For complex nested highlighting we might need regex bits.
-                        // But since we're just matching one color usually, this works:
-                        const parts = content.split(new RegExp(`(${color.name}[a-z]*)`, 'gi'));
-                        displayContent = parts.map((p, i) => 
-                          p.toLowerCase().includes(color.name) ? <span key={i} className={`${color.class} font-bold`}>{p}</span> : p
-                        );
-                        break;
-                      }
+                  let displayContent: React.ReactNode = content;
+                  for (const color of colors) {
+                    if (content.toLowerCase().includes(color.name)) {
+                      const parts = content.split(new RegExp(`(${color.name}[a-z]*)`, 'gi'));
+                      displayContent = parts.map((p, i) => 
+                        p.toLowerCase().includes(color.name) ? <span key={i} className={`${color.class} font-bold`}>{p}</span> : p
+                      );
+                      break;
                     }
                   }
 
                   return (
-                    <div key={key} className="flex flex-col">
-                      <p className="leading-tight">• <span className="hidden print:inline font-bold underline">{displayContent}</span></p>
-                      <input 
-                        type="text" 
-                        className="print:hidden h-5 px-2 border rounded text-[9px] bg-blue-50/20 w-full" 
-                        value={content} 
-                        onChange={e => setTecnicoData({...tecnicoData, [key]: e.target.value})}
-                      />
+                    <div key={idx} className="group flex flex-col relative">
+                      <p className="leading-tight flex items-start">
+                        <span className="mr-1">•</span>
+                        <span className="hidden print:inline font-bold underline">{displayContent}</span>
+                      </p>
+                      <div className="print:hidden flex items-center gap-1 mt-0.5">
+                        <input 
+                          type="text" 
+                          className="h-5 px-2 border rounded text-[9px] bg-blue-50/20 w-full focus:bg-white focus:ring-1 focus:ring-primary outline-none transition-all" 
+                          value={content} 
+                          onChange={e => {
+                            const newData = [...tecnicoData];
+                            newData[idx] = e.target.value;
+                            setTecnicoData(newData);
+                          }}
+                        />
+                        <button 
+                          className="text-success p-0.5 hover:bg-success/10 rounded" 
+                          title="Confirmar"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => setTecnicoData(tecnicoData.filter((_, i) => i !== idx))}
+                          className="text-destructive p-0.5 hover:bg-destructive/10 rounded opacity-0 group-hover:opacity-100 transition-opacity" 
+                          title="Remover linha"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
