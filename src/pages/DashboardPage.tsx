@@ -164,24 +164,20 @@ export default function DashboardPage() {
       const osData = (osRes.data || []).map((r: any) => r.data);
       const metData = (metRes.data || []).map((r: any) => r.data);
 
-      // Fallback: if DB clientes is empty, use local seed
+      // Set direct from DB (DO NOT FALLBACK TO LOCAL STORAGE SEEDS unless strictly empty!)
+      const parsedCliData = cliData.length > 0 ? cliData : (store.getClientes().length > 0 ? store.getClientes() : []);
+      
       setData({
         orcamentos: orcData,
         pedidos: pedData,
-        clientes: cliData.length > 0 ? cliData : store.getClientes(),
+        clientes: parsedCliData,
         os: osData,
       });
-      setMetas(metData.length > 0 ? metData : store.getMetas());
+      setMetas(metData);
       setDataLoaded(true);
     } catch (err) {
-      console.error('[Dashboard] DB load error, using localStorage:', err);
-      setData({
-        orcamentos: store.getOrcamentos(),
-        pedidos: store.getPedidos(),
-        clientes: store.getClientes(),
-        os: store.getOrdensServico(),
-      });
-      setMetas(store.getMetas());
+      console.error('[Dashboard] DB load error:', err);
+      toast.error('Ocorreu um erro ao carregar os dados reais do sistema.');
       setDataLoaded(true);
     } finally {
       loadingRef.current = false;

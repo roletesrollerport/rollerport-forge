@@ -145,12 +145,12 @@ async function initialSync() {
       .from(config.table as any)
       .select('*', { count: 'exact', head: true });
 
-    if (count && count > 0) {
-      // DB has data — pull to localStorage
+    if (count !== null && count > 0) {
+      // ALWAYS prioritize DB over local cache if DB has records
       await pullFromDb(key);
-      console.log(`[DataSync] Pulled ${count} rows for ${config.table}`);
+      console.log(`[DataSync] Pulled ${count} rows for ${config.table} (Realtime Sync)`);
     } else {
-      // DB empty — push localStorage data to DB (migration)
+      // DB is strictly empty — fallback to push localStorage data to DB (initial setup migration)
       const localData = getLocalData(key);
       if (localData.length > 0) {
         await pushToDb(key);
