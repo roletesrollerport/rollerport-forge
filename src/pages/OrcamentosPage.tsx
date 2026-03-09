@@ -594,7 +594,7 @@ export default function OrcamentosPage() {
           </Button>
         </div>
 
-        <div className="bg-white text-black border rounded-lg p-6 mx-auto print:border-0 print:shadow-none print:p-4" style={{ maxWidth: '1200px' }}>
+        <div className="bg-white text-black border rounded-lg p-3 mx-auto print:border-0 print:shadow-none print:p-2" style={{ maxWidth: '1200px' }}>
           {/* ===== HEADER: Logo+Rollerport left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
@@ -625,8 +625,7 @@ export default function OrcamentosPage() {
             )}
           </div>
 
-          {/* ===== Spacer ===== */}
-          <div className="h-6" />
+          <div className="h-2" />
 
           {/* ===== Orçamento info line ===== */}
           <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs border-y py-2 bg-gray-50/50">
@@ -643,8 +642,7 @@ export default function OrcamentosPage() {
             <span>Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></span>
           </div>
 
-          {/* ===== Spacer ===== */}
-          <div className="h-6" />
+          <div className="h-2" />
 
           {/* ===== TABLE ===== */}
           <table className="w-full text-[8px] border-collapse table-fixed">
@@ -657,7 +655,7 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center whitespace-nowrap w-[40px]">Qtd</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[60px]">Vlr Unit.</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[60px]">Vlr Líq.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[70px]">Vlr Total</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[75px]">Vlr Total</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[45px]">NCM</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[45px]">PIS</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[45px]">Cofins</th>
@@ -685,7 +683,6 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorIPI)}</td>
                 </tr>
               ))}
-              {/* TOTALS ROW */}
               <tr className="bg-gray-100 font-bold">
                 <td className="border p-1 text-center" colSpan={5}>TOTAL</td>
                 <td className="border p-1"></td>
@@ -700,8 +697,6 @@ export default function OrcamentosPage() {
               </tr>
             </tbody>
           </table>
-
-
 
           {/* PIX / Transferência data on print */}
           {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
@@ -736,8 +731,8 @@ export default function OrcamentosPage() {
           )}
 
           {/* ===== Informações Complementares ===== */}
-          <div className="mt-6 border rounded p-3 text-[10px]">
-            <h3 className="text-center font-bold text-xs mb-3">INFORMAÇÕES COMPLEMENTARES</h3>
+          <div className="mt-2 border rounded p-2 text-[10px]">
+            <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             <ol className="list-decimal list-inside text-[9px] space-y-1.5 font-medium">
               <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A ROLLERPORT pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
               <li>A ROLLERPORT fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
@@ -751,7 +746,7 @@ export default function OrcamentosPage() {
             </div>
           </div>
 
-          <div className="text-center text-[10px] mt-6">
+          <div className="text-center text-[10px] mt-2">
             <p className="font-semibold">ROLLERPORT – Fábrica de Roletes</p>
             <p className="text-gray-500">Orçamento válido por 5 dias úteis.</p>
           </div>
