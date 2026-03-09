@@ -71,8 +71,21 @@ serve(async (req) => {
         });
       }
 
-      // Plain text comparison
-      const valid = user.senha === password;
+      // Support both plain text and legacy bcrypt hashed passwords
+      let valid = false;
+      if (user.senha.startsWith("$2")) {
+        // Legacy bcrypt hash - compare and migrate to plain text
+        valid = compareSync(password, user.senha);
+        if (valid) {
+          // Migrate to plain text
+          await supabaseAdmin
+            .from("usuarios")
+            .update({ senha: password })
+            .eq("id", user.id);
+        }
+      } else {
+        valid = user.senha === password;
+      }
 
       if (!valid) {
         return new Response(JSON.stringify({ user: null }), {
