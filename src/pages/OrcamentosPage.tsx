@@ -768,7 +768,7 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-left w-[30%]" rowSpan={2}>DESCRIÇÃO</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[38px]" rowSpan={2}>QTD</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[45px]" rowSpan={2}>VLR UNIT.<br/>(SEM IMP)</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[55px]" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[55px]" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>PIS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS ORIGEM</th>
@@ -797,7 +797,7 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-left break-words whitespace-pre-wrap">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
                   
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqPIS.toFixed(2)}%</td>
                   <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorPIS)}</td>
@@ -821,7 +821,7 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-center" colSpan={4}>TOTAL</td>
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 text-center">{fmt(totals.valorTotalSemImpostos)}</td>
                 <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorPIS)}</td>
                 <td className="border p-1"></td>
