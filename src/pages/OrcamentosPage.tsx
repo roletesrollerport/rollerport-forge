@@ -78,6 +78,9 @@ export default function OrcamentosPage() {
   const [editingOrc, setEditingOrc] = useState<Orcamento | null>(null);
   const [searchList, setSearchList] = useState('');
 
+  // Categoria: cliente ou revenda
+  const [categoriaOrc, setCategoriaOrc] = useState<'cliente' | 'revenda'>('cliente');
+
   // Form state
   const [clienteId, setClienteId] = useState('');
   const [clienteSearch, setClienteSearch] = useState('');
@@ -122,12 +125,14 @@ export default function OrcamentosPage() {
   const [cadProduto, setCadProduto] = useState({ codigo: '', nome: '', medidas: '', descricao: '', valor: 0, ncm: '' });
 
   const [clientes, setClientes] = useState(store.getClientes());
+  const [revendas, setRevendas] = useState(store.getFornecedores());
   const [produtos, setProdutos] = useState(store.getProdutos());
 
   // Re-read from store when data syncs from other users
   useEffect(() => {
     const reload = () => {
       setClientes(store.getClientes());
+      setRevendas(store.getFornecedores());
       setProdutos(store.getProdutos());
     };
     window.addEventListener('rp-data-synced', reload);
@@ -140,9 +145,12 @@ export default function OrcamentosPage() {
   const costData = useCustos();
   const { tubos, eixos, conjuntos, revestimentos, encaixes } = costData;
 
-  const clienteSelecionado = clientes.find(c => c.id === clienteId);
+  const listaAtiva = categoriaOrc === 'revenda' ? revendas : clientes;
+  const clienteSelecionado = listaAtiva.find(c => c.id === clienteId);
+  const labelContato = categoriaOrc === 'revenda' ? 'Vendedor' : 'Comprador';
+  const labelContatos = categoriaOrc === 'revenda' ? 'Vendedores' : 'Compradores';
 
-  const filteredClientes = clientes.filter(c => {
+  const filteredClientes = listaAtiva.filter(c => {
     const s = clienteSearch.toLowerCase();
     if (!s) return true;
     const compradorMatch = (c.compradores || []).some(comp =>
@@ -215,7 +223,7 @@ export default function OrcamentosPage() {
           id: editingOrc?.id || store.nextId('orc'),
           numero: editingOrc?.numero || store.nextNumero('orc'),
           clienteId,
-          clienteNome: clientes.find(c => c.id === clienteId)?.nome || 'Sem cliente',
+          clienteNome: listaAtiva.find(c => c.id === clienteId)?.nome || 'Sem cliente',
           compradorNome: compradorSelecionado,
           tipoFrete, condicaoPagamento, vendedor, dataOrcamento, prazoPagamento,
           previsaoEntrega, observacao,
@@ -378,14 +386,20 @@ export default function OrcamentosPage() {
 
   // Cadastrar cliente rápido
   const salvarCliente = () => {
-    const id = store.nextId('cli');
+    const id = store.nextId(categoriaOrc === 'revenda' ? 'rev' : 'cli');
     const novo: Cliente = {
       ...cadCliente, id, contato: cadCliente.compradores?.[0]?.nome || cadCliente.nome,
       compradores: cadCliente.compradores || [],
       createdAt: new Date().toISOString().split('T')[0],
     };
-    const all = [...clientes, novo];
-    store.saveClientes(all);
+    if (categoriaOrc === 'revenda') {
+      const all = [...revendas, novo];
+      store.saveFornecedores(all);
+      setRevendas(all);
+    } else {
+      const all = [...clientes, novo];
+      store.saveClientes(all);
+    }
     setClienteId(id); setClienteSearch(cadCliente.nome);
     setShowCadCliente(false);
     setCadCliente({
@@ -393,21 +407,31 @@ export default function OrcamentosPage() {
       compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
       aniversarioEmpresa: '', redesSociais: '',
     });
-    toast.success('Cliente cadastrado!');
+    toast.success(`${categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'} cadastrado!`);
   };
 
-  // Cadastrar comprador rápido
+  // Cadastrar comprador/vendedor rápido
   const salvarComprador = () => {
     if (!clienteSelecionado) return;
-    const updated = clientes.map(c =>
-      c.id === clienteId
-        ? { ...c, compradores: [...c.compradores, cadComprador] }
-        : c
-    );
-    store.saveClientes(updated);
+    if (categoriaOrc === 'revenda') {
+      const updated = revendas.map(c =>
+        c.id === clienteId
+          ? { ...c, compradores: [...c.compradores, cadComprador] }
+          : c
+      );
+      store.saveFornecedores(updated);
+      setRevendas(updated);
+    } else {
+      const updated = clientes.map(c =>
+        c.id === clienteId
+          ? { ...c, compradores: [...c.compradores, cadComprador] }
+          : c
+      );
+      store.saveClientes(updated);
+    }
     setShowCadComprador(false);
     setCadComprador({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
-    toast.success('Comprador cadastrado!');
+    toast.success(`${categoriaOrc === 'revenda' ? 'Vendedor' : 'Comprador'} cadastrado!`);
   };
 
   // Cadastrar produto rápido
@@ -683,14 +707,30 @@ export default function OrcamentosPage() {
         </div>
 
         <div className="border rounded-lg p-5 bg-card space-y-4">
-          {/* Cliente */}
+          {/* Cliente / Revenda toggle + search */}
           <div>
-            <label className="text-xs text-primary font-medium">Cliente</label>
-            <div className="flex gap-2 mt-1">
+            <div className="flex items-center gap-2 mb-1">
+              <label className="text-xs text-primary font-medium">Tipo</label>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => { setCategoriaOrc('cliente'); setClienteId(''); setClienteSearch(''); setCompradorSelecionado(''); }}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${categoriaOrc === 'cliente' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  Cliente
+                </button>
+                <button
+                  onClick={() => { setCategoriaOrc('revenda'); setClienteId(''); setClienteSearch(''); setCompradorSelecionado(''); }}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${categoriaOrc === 'revenda' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  Revenda
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nome, CNPJ, telefone, e-mail..."
+                  placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} por nome, CNPJ, telefone, e-mail...`}
                   value={clienteSearch}
                   onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
                   onFocus={() => setShowClienteDropdown(true)}
@@ -705,11 +745,11 @@ export default function OrcamentosPage() {
                         <span className="text-muted-foreground text-xs">{c.cnpj}</span>
                       </button>
                     ))}
-                    {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</p>}
+                    {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum(a) {categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} encontrado(a)</p>}
                   </div>
                 )}
               </div>
-              <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title="Cadastrar cliente">
+              <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title={`Cadastrar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}`}>
                 <UserPlus className="h-4 w-4" />
               </Button>
             </div>
@@ -790,7 +830,7 @@ export default function OrcamentosPage() {
               <Input placeholder="Ex: 15 dias úteis" value={previsaoEntrega} onChange={e => setPrevisaoEntrega(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs text-primary font-medium">Comprador</label>
+              <label className="text-xs text-primary font-medium">{labelContato}</label>
               <div className="flex gap-2">
                 <select value={compradorSelecionado} onChange={e => setCompradorSelecionado(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
@@ -799,7 +839,7 @@ export default function OrcamentosPage() {
                     <option key={i} value={comp.nome}>{comp.nome}</option>
                   ))}
                 </select>
-                <Button variant="outline" size="icon" onClick={() => setShowCadComprador(true)} title="Cadastrar comprador" disabled={!clienteId}>
+                <Button variant="outline" size="icon" onClick={() => setShowCadComprador(true)} title={`Cadastrar ${labelContato.toLowerCase()}`} disabled={!clienteId}>
                   <UserPlus className="h-4 w-4" />
                 </Button>
               </div>
@@ -1100,7 +1140,7 @@ export default function OrcamentosPage() {
         {showCadCliente && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
             <div className="bg-card rounded-lg border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-3">
-              <div className="flex justify-between"><h3 className="font-semibold text-lg">Cadastrar Cliente</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
+              <div className="flex justify-between"><h3 className="font-semibold text-lg">Cadastrar {categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'}</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: e.target.value })} /></div>
@@ -1116,13 +1156,13 @@ export default function OrcamentosPage() {
               {/* Compradores */}
               <div className="border-t pt-3 mt-3">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-sm">Compradores</h4>
+                  <h4 className="font-semibold text-sm">{labelContatos}</h4>
                   <Button variant="outline" size="sm" onClick={() => setCadCliente({ ...cadCliente, compradores: [...cadCliente.compradores, { nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }] })} className="gap-1"><Plus className="h-3.5 w-3.5" /> Adicionar</Button>
                 </div>
                 {cadCliente.compradores.map((comp, idx) => (
                   <div key={idx} className="border rounded-lg p-3 mb-2 bg-muted/20">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-medium text-muted-foreground">Comprador {idx + 1}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{labelContato} {idx + 1}</span>
                       {cadCliente.compradores.length > 1 && (
                         <button onClick={() => setCadCliente({ ...cadCliente, compradores: cadCliente.compradores.filter((_, i) => i !== idx) })} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       )}
@@ -1138,7 +1178,7 @@ export default function OrcamentosPage() {
                   </div>
                 ))}
               </div>
-              <Button onClick={salvarCliente} className="w-full">Salvar Cliente</Button>
+              <Button onClick={salvarCliente} className="w-full">Salvar {categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'}</Button>
             </div>
           </div>
         )}
@@ -1146,7 +1186,7 @@ export default function OrcamentosPage() {
         {showCadComprador && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
             <div className="bg-card rounded-lg border p-6 w-full max-w-lg space-y-3">
-              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar Comprador</h3><button onClick={() => setShowCadComprador(false)}><XIcon className="h-4 w-4" /></button></div>
+              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar {labelContato}</h3><button onClick={() => setShowCadComprador(false)}><XIcon className="h-4 w-4" /></button></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome</label><Input value={cadComprador.nome} onChange={e => setCadComprador({ ...cadComprador, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadComprador.telefone} onChange={e => setCadComprador({ ...cadComprador, telefone: e.target.value })} /></div>
@@ -1155,7 +1195,7 @@ export default function OrcamentosPage() {
                 <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={cadComprador.aniversario || ''} onChange={e => setCadComprador({ ...cadComprador, aniversario: e.target.value })} /></div>
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={cadComprador.redesSociais || ''} onChange={e => setCadComprador({ ...cadComprador, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
               </div>
-              <Button onClick={salvarComprador} className="w-full">Salvar Comprador</Button>
+              <Button onClick={salvarComprador} className="w-full">Salvar {labelContato}</Button>
             </div>
           </div>
         )}
