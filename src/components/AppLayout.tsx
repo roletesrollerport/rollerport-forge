@@ -370,21 +370,6 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         </PresenceContext.Provider>
       </div>
 
-      {/* Floating chat button */}
-      {!chatOpen && (
-        <button
-          onClick={() => setChatOpen(true)}
-          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
-          title="Abrir Bate-Papo"
-        >
-          <MessageCircle className="h-6 w-6" />
-          {unreadChatCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-              {unreadChatCount}
-            </span>
-          )}
-        </button>
-      )}
 
       {/* Chat Widget */}
       <ChatWidget
