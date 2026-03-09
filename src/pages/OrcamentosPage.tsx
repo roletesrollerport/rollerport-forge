@@ -675,6 +675,7 @@ export default function OrcamentosPage() {
             <span>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB (comprador)'}</strong></span>
             <span>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></span>
             <span>Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></span>
+            <span>Validade: <strong>5 dias úteis</strong></span>
           </div>
 
           <div className="h-2" />
@@ -876,10 +877,8 @@ export default function OrcamentosPage() {
             </div>
           )}
 
-
           <div className="text-center text-[10px] mt-2">
             <p className="font-semibold">ROLLERPORT – Fábrica de Roletes</p>
-            <p className="text-gray-500">Orçamento válido por 5 dias úteis.</p>
           </div>
         </div>
 
