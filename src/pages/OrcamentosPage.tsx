@@ -691,14 +691,30 @@ export default function OrcamentosPage() {
         </div>
 
         <div className="border rounded-lg p-5 bg-card space-y-4">
-          {/* Cliente */}
+          {/* Cliente / Revenda toggle + search */}
           <div>
-            <label className="text-xs text-primary font-medium">Cliente</label>
-            <div className="flex gap-2 mt-1">
+            <div className="flex items-center gap-2 mb-1">
+              <label className="text-xs text-primary font-medium">Tipo</label>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => { setCategoriaOrc('cliente'); setClienteId(''); setClienteSearch(''); setCompradorSelecionado(''); }}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${categoriaOrc === 'cliente' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  Cliente
+                </button>
+                <button
+                  onClick={() => { setCategoriaOrc('revenda'); setClienteId(''); setClienteSearch(''); setCompradorSelecionado(''); }}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${categoriaOrc === 'revenda' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  Revenda
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nome, CNPJ, telefone, e-mail..."
+                  placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} por nome, CNPJ, telefone, e-mail...`}
                   value={clienteSearch}
                   onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
                   onFocus={() => setShowClienteDropdown(true)}
@@ -713,11 +729,11 @@ export default function OrcamentosPage() {
                         <span className="text-muted-foreground text-xs">{c.cnpj}</span>
                       </button>
                     ))}
-                    {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</p>}
+                    {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum(a) {categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} encontrado(a)</p>}
                   </div>
                 )}
               </div>
-              <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title="Cadastrar cliente">
+              <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title={`Cadastrar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}`}>
                 <UserPlus className="h-4 w-4" />
               </Button>
             </div>
