@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
-  ShoppingCart, ArrowLeft, UserPlus, X as XIcon
+  ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
