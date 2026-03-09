@@ -255,9 +255,20 @@ export default function UsuariosPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-muted-foreground">Login</label><Input value={editing.login} onChange={e => setEditing({ ...editing, login: e.target.value })} placeholder="Nome, email ou número" /></div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Senha</label>
+                      <label className="text-xs text-muted-foreground">Senha (até 8 números)</label>
                       <div className="relative">
-                        <Input type={showSenha ? 'text' : 'password'} value={editing.senha} onChange={e => setEditing({ ...editing, senha: e.target.value })} placeholder={editing.id ? 'Protegida (digite p/ alterar)' : 'Senha'} />
+                        <Input 
+                          type={showSenha ? 'text' : 'password'} 
+                          value={editing.senha} 
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 8);
+                            setEditing({ ...editing, senha: val });
+                          }} 
+                          placeholder={editing.id ? 'Digite p/ alterar' : 'Senha numérica'}
+                          maxLength={8}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
                         <button type="button" onClick={() => setShowSenha(!showSenha)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                           {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
