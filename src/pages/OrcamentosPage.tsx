@@ -830,19 +830,19 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS ORIGEM</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS DEST.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '38px' }} rowSpan={2}>IPI</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '42px' }} rowSpan={2}>IPI</th>
                 <th className="border p-1 text-right whitespace-nowrap bg-green-200" style={{ width: '80px' }} rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
               </tr>
               <tr className="bg-gray-100 text-[6px] uppercase font-bold">
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
                 {/* ICMS D */}
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '32px' }}>ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '55px' }}>VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '22px' }}>ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap" style={{ width: '60px' }}>VALOR</th>
               </tr>
             </thead>
             <tbody>
