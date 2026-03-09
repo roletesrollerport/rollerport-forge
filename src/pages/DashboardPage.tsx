@@ -241,8 +241,7 @@ export default function DashboardPage() {
   const getOrcStats = (orcs: any[]) => ({
     total: orcs.length,
     rascunho: countByStatus(orcs, 'status', 'RASCUNHO'),
-    enviado: countByStatus(orcs, 'status', 'ENVIADO'),
-    aguardando: countByStatus(orcs, 'status', 'AGUARDANDO'),
+    pendente: countByStatus(orcs, 'status', 'PENDENTE') + countByStatus(orcs, 'status', 'ENVIADO') + countByStatus(orcs, 'status', 'AGUARDANDO'),
     aprovado: countByStatus(orcs, 'status', 'APROVADO'),
     reprovado: countByStatus(orcs, 'status', 'REPROVADO'),
   });
@@ -822,6 +821,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
+            <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
             <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
             <StatusBar label="Cancelado" value={globalOrc.reprovado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
           </CardContent>
