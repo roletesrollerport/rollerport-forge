@@ -58,10 +58,11 @@ export default function ProdutosPage() {
     toast.success('Produto salvo!');
   };
 
-  const handleDelete = (id: string) => {
-    const updated = produtos.filter(p => p.id !== id);
+  const handleDelete = (produto: Produto) => {
+    const updated = produtos.filter(p => p.id !== produto.id);
     store.saveProdutos(updated);
     setProdutos(updated);
+    setDeleteConfirm(null);
     toast.success('Produto removido!');
   };
 
