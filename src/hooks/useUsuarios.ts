@@ -27,7 +27,7 @@ function parseUsuario(row: any): UsuarioDB {
     telefone: row.telefone || '',
     whatsapp: row.whatsapp || '',
     login: row.login,
-    senha: row.senha || '••••••',
+    senha: row.senha || '',
     nivel: row.nivel as NivelAcesso,
     genero: row.genero as Genero | undefined,
     ativo: row.ativo,
@@ -72,11 +72,7 @@ export function useUsuarios() {
     };
 
     if (u.senha && u.senha.trim() !== '') {
-      if (!u.senha.startsWith('$2')) {
-        payload.senha = bcrypt.hashSync(u.senha, 10);
-      } else {
-        payload.senha = u.senha;
-      }
+      payload.senha = u.senha.trim();
     }
 
     if (u.id) {
@@ -108,12 +104,39 @@ export function useUsuarios() {
 
   const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; sessionToken: string } | null> => {
     try {
-      // Use server-side login via edge function (password never compared client-side)
-      const { data, error } = await supabase.functions.invoke('hash-password', {
-        body: { action: 'login', loginStr: loginStr.trim(), password: senha },
+      const loginClean = loginStr.trim();
+      const { data: users, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .or(`login.ilike.${loginClean},email.ilike.${loginClean}`)
+        .eq('ativo', true)
+        .limit(1);
+
+      if (error || !users || users.length === 0) return null;
+      
+      const user = users[0];
+      
+      let valid = false;
+      if (user.senha.startsWith('$2')) {
+        valid = bcrypt.compareSync(senha, user.senha);
+      } else {
+        valid = user.senha === senha;
+      }
+
+      if (!valid) return null;
+
+      const sessionToken = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      const { error: sessionError } = await supabase.from('sessions').insert({
+        user_id: user.id,
+        token: sessionToken,
+        expires_at: expiresAt
       });
-      if (error || !data?.user || !data?.sessionToken) return null;
-      return { user: parseUsuario(data.user), sessionToken: data.sessionToken };
+
+      if (sessionError) return null;
+
+      return { user: parseUsuario(user), sessionToken };
     } catch {
       return null;
     }
@@ -162,7 +185,7 @@ export function useUsuarios() {
 
     const isPlain = !targetUser.senha.startsWith('$2');
     return {
-      password: isPlain ? targetUser.senha : '••••••',
+      password: targetUser.senha,
       isPlain
     };
   };
@@ -171,10 +194,13 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const tempPassword = Math.random().toString(36).slice(-8); // 8 chars random
-    const hashed = bcrypt.hashSync(tempPassword, 10);
+    const length = Math.floor(Math.random() * 5) + 4; // 4 to 8 characters
+    let tempPassword = '';
+    for (let i = 0; i < length; i++) {
+      tempPassword += Math.floor(Math.random() * 10).toString();
+    }
 
-    const { error } = await supabase.from('usuarios').update({ senha: hashed }).eq('id', userId);
+    const { error } = await supabase.from('usuarios').update({ senha: tempPassword }).eq('id', userId);
     if (error) throw error;
 
     return { tempPassword };

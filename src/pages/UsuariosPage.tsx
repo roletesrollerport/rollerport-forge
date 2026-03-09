@@ -175,7 +175,7 @@ export default function UsuariosPage() {
     try {
       if (isMaster && u.nivel !== 'master') {
         const data = await getUserCredentials(u.id);
-        currentPass = data.isPlain ? data.password : '';
+        currentPass = data.password;
       }
     } catch (e) {
       console.error(e);
@@ -254,9 +254,18 @@ export default function UsuariosPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-muted-foreground">Login</label><Input value={editing.login} onChange={e => setEditing({ ...editing, login: e.target.value })} placeholder="Nome, email ou número" /></div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Senha</label>
+                      <label className="text-xs text-muted-foreground">Senha (até 8 números)</label>
                       <div className="relative">
-                        <Input type={showSenha ? 'text' : 'password'} value={editing.senha} onChange={e => setEditing({ ...editing, senha: e.target.value })} placeholder={editing.id ? 'Protegida (digite p/ alterar)' : 'Senha'} />
+                        <Input 
+                          type={showSenha ? 'text' : 'password'} 
+                          value={editing.senha} 
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 8);
+                            setEditing({ ...editing, senha: val });
+                          }} 
+                          placeholder="Senha numérica" 
+                          maxLength={8}
+                        />
                         <button type="button" onClick={() => setShowSenha(!showSenha)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                           {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -341,7 +350,23 @@ export default function UsuariosPage() {
                 <h3 className="font-semibold text-sm truncate">{u.nome || 'Sem nome'}</h3>
                 <p className="text-xs text-muted-foreground font-mono">{u.login}</p>
                 {isMaster && (
-                  <p className="text-[10px] text-muted-foreground/60 font-mono">Senha: ••••••</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-[10px] text-muted-foreground/60 font-mono flex items-center gap-1">
+                      <span>Senha:</span>
+                      <span className={`truncate max-w-[200px] ${viewingPass?.id === u.id ? 'text-primary font-medium' : ''}`}>
+                        {viewingPass?.id === u.id ? (u.senha || 'Não definida') : (u.senha ? '•'.repeat(u.senha.length) : 'Não definida')}
+                      </span>
+                    </p>
+                    {u.nivel !== 'master' && (
+                      <button 
+                        onClick={() => viewingPass?.id === u.id ? setViewingPass(null) : handleViewPass(u.id)} 
+                        className="text-muted-foreground hover:text-primary transition-colors p-0.5 flex-shrink-0"
+                        title={viewingPass?.id === u.id ? 'Ocultar Senha' : 'Ver Senha'}
+                      >
+                        {viewingPass?.id === u.id ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
+                  </div>
                 )}
                 <div className="flex items-center gap-2 mt-1">
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span>
@@ -350,28 +375,7 @@ export default function UsuariosPage() {
               </div>
             </div>
 
-            {viewingPass?.id === u.id && (
-              <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-[10px] space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-amber-800 dark:text-amber-400">Credenciais:</span>
-                  <button onClick={() => setViewingPass(null)} className="text-amber-800 dark:text-amber-400 hover:underline">Fechar</button>
-                </div>
-                <div className="flex flex-col gap-1 mt-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono bg-white dark:bg-black/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-xs">
-                      {viewingPass.pass}
-                    </span>
-                    {viewingPass.isPlain && <span className="text-green-600 font-medium whitespace-nowrap">Senha Original</span>}
-                  </div>
-                  {!viewingPass.isPlain && (
-                     <p className="text-muted-foreground/80 italic text-[9px] leading-tight">
-                       Por segurança, esta senha foi <b>criptografada (hashed)</b> e é irreversível.
-                       <br />Não é possível ver o texto original. Use "Gerar Senha Temporária" se precisar recuperar o acesso.
-                     </p>
-                  )}
-                </div>
-              </div>
-            )}
+
 
             <div className="space-y-1.5 text-xs">
               <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -395,7 +399,6 @@ export default function UsuariosPage() {
                 <button onClick={() => openEdit(u)} disabled={openingEdit} className="p-1.5 rounded bg-muted/50 hover:bg-muted text-primary disabled:opacity-50" title="Editar"><Edit className="h-4 w-4" /></button>
                 {u.nivel !== 'master' && (
                   <>
-                    <button onClick={() => handleViewPass(u.id)} className="p-1.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40" title="Ver Senha"><Eye className="h-4 w-4" /></button>
                     <button onClick={() => handleGenTempPass(u.id)} className="p-1.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40" title="Gerar Senha Temporária"><Lock className="h-4 w-4" /></button>
                     <button onClick={() => handleToggleActive(u)} className={`p-1.5 rounded ${u.ativo ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:hover:bg-orange-900/40' : 'bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
                       {u.ativo ? <ShieldAlert className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
