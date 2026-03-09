@@ -125,11 +125,10 @@ serve(async (req) => {
         });
       }
 
-      // Hash and update
-      const hashed = hashSync(newPassword);
+      // Save plain text password
       const { error: updateError } = await supabaseAdmin
         .from("usuarios")
-        .update({ senha: hashed })
+        .update({ senha: newPassword })
         .eq("id", user.id);
 
       if (updateError) throw updateError;
