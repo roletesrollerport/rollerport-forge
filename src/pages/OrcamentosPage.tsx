@@ -763,9 +763,9 @@ export default function OrcamentosPage() {
             <thead>
               <tr className="bg-gray-100 uppercase text-[7px] font-bold">
                 <th className="border p-1 text-center whitespace-nowrap w-[25px]" rowSpan={2}>ITEM</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[85px]" rowSpan={2}>CÓD.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[40px]" rowSpan={2}>CÓD.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[35px]" rowSpan={2}>CÓD. CLI.</th>
-                <th className="border p-1 text-left w-[24%]" rowSpan={2}>DESCRIÇÃO</th>
+                <th className="border p-1 text-left w-[31%]" rowSpan={2}>DESCRIÇÃO</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[20px]" rowSpan={2}>QTD</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[45px]" rowSpan={2}>VLR UNIT.<br/>(SEM IMP)</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[45px]" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
