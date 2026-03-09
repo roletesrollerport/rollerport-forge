@@ -1186,7 +1186,7 @@ export default function OrcamentosPage() {
         {showCadComprador && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
             <div className="bg-card rounded-lg border p-6 w-full max-w-lg space-y-3">
-              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar Comprador</h3><button onClick={() => setShowCadComprador(false)}><XIcon className="h-4 w-4" /></button></div>
+              <div className="flex justify-between"><h3 className="font-semibold">Cadastrar {labelContato}</h3><button onClick={() => setShowCadComprador(false)}><XIcon className="h-4 w-4" /></button></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome</label><Input value={cadComprador.nome} onChange={e => setCadComprador({ ...cadComprador, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadComprador.telefone} onChange={e => setCadComprador({ ...cadComprador, telefone: e.target.value })} /></div>
