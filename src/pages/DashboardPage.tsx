@@ -238,13 +238,13 @@ export default function DashboardPage() {
   /* ---------------------------------------------------------------- */
   const countByStatus = (items: any[], field: string, status: string) => items.filter(i => i[field] === status).length;
 
-  const getOrcStats = (orcs: any[]) => ({
-    total: orcs.length,
-    rascunho: countByStatus(orcs, 'status', 'RASCUNHO'),
-    pendente: countByStatus(orcs, 'status', 'PENDENTE') + countByStatus(orcs, 'status', 'ENVIADO') + countByStatus(orcs, 'status', 'AGUARDANDO'),
-    aprovado: countByStatus(orcs, 'status', 'APROVADO'),
-    reprovado: countByStatus(orcs, 'status', 'REPROVADO'),
-  });
+  const getOrcStats = (orcs: any[]) => {
+    const rascunho = orcs.filter(o => o.status === 'RASCUNHO' || !o.valorTotal || o.valorTotal === 0).length;
+    const aprovado = countByStatus(orcs, 'status', 'APROVADO');
+    const cancelado = countByStatus(orcs, 'status', 'REPROVADO');
+    const pendente = orcs.length - rascunho - aprovado - cancelado;
+    return { total: orcs.length, rascunho, pendente: Math.max(pendente, 0), aprovado, cancelado };
+  };
 
   const getPedStats = (peds: any[]) => ({
     total: peds.length,
