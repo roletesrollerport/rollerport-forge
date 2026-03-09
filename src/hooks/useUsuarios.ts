@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import bcrypt from 'bcryptjs';
 import type { NivelAcesso, Genero, PermissoesUsuario } from '@/lib/types';
 
 export interface UsuarioDB {
