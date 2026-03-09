@@ -660,6 +660,7 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Orig.</th>
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Dest.</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr c/ IPI</th>
+                <th className="border p-1 text-right whitespace-nowrap">Tot. Impostos</th>
               </tr>
             </thead>
             <tbody>
