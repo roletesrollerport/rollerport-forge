@@ -53,6 +53,7 @@ export default function UsuariosPage() {
   const [showSenha, setShowSenha] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewingPass, setViewingPass] = useState<{ id: string, pass: string, isPlain: boolean } | null>(null);
+  const [cardPassVisible, setCardPassVisible] = useState<Record<string, string | null>>({});
 
   const handleViewPass = async (userId: string) => {
     try {
