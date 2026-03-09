@@ -135,25 +135,26 @@ function CalendarGrid({ year, month, dayActivity, selectedDay, onDayClick, onPre
 
   return (
     <Card>
-      <CardHeader className="pb-3 border-b">
-        <div className="flex items-center justify-between px-2">
-          {/* Mês */}
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onPrevMonth} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+      <CardHeader className="pb-4 border-b">
+        <div className="flex items-center justify-between px-1">
+          {/* Controle de Mês */}
+          <div className="flex items-center bg-muted/40 border border-border/50 rounded-lg p-0.5">
+            <Button variant="ghost" size="sm" onClick={onPrevMonth} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="w-20 text-center text-sm font-semibold">{MONTHS[month]}</span>
-            <Button variant="ghost" size="sm" onClick={onNextMonth} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+            <span className="w-24 text-center text-[13px] font-semibold tracking-wide uppercase text-primary">{MONTHS[month]}</span>
+            <Button variant="ghost" size="sm" onClick={onNextMonth} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          {/* Ano */}
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onPrevYear} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+          
+          {/* Controle de Ano */}
+          <div className="flex items-center bg-muted/40 border border-border/50 rounded-lg p-0.5">
+            <Button variant="ghost" size="sm" onClick={onPrevYear} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="w-12 text-center text-sm font-semibold">{year}</span>
-            <Button variant="ghost" size="sm" onClick={onNextYear} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
+            <span className="w-14 text-center text-[13px] font-bold text-foreground">{year}</span>
+            <Button variant="ghost" size="sm" onClick={onNextYear} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
