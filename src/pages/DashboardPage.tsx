@@ -821,7 +821,7 @@ export default function DashboardPage() {
       {/* Cards dos Usuários */}
       <div>
         <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" /> {isMaster ? 'Vendedores' : 'Equipe'}
+          <Users className="h-4 w-4 text-primary" /> Equipe
         </h2>
         {usersLoading || !dataLoaded ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -834,7 +834,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dbUsuarios.filter(u => u.ativo && u.nivel !== 'master').map(u => renderUserCard(u))}
+            {dbUsuarios.filter(u => u.ativo).map(u => renderUserCard(u))}
           </div>
         )}
       </div>
