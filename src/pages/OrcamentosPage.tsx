@@ -223,7 +223,7 @@ export default function OrcamentosPage() {
           id: editingOrc?.id || store.nextId('orc'),
           numero: editingOrc?.numero || store.nextNumero('orc'),
           clienteId,
-          clienteNome: clientes.find(c => c.id === clienteId)?.nome || 'Sem cliente',
+          clienteNome: listaAtiva.find(c => c.id === clienteId)?.nome || 'Sem cliente',
           compradorNome: compradorSelecionado,
           tipoFrete, condicaoPagamento, vendedor, dataOrcamento, prazoPagamento,
           previsaoEntrega, observacao,
