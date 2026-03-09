@@ -685,7 +685,7 @@ export default function OrcamentosPage() {
               <tr className="bg-gray-100 font-bold">
                 <td className="border p-1 text-center" colSpan={5}>TOTAL</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorLiquido)}</td>
+                <td className="border p-1 text-right">{fmt(allPrintItems.reduce((s, r) => s + r.qtd * r.valorUnitario, 0))}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorTotal)}</td>
                 <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.pis)}</td>
