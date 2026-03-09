@@ -341,8 +341,30 @@ export default function UsuariosPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm truncate">{u.nome || 'Sem nome'}</h3>
                 <p className="text-xs text-muted-foreground font-mono">{u.login}</p>
-                {isMaster && (
-                  <p className="text-[10px] text-muted-foreground/60 font-mono">Senha: ••••••</p>
+                {isMaster && u.nivel !== 'master' && (
+                  <div className="flex items-center gap-1">
+                    <p className="text-[10px] text-muted-foreground/60 font-mono">
+                      Senha: {cardPassVisible[u.id] ? cardPassVisible[u.id] : '•'.repeat(8)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (cardPassVisible[u.id]) {
+                          setCardPassVisible(prev => ({ ...prev, [u.id]: null }));
+                        } else {
+                          try {
+                            const data = await getUserCredentials(u.id);
+                            setCardPassVisible(prev => ({ ...prev, [u.id]: data.password }));
+                          } catch {
+                            toast.error('Erro ao buscar senha');
+                          }
+                        }
+                      }}
+                      className="text-muted-foreground/60 hover:text-muted-foreground"
+                    >
+                      {cardPassVisible[u.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </button>
+                  </div>
                 )}
                 <div className="flex items-center gap-2 mt-1">
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span>
