@@ -145,9 +145,12 @@ export default function OrcamentosPage() {
   const costData = useCustos();
   const { tubos, eixos, conjuntos, revestimentos, encaixes } = costData;
 
-  const clienteSelecionado = clientes.find(c => c.id === clienteId);
+  const listaAtiva = categoriaOrc === 'revenda' ? revendas : clientes;
+  const clienteSelecionado = listaAtiva.find(c => c.id === clienteId);
+  const labelContato = categoriaOrc === 'revenda' ? 'Vendedor' : 'Comprador';
+  const labelContatos = categoriaOrc === 'revenda' ? 'Vendedores' : 'Compradores';
 
-  const filteredClientes = clientes.filter(c => {
+  const filteredClientes = listaAtiva.filter(c => {
     const s = clienteSearch.toLowerCase();
     if (!s) return true;
     const compradorMatch = (c.compradores || []).some(comp =>
