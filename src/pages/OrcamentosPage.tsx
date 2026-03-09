@@ -647,18 +647,18 @@ export default function OrcamentosPage() {
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-1 text-center whitespace-nowrap">Item</th>
-                <th className="border p-1 text-center whitespace-nowrap">Qtd</th>
                 <th className="border p-1 text-center whitespace-nowrap">Código</th>
                 <th className="border p-1 text-center whitespace-nowrap">Cód. Cliente</th>
                 <th className="border p-1 text-left whitespace-nowrap" style={{minWidth: '180px'}}>Descrição</th>
+                <th className="border p-1 text-center whitespace-nowrap">Qtd</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr Unit.</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr Líq.</th>
+                <th className="border p-1 text-right whitespace-nowrap">Vlr Total</th>
                 <th className="border p-1 text-center whitespace-nowrap">NCM</th>
                 <th className="border p-1 text-right whitespace-nowrap">PIS</th>
                 <th className="border p-1 text-right whitespace-nowrap">Cofins</th>
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Orig.</th>
                 <th className="border p-1 text-right whitespace-nowrap">ICMS Dest.</th>
-                <th className="border p-1 text-right whitespace-nowrap">Vlr Total</th>
                 <th className="border p-1 text-right whitespace-nowrap">Vlr c/ IPI</th>
               </tr>
             </thead>
