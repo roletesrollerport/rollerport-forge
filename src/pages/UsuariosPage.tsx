@@ -10,10 +10,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 const niveis: { value: NivelAcesso; label: string }[] = [
   { value: 'master', label: 'Master' },
-  { value: 'admin', label: 'Administrador' },
-  { value: 'vendedor', label: 'Vendedor' },
-  { value: 'producao', label: 'Produção' },
-  { value: 'estoque', label: 'Estoque' },
+  { value: 'admin', label: 'Admin/Dono' },
+  { value: 'SEO', label: 'SEO' },
+  { value: 'Administrador', label: 'Administrador' },
+  { value: 'Vendas', label: 'Vendas' },
+  { value: 'Estoque', label: 'Estoque' },
+  { value: 'Produção', label: 'Produção' },
 ];
 
 const TODOS_MODULOS: { value: PermissaoModulo; label: string }[] = [
@@ -35,7 +37,7 @@ const ALL_MODULOS = TODOS_MODULOS.map(m => m.value);
 const emptyEditing = () => ({
   id: '' as string | undefined,
   nome: '', email: '', telefone: '', whatsapp: '', login: '', senha: '',
-  nivel: 'vendedor' as NivelAcesso, ativo: true, foto: undefined as string | undefined,
+  nivel: 'Vendas' as NivelAcesso, ativo: true, foto: undefined as string | undefined,
   genero: undefined as Genero | undefined,
   permissoes: { ver: [...ALL_MODULOS], editar: [...ALL_MODULOS] },
 });
@@ -285,7 +287,7 @@ export default function UsuariosPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground">Nível de Acesso</label>
+                    <label className="text-xs text-muted-foreground">Setor</label>
                     <select value={editing.nivel} onChange={e => setEditing({ ...editing, nivel: e.target.value as NivelAcesso })} className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm">
                       {niveis.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                     </select>

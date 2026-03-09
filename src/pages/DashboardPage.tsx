@@ -219,16 +219,12 @@ export default function DashboardPage() {
     window.addEventListener('rp-store-save', handleLocalSave);
     window.addEventListener('rp-data-synced', handleLocalSave);
 
-    // Periodic safety net (5s)
-    const interval = setInterval(() => doLoadFromDb(), 5000);
-
     // Reload on tab focus
     const handleVis = () => { if (document.visibilityState === 'visible') doLoadFromDb(); };
     document.addEventListener('visibilitychange', handleVis);
 
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVis);
       window.removeEventListener('rp-store-save', handleLocalSave);
       window.removeEventListener('rp-data-synced', handleLocalSave);
@@ -605,10 +601,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Meta do Mês */}
-          <div className="text-xs space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground font-medium">Meta do Mês</span>
+          {/* Meta do Mês (Apenas para Vendas) */}
+          {usuario.nivel === 'Vendas' && (
+            <div className="text-xs space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground font-medium">Meta do Mês</span>
           {isMaster && editingMeta?.vendedor === usuario.nome ? (
                 <div className="flex items-center gap-1">
                   <Input 
@@ -641,8 +638,9 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
               </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Botões - Ver Relatório e Imprimir (Master vê todos, comum só o próprio) */}
           {(isMaster || usuario.id === loggedUserId) && (
