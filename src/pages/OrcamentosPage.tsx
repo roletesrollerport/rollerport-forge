@@ -1862,6 +1862,7 @@ export default function OrcamentosPage() {
             <tr className="border-b bg-muted/50">
               <th className="text-left p-3 font-medium">Número</th>
               <th className="text-left p-3 font-medium">Empresa</th>
+              <th className="text-left p-3 font-medium hidden md:table-cell">Usuário</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Comprador</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
               <th className="text-right p-3 font-medium">Valor</th>
@@ -1874,6 +1875,7 @@ export default function OrcamentosPage() {
               <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30">
                 <td className="p-3 font-mono font-medium">{o.numero}</td>
                 <td className="p-3">{o.clienteNome || 'Sem cliente'}</td>
+                <td className="p-3 hidden md:table-cell text-muted-foreground">{o.vendedor || '-'}</td>
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.compradorNome || '-'}</td>
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.dataOrcamento || o.createdAt}</td>
                 <td className="p-3 text-right font-mono font-medium">{fmt(o.valorTotal)}</td>
@@ -1897,7 +1899,7 @@ export default function OrcamentosPage() {
               </tr>
             ))}
             {filteredOrcamentos.length === 0 && (
-              <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhum orçamento encontrado.</td></tr>
+              <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhum orçamento encontrado.</td></tr>
             )}
           </tbody>
         </table>
