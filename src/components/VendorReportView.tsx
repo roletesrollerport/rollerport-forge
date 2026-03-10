@@ -248,14 +248,14 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }:
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-2">Nº</th>
+              <th className="text-left p-2 print:w-12">Nº</th>
               <th className="text-left p-2">Cliente{!isOrc && !isPed ? '/Empresa' : ''}</th>
-              {!isOrc && !isPed && <th className="text-left p-2">Pedido</th>}
-              <th className="text-left p-2">Data</th>
-              {(isOrc || isPed) && <th className="text-right p-2">Valor</th>}
-              <th className="text-left p-2">Status</th>
-              <th className="text-left p-2">Tempo</th>
-              <th className="text-left p-2">Motivo</th>
+              {!isOrc && !isPed && <th className="text-left p-2 print:w-16">Pedido</th>}
+              <th className="text-left p-2 print:w-20">Data</th>
+              {(isOrc || isPed) && <th className="text-right p-2 print:w-20 whitespace-nowrap">Valor</th>}
+              <th className="text-left p-2 print:hidden">Status</th>
+              <th className="text-left p-2 print:hidden">Tempo</th>
+              <th className="text-left p-2 print:hidden">Motivo</th>
             </tr>
           </thead>
           <tbody>
@@ -273,14 +273,14 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }:
                   <td className="p-2">{isOrc || isPed ? d.clienteNome : d.empresa}</td>
                   {!isOrc && !isPed && <td className="p-2 font-mono">{d.pedidoNumero}</td>}
                   <td className="p-2">{dateRaw}</td>
-                  {(isOrc || isPed) && <td className="p-2 text-right font-mono">{fmt(d.valorTotal || 0)}</td>}
-                  <td className="p-2">
+                  {(isOrc || isPed) && <td className="p-2 text-right font-mono whitespace-nowrap">{fmt(d.valorTotal || 0)}</td>}
+                  <td className="p-2 print:hidden">
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${statusColor(d.status)}`}>
                       {statusLabel(d.status)}
                     </span>
                   </td>
-                  <td className="p-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{elapsedTime(dateRaw)}</td>
-                  <td className="p-2 text-[10px] max-w-[150px] truncate text-muted-foreground"
+                  <td className="p-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap print:hidden">{elapsedTime(dateRaw)}</td>
+                  <td className="p-2 text-[10px] max-w-[150px] truncate text-muted-foreground print:hidden"
                     title={d.motivoCancelamento || ''}>
                     {d.motivoCancelamento ? d.motivoCancelamento : '-'}
                   </td>
@@ -646,7 +646,7 @@ export default function VendorReportView({
         <div className="col-span-1">
           <div className="bg-card border rounded-lg p-5 space-y-6 print:border-0 print:shadow-none print:p-0 max-w-6xl mx-auto">
             {/* header */}
-            <div>
+            <div className="print:border-b print:pb-4">
               <h2 className="text-lg font-bold">{vendorName}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {selectedDay ? `Relatório do dia ${formatDayKey(selectedDay)}` : `Relatório de ${MONTHS[selectedMonth]}/${selectedYear}`}
@@ -675,35 +675,38 @@ export default function VendorReportView({
               </div>
             </div>
 
-            {/* Orçamentos */}
-            <DocTable
-              title="Orçamentos"
-              icon={FileText}
-              iconColor="text-primary"
-              docs={displayOrcs}
-              emptyMsg="Nenhum orçamento no período."
-              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
-            />
+            {/* Tables Container */}
+            <div className="space-y-6 print:space-y-0 print:grid print:grid-cols-3 print:gap-4 print:items-start">
+              {/* Orçamentos */}
+              <DocTable
+                title="Orçamentos"
+                icon={FileText}
+                iconColor="text-primary"
+                docs={displayOrcs}
+                emptyMsg="Nenhum orçamento no período."
+                onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
+              />
 
-            {/* Pedidos */}
-            <DocTable
-              title="Pedidos"
-              icon={ShoppingCart}
-              iconColor="text-secondary"
-              docs={displayPeds}
-              emptyMsg="Nenhum pedido no período."
-              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
-            />
+              {/* Pedidos */}
+              <DocTable
+                title="Pedidos"
+                icon={ShoppingCart}
+                iconColor="text-secondary"
+                docs={displayPeds}
+                emptyMsg="Nenhum pedido no período."
+                onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
+              />
 
-            {/* Ordens de Serviço */}
-            <DocTable
-              title="Ordens de Serviço"
-              icon={Factory}
-              iconColor="text-accent"
-              docs={displayOS}
-              emptyMsg="Nenhuma O.S. no período."
-              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
-            />
+              {/* Ordens de Serviço */}
+              <DocTable
+                title="Ordens de Serviço"
+                icon={Factory}
+                iconColor="text-accent"
+                docs={displayOS}
+                emptyMsg="Nenhuma O.S. no período."
+                onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -878,8 +881,38 @@ export default function VendorReportView({
         </DialogContent>
       </Dialog>
 
+      {/* ── Motivos Detailing (Print Only, Separate Page) ── */}
+      {(() => {
+        const allWithMotivo = [
+          ...displayOrcs.filter(o => o.motivoCancelamento).map(o => ({ ...o, type: 'Orçamento' })),
+          ...displayPeds.filter(p => p.motivoCancelamento).map(p => ({ ...p, type: 'Pedido' })),
+          ...displayOS.filter(os => os.motivoCancelamento).map(os => ({ ...os, type: 'O.S.' }))
+        ];
+
+        if (allWithMotivo.length === 0) return null;
+
+        return (
+          <div className="hidden print:block [break-before:page] mt-10">
+            <h2 className="text-lg font-bold border-b pb-2 mb-4">Detalhamento de Motivos</h2>
+            <div className="space-y-3">
+              {allWithMotivo.map((item, idx) => (
+                <div key={idx} className="border-b border-dashed pb-2">
+                  <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <span>{item.type} #{item.numero || item.id}</span>
+                    <span className="text-muted-foreground font-normal">{item.clienteNome || item.empresa}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    Motivo: {item.motivoCancelamento}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {isPrint && (
-        <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+        <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } .\\[break-before\\:page\\] { break-before: page !important; } }`}</style>
       )}
     </div>
   );
