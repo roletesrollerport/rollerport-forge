@@ -43,7 +43,7 @@ export function useUsuarios() {
   const fetchUsuarios = useCallback(async () => {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('*')
+      .select('id, nome, email, telefone, whatsapp, login, senha, nivel, genero, ativo, permissoes, created_at')
       .order('created_at', { ascending: true });
     if (!error && data) {
       setUsuarios(data.map(parseUsuario));
