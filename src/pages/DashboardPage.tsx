@@ -954,11 +954,40 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dbUsuarios.filter(u => u.ativo).map(u => renderUserCard(u))}
-          </div>
-        )}
+        ) : (() => {
+          const activeUsers = dbUsuarios.filter(u => u.ativo);
+          const masters = activeUsers.filter(u => u.nivel === 'master' || u.nivel === 'admin');
+          const vendas = activeUsers.filter(u => u.nivel === 'Vendas');
+          const outros = activeUsers.filter(u => u.nivel !== 'master' && u.nivel !== 'admin' && u.nivel !== 'Vendas');
+          return (
+            <>
+              {masters.length > 0 && (
+                <>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">Administração</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {masters.map(u => renderUserCard(u))}
+                  </div>
+                </>
+              )}
+              {vendas.length > 0 && (
+                <>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">Vendedores</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {vendas.map(u => renderUserCard(u))}
+                  </div>
+                </>
+              )}
+              {outros.length > 0 && (
+                <>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">Operacional</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {outros.map(u => renderUserCard(u))}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
       </div>
     </div>
   );
