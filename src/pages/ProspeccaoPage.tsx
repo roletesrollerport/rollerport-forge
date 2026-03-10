@@ -168,6 +168,30 @@ export default function ProspeccaoPage() {
     });
   };
 
+  const handleIncrementQtd = (field: 'qtdTelefone' | 'qtdWhatsapp' | 'qtdEmail') => {
+    if (!currentProspection) return;
+    const currentVal = currentProspection[field] || 0;
+    const checkField = field.replace('qtd', 'check') as keyof RegistroProspeccao;
+    setCurrentProspection({
+      ...currentProspection,
+      [field]: currentVal + 1,
+      [checkField]: true // Marca a caixinha automaticamente se for > 0
+    });
+  };
+
+  const handleDecrementQtd = (field: 'qtdTelefone' | 'qtdWhatsapp' | 'qtdEmail') => {
+    if (!currentProspection) return;
+    const currentVal = currentProspection[field] || 0;
+    if (currentVal > 0) {
+      const checkField = field.replace('qtd', 'check') as keyof RegistroProspeccao;
+      setCurrentProspection({
+        ...currentProspection,
+        [field]: currentVal - 1,
+        [checkField]: currentVal - 1 > 0
+      });
+    }
+  };
+
   const handleRegistrarInteracao = () => {
     if (!currentProspection || !selectedCliente) return;
 
@@ -385,15 +409,15 @@ export default function ProspeccaoPage() {
             >
               <CardHeader className={`pb-3 border-b relative ${isDanger ? 'bg-destructive/5' : 'bg-muted/10'}`}>
                 {isDanger && (
-                  <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] bg-destructive text-destructive-foreground px-2 py-0.5 rounded-sm font-bold shadow-sm">
-                    <AlertCircle className="h-3 w-3" />
-                    URGENTE: INATIVO
+                  <div className="absolute top-2 right-2 flex items-center gap-1 text-[9px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-sm font-bold shadow-sm">
+                    <AlertCircle className="h-2.5 w-2.5" />
+                    INATIVO
                   </div>
                 )}
-                <CardTitle className={`text-base flex items-start justify-between min-h-[2.5rem] leading-tight ${isDanger ? 'text-destructive pr-28' : 'pr-8'}`}>
+                <CardTitle className={`text-sm flex items-start justify-between min-h-[2.5rem] leading-tight ${isDanger ? 'text-destructive pr-16' : 'pr-6'}`}>
                   <span className="line-clamp-2">{cliente.nome}</span>
                 </CardTitle>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   <Building2 className="h-3.5 w-3.5" />
                   <span className="truncate">{cliente.cidade} / {cliente.estado}</span>
                 </div>
@@ -429,12 +453,12 @@ export default function ProspeccaoPage() {
                 </div>
 
                 {/* Histórico Analytics */}
-                <div className="bg-muted/30 p-2.5 rounded-md space-y-1.5 border">
-                    <div className="flex justify-between items-center text-xs">
+                <div className="bg-muted/30 p-2 rounded-md space-y-1.5 border">
+                    <div className="flex justify-between items-center text-[10px] sm:text-xs">
                         <span className="text-muted-foreground flex items-center gap-1"><FileText className="h-3 w-3"/> Últ. Orçamento:</span>
                         <span className="font-semibold">{lastOrca}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs">
+                    <div className="flex justify-between items-center text-[10px] sm:text-xs">
                         <span className="text-muted-foreground flex items-center gap-1"><ShoppingCart className="h-3 w-3"/> Últ. Compra:</span>
                         <span className="font-semibold text-primary">{lastPed}</span>
                     </div>
@@ -442,7 +466,7 @@ export default function ProspeccaoPage() {
 
                 {/* Score / Status */}
                 <div className="pt-2">
-                  <div className="flex items-center justify-between text-xs mb-1">
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs mb-1">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Activity className="h-3.5 w-3.5" />
                       <span>Interações CRM:</span>
@@ -453,7 +477,7 @@ export default function ProspeccaoPage() {
                   </div>
                   
                   {hasProspection && (
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs">
                       <div className="flex items-center gap-1 text-muted-foreground">
                          <CalendarClock className="h-3.5 w-3.5" />
                          <span>Último Contato:</span>
@@ -466,8 +490,8 @@ export default function ProspeccaoPage() {
 
                    {/* Indicador de Lock */}
                    {prosp?.emAtendimentoPor && (
-                      <div className="flex items-center justify-between text-[10px] mt-2 bg-yellow-500/10 text-yellow-700 p-1 rounded font-medium border border-yellow-500/20">
-                         <span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5"/> Em atendimento:</span>
+                      <div className="flex items-center justify-between text-[9px] sm:text-[10px] mt-2 bg-yellow-500/10 text-yellow-700 p-1 rounded font-medium border border-yellow-500/20">
+                         <span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5"/> Atendimento:</span>
                          <span className="truncate ml-1 max-w-[100px]">{lockedName}</span>
                       </div>
                    )}
@@ -561,9 +585,16 @@ export default function ProspeccaoPage() {
                       checked={currentProspection?.checkTelefone} 
                       onCheckedChange={() => handleToggleCheck('checkTelefone')} 
                     />
-                    <span className="font-medium">Liguei / Telefonei</span>
+                    <span className="font-medium flex-1">Liguei / Telefonei</span>
                   </label>
-                  <Button size="sm" variant="secondary" className="h-8 px-3 text-xs w-full sm:w-auto"><Phone className="h-3.5 w-3.5 mr-1.5"/> {selectedCliente?.telefone}</Button>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center border rounded-md h-8 overflow-hidden bg-background">
+                      <button onClick={() => handleDecrementQtd('qtdTelefone')} className="w-8 h-full flex items-center justify-center bg-muted/30 hover:bg-muted/60">-</button>
+                      <span className="w-8 text-center text-xs font-semibold">{currentProspection?.qtdTelefone || 0}x</span>
+                      <button onClick={() => handleIncrementQtd('qtdTelefone')} className="w-8 h-full flex items-center justify-center bg-muted/30 hover:bg-muted/60">+</button>
+                    </div>
+                    <Button size="sm" variant="secondary" className="h-8 px-3 text-xs flex-shrink-0"><Phone className="h-3.5 w-3.5 mr-1.5"/> {selectedCliente?.telefone}</Button>
+                  </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between hover:bg-muted/10 p-2 border rounded-md transition-colors shadow-sm gap-2">
@@ -572,9 +603,16 @@ export default function ProspeccaoPage() {
                       checked={currentProspection?.checkWhatsapp} 
                       onCheckedChange={() => handleToggleCheck('checkWhatsapp')} 
                     />
-                    <span className="font-medium">Chamei no WhatsApp</span>
+                    <span className="font-medium flex-1">Chamei no WhatsApp</span>
                   </label>
-                  <Button size="sm" variant="secondary" className="h-8 px-3 text-xs w-full sm:w-auto text-[#25D366] hover:bg-green-50 hover:text-green-700" onClick={() => actionWhatsApp(selectedCliente?.whatsapp || selectedCliente?.telefone || '')}><MessageCircle className="h-3.5 w-3.5 mr-1.5"/> Iniciar Chat Web</Button>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center border rounded-md h-8 overflow-hidden bg-background">
+                      <button onClick={() => handleDecrementQtd('qtdWhatsapp')} className="w-8 h-full flex items-center justify-center bg-muted/30 hover:bg-muted/60">-</button>
+                      <span className="w-8 text-center text-xs font-semibold">{currentProspection?.qtdWhatsapp || 0}x</span>
+                      <button onClick={() => handleIncrementQtd('qtdWhatsapp')} className="w-8 h-full flex items-center justify-center bg-muted/30 hover:bg-muted/60">+</button>
+                    </div>
+                    <Button size="sm" variant="secondary" className="h-8 px-3 text-xs flex-shrink-0 text-[#25D366] hover:bg-green-50 hover:text-green-700" onClick={() => actionWhatsApp(selectedCliente?.whatsapp || selectedCliente?.telefone || '')}><MessageCircle className="h-3.5 w-3.5 mr-1.5"/> Iniciar Chat Web</Button>
+                  </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between hover:bg-muted/10 p-2 border rounded-md transition-colors shadow-sm gap-2">
@@ -583,9 +621,16 @@ export default function ProspeccaoPage() {
                       checked={currentProspection?.checkEmail} 
                       onCheckedChange={() => handleToggleCheck('checkEmail')} 
                     />
-                    <span className="font-medium">Enviei um E-mail</span>
+                    <span className="font-medium flex-1">Enviei um E-mail</span>
                   </label>
-                  <Button size="sm" variant="secondary" className="h-8 px-3 text-xs w-full sm:w-auto text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => actionEmail(selectedCliente?.email || '')}><Mail className="h-3.5 w-3.5 mr-1.5"/> Escrever E-mail</Button>
+                  <div className="flex items-center gap-3">
+                     <div className="flex items-center border rounded-md h-8 overflow-hidden bg-background">
+                      <button onClick={() => handleDecrementQtd('qtdEmail')} className="w-8 h-full flex items-center justify-center bg-muted/30 hover:bg-muted/60">-</button>
+                      <span className="w-8 text-center text-xs font-semibold">{currentProspection?.qtdEmail || 0}x</span>
+                      <button onClick={() => handleIncrementQtd('qtdEmail')} className="w-8 h-full flex items-center justify-center bg-muted/30 hover:bg-muted/60">+</button>
+                    </div>
+                    <Button size="sm" variant="secondary" className="h-8 px-3 text-xs flex-shrink-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => actionEmail(selectedCliente?.email || '')}><Mail className="h-3.5 w-3.5 mr-1.5"/> Escrever E-mail</Button>
+                  </div>
                 </div>
               </div>
             </div>

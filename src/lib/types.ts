@@ -12,8 +12,11 @@ export interface RegistroProspeccao {
   
   // Checks de contato
   checkTelefone: boolean;
+  qtdTelefone?: number;
   checkWhatsapp: boolean;
+  qtdWhatsapp?: number;
   checkEmail: boolean;
+  qtdEmail?: number;
   
   // Exclusividade / Trava
   emAtendimentoPor?: string; // ID do Usuário
