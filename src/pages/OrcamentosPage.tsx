@@ -1074,24 +1074,7 @@ export default function OrcamentosPage() {
         </div>
 
         <div className="border rounded-lg p-5 bg-card space-y-4">
-          {/* Empresa Emissora Selection */}
-          <div className="p-3 border rounded-lg bg-primary/5 space-y-2">
-            <label className="text-sm font-bold text-primary flex items-center gap-2">
-              <Check className="h-4 w-4" /> Qual empresa emitirá este orçamento?
-            </label>
-            <div className="flex gap-3">
-              {store.getEmpresas().map(emp => (
-                <Button
-                  key={emp.id}
-                  variant={empresaEmissoraId === emp.id ? 'default' : 'outline'}
-                  onClick={() => { setEmpresaEmissoraId(emp.id); setEmpresaPreview(emp); }}
-                  className={`flex-1 py-6 text-lg font-bold transition-all ${empresaEmissoraId === emp.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                >
-                  {emp.nome}
-                </Button>
-              ))}
-            </div>
-          </div>
+          {/* Removed Large Empresa Selection */}
 
           {/* Dialog Info Empresa */}
           {empresaPreview && (
@@ -1151,34 +1134,49 @@ export default function OrcamentosPage() {
                 </button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} por nome, CNPJ, telefone, e-mail...`}
-                  value={clienteSearch}
-                  onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
-                  onFocus={() => setShowClienteDropdown(true)}
-                  className="pl-10"
-                />
-                {showClienteDropdown && clienteSearch && !clienteId && (
-                  <div className="absolute z-10 w-full border rounded mt-1 max-h-40 overflow-y-auto bg-card shadow-lg">
-                    {filteredClientes.map(c => (
-                      <button key={c.id} onClick={() => { setClienteId(c.id); setClienteSearch(c.nome); setShowClienteDropdown(false); }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between">
-                        <span className="font-medium">{c.nome}</span>
-                        <span className="text-muted-foreground text-xs">{c.cnpj}</span>
-                      </button>
+              <div className="flex gap-2 w-full md:w-auto mt-2 sm:mt-0">
+                <div className="flex-1 min-w-[200px] relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}...`}
+                    value={clienteSearch}
+                    onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
+                    onFocus={() => setShowClienteDropdown(true)}
+                    className="pl-10"
+                  />
+                  {showClienteDropdown && clienteSearch && !clienteId && (
+                    <div className="absolute z-10 w-full border rounded mt-1 max-h-40 overflow-y-auto bg-card shadow-lg">
+                      {filteredClientes.map(c => (
+                        <button key={c.id} onClick={() => { setClienteId(c.id); setClienteSearch(c.nome); setShowClienteDropdown(false); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between">
+                          <span className="font-medium">{c.nome}</span>
+                          <span className="text-muted-foreground text-xs">{c.cnpj}</span>
+                        </button>
+                      ))}
+                      {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum(a) {categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} encontrado(a)</p>}
+                    </div>
+                  )}
+                </div>
+                <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title={`Cadastrar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}`}>
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+                <div className="ml-2 pl-2 border-l shrink-0">
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-0.5">Empresa Emissora</label>
+                  <select 
+                    value={empresaEmissoraId} 
+                    onChange={e => {
+                      const emp = store.getEmpresas().find(em => em.id === e.target.value);
+                      if (emp) { setEmpresaEmissoraId(emp.id); setEmpresaPreview(emp); }
+                    }}
+                    className="flex h-9 min-w-[200px] rounded-md border border-input bg-background px-3 py-1 text-sm text-primary font-medium"
+                  >
+                    {store.getEmpresas().map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.nome === 'ROLLERPORT' ? 'Rollerport' : 'Ferreira Roletes'}</option>
                     ))}
-                    {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum(a) {categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} encontrado(a)</p>}
-                  </div>
-                )}
+                  </select>
+                </div>
               </div>
-              <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title={`Cadastrar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}`}>
-                <UserPlus className="h-4 w-4" />
-              </Button>
             </div>
-          </div>
 
           {/* Histórico de orçamentos do cliente */}
           {clienteId && clienteOrcamentos.length > 0 && (
