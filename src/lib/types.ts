@@ -1,30 +1,4 @@
 // ======= CUSTOS =======
-// ======= PROSPECÇÃO (CRM) =======
-export interface RegistroProspeccao {
-  id: string; // único da prospecção
-  clienteId: string;
-  vendedorId: string; // Para controle de acesso/visão
-  
-  // Checks de histórico
-  checkOrcamentos: boolean;
-  checkPedidos: boolean;
-  checkOS: boolean;
-  
-  // Checks de contato
-  checkTelefone: boolean;
-  checkWhatsapp: boolean;
-  checkEmail: boolean;
-  
-  // Exclusividade / Trava
-  emAtendimentoPor?: string; // ID do Usuário
-  emAtendimentoDesde?: string; // ISO String
-  
-  numeroInteracoes: number;
-  dataUltimaInteracao: string; // ISO String (para calcular os 30 dias de ociosidade)
-  createdAt: string;
-}
-
-// ======= FIM =======
 export interface Tubo {
   id: string;
   diametro: number;
@@ -289,7 +263,7 @@ export interface ItemEstoque {
 export type NivelAcesso = 'master' | 'admin' | 'SEO' | 'Administrador' | 'Vendas' | 'Estoque' | 'Produção';
 export type Genero = 'M' | 'F';
 
-export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'ia' | 'usuarios' | 'prospeccao';
+export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'ia' | 'usuarios';
 
 export interface PermissoesUsuario {
   ver: PermissaoModulo[];

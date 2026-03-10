@@ -11,7 +11,6 @@ import CustosPage from "./pages/CustosPage";
 import ClientesPage from "./pages/ClientesPage";
 import ProdutosPage from "./pages/ProdutosPage";
 import OrcamentosPage from "./pages/OrcamentosPage";
-import ProspeccaoPage from "./pages/ProspeccaoPage";
 import PedidosPage from "./pages/PedidosPage";
 import ProducaoPage from "./pages/ProducaoPage";
 import EstoquePage from "./pages/EstoquePage";
@@ -52,14 +51,6 @@ function AppContent() {
         getById(loggedUserId).then(user => {
           if (user) {
             setCurrentUser(user);
-            // Auto-migrate photos to storage (one-time, for master users)
-            if (user.nivel === 'master' && !localStorage.getItem('rp_photos_migrated')) {
-              supabase.functions.invoke('avatar-api', {
-                body: { action: 'migrate_photos', sessionToken },
-              }).then(() => {
-                localStorage.setItem('rp_photos_migrated', '1');
-              }).catch(() => {});
-            }
           } else {
             localStorage.removeItem('rp_logged_user');
             localStorage.removeItem('rp_session_token');
@@ -71,6 +62,7 @@ function AppContent() {
           setChecking(false);
         });
       }).catch(() => {
+        // Session invalid or network error - show login
         localStorage.removeItem('rp_logged_user');
         localStorage.removeItem('rp_session_token');
         setLoggedUserId(null);
@@ -88,15 +80,6 @@ function AppContent() {
     const updateLastSeen = () => {
       supabase.functions.invoke('chat-api', {
         body: { action: 'heartbeat', sessionToken },
-      }).then(({ data, error }) => {
-        if (error || data?.error === 'Invalid or expired session') {
-          // Session expired on server — force logout
-          localStorage.removeItem('rp_logged_user');
-          localStorage.removeItem('rp_session_token');
-          setLoggedUserId(null);
-          setSessionToken(null);
-          setCurrentUser(null);
-        }
       }).catch(() => {});
     };
     updateLastSeen();
@@ -179,7 +162,6 @@ function AppContent() {
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/produtos" element={<ProdutosPage />} />
           <Route path="/orcamentos" element={<OrcamentosPage />} />
-          <Route path="/prospeccao" element={<ProspeccaoPage />} />
           <Route path="/pedidos" element={<PedidosPage />} />
           <Route path="/producao" element={<ProducaoPage />} />
           <Route path="/estoque" element={<EstoquePage />} />

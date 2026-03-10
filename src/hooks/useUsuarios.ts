@@ -43,7 +43,7 @@ export function useUsuarios() {
   const fetchUsuarios = useCallback(async () => {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, senha, nivel, genero, ativo, permissoes, created_at')
+      .select('*')
       .order('created_at', { ascending: true });
     if (!error && data) {
       setUsuarios(data.map(parseUsuario));
@@ -113,7 +113,7 @@ export function useUsuarios() {
   const getById = async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, permissoes, created_at')
+      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .eq('id', id)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
@@ -198,23 +198,9 @@ export function useUsuarios() {
     return { success: true };
   };
 
-  const migratePhotosToStorage = async () => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase.functions.invoke('avatar-api', {
-      body: { action: 'migrate_photos', sessionToken },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-
-    await fetchUsuarios();
-    return data;
-  };
-
   return { 
     usuarios, loading, fetchUsuarios, saveUsuario, deleteUsuario, login, getById,
     requestPasswordReset, verifyResetCode, resetPassword, getUserCredentials, 
-    generateTempPassword, logoutUser, logoutAllCommonUsers, migratePhotosToStorage
+    generateTempPassword, logoutUser, logoutAllCommonUsers
   };
 }
