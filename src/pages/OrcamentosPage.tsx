@@ -1081,9 +1081,13 @@ export default function OrcamentosPage() {
             <Dialog open={!!empresaPreview} onOpenChange={(open) => !open && setEmpresaPreview(null)}>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Dados do Cabeçalho ({empresaPreview.nome})</DialogTitle>
+                  <DialogTitle>
+                    {empresaPreview.nome === 'ROLLERPORT' ? 'Dados Rollerport' : `Dados do Cabeçalho (${empresaPreview.nome})`}
+                  </DialogTitle>
                   <DialogDescription>
-                    Estas informações serão impressas no topo e rodapé do orçamento.
+                    {empresaPreview.nome === 'ROLLERPORT'
+                      ? 'Estas informações serão impressas no topo'
+                      : 'Estas informações serão impressas no topo e rodapé do orçamento.'}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="text-xs space-y-1">
