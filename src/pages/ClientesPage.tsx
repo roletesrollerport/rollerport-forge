@@ -9,11 +9,12 @@ import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { formatCPForCNPJ, formatTelefone } from '@/lib/formatters';
+import { fetchCNPJ } from '@/lib/utils';
 
 const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
 
 const emptyCliente = (): Cliente => ({
-  id: '', nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+  id: '', nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
   compradores: [emptyComprador()], aniversarioEmpresa: '', redesSociais: '',
   regimeTributario: 'Lucro Presumido',
   createdAt: new Date().toISOString().split('T')[0],
@@ -143,6 +144,45 @@ export default function ClientesPage() {
     );
   });
 
+  // Efeito para preenchimento automático via CNPJ
+  useEffect(() => {
+    const limpo = editing.cnpj.replace(/\D/g, '');
+    if (limpo.length === 14) {
+      fetchCNPJ(limpo).then(dados => {
+        if (dados) {
+          const regime = dados.opcao_pelo_simples ? 'Simples Nacional' : 'Lucro Presumido';
+          
+          setEditing(prev => {
+            const updates: Partial<Cliente> = {};
+            
+            // Só sobrescreve se estiver vazio ou se quisermos forçar os dados da Receita (recomendado para razão social e endereço num ERP)
+            if (!prev.nome) updates.nome = dados.razao_social || '';
+            if (!prev.endereco) {
+              const numStr = dados.numero ? `, ${dados.numero}` : '';
+              const compStr = dados.complemento ? ` - ${dados.complemento}` : '';
+              const bairroStr = dados.bairro ? ` - ${dados.bairro}` : '';
+              updates.endereco = `${dados.logradouro || ''}${numStr}${compStr}${bairroStr}`.trim();
+            }
+            if (!prev.cidade) updates.cidade = dados.municipio || '';
+            if (!prev.estado) updates.estado = dados.uf || '';
+            if (!prev.telefone && dados.ddd_telefone_1) updates.telefone = formatTelefone(dados.ddd_telefone_1);
+            if (!prev.email) updates.email = dados.email || '';
+            if (prev.regimeTributario !== regime) updates.regimeTributario = regime as any;
+
+            if (Object.keys(updates).length > 0) {
+              toast.success('Consultamos o CNPJ e preenchemos os dados automaticamente!');
+              if (dados.descricao_situacao_cadastral && dados.descricao_situacao_cadastral !== 'ATIVA') {
+                toast.warning(`Atenção: Situação Cadastral na Receita está ${dados.descricao_situacao_cadastral}`, { duration: 6000 });
+              }
+              return { ...prev, ...updates };
+            }
+            return prev;
+          });
+        }
+      });
+    }
+  }, [editing.cnpj]);
+
   const handleSave = () => {
     if (isRevenda) {
       let updated: Cliente[];
@@ -214,6 +254,13 @@ export default function ClientesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={editing.cnpj} onChange={e => setEditing({ ...editing, cnpj: formatCPForCNPJ(e.target.value) })} /></div>
+                <div><label className="text-xs text-muted-foreground">Regime Tributário</label>
+                  <select value={editing.regimeTributario} onChange={e => setEditing({ ...editing, regimeTributario: e.target.value as any })} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="Simples Nacional">Simples Nacional</option><option value="Lucro Presumido">Lucro Presumido</option><option value="Lucro Real">Lucro Real</option><option value="Isento">Isento</option>
+                  </select>
+                </div>
+                <div><label className="text-xs text-muted-foreground">Inscrição Estadual</label><Input value={editing.inscricaoEstadual || ''} onChange={e => setEditing({ ...editing, inscricaoEstadual: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Inscrição Municipal</label><Input value={editing.inscricaoMunicipal || ''} onChange={e => setEditing({ ...editing, inscricaoMunicipal: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={editing.telefone} onChange={e => setEditing({ ...editing, telefone: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={editing.whatsapp} onChange={e => setEditing({ ...editing, whatsapp: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">Email</label><Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></div>
@@ -281,6 +328,7 @@ export default function ClientesPage() {
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">CNPJ:</span> <strong>{viewCliente.cnpj}</strong></div>
+                <div><span className="text-muted-foreground">IE/IM:</span> <strong>{viewCliente.inscricaoEstadual || '-'} / {viewCliente.inscricaoMunicipal || '-'}</strong></div>
                 <div><span className="text-muted-foreground">Cidade:</span> <strong>{viewCliente.cidade}/{viewCliente.estado}</strong></div>
                 <div><span className="text-muted-foreground">Telefone:</span> <strong>{viewCliente.telefone}</strong></div>
                 <div><span className="text-muted-foreground">Email:</span> <strong>{viewCliente.email}</strong></div>

@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { formatCPForCNPJ, formatTelefone } from '@/lib/formatters';
+import { fetchCNPJ } from '@/lib/utils';
 import logo from '@/assets/logo.png';
 import logoFerreira from '@/assets/logo-ferreira.jpg';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
@@ -194,7 +195,7 @@ export default function OrcamentosPage() {
   // Cadastro rápido cliente (completo igual à tela de clientes)
   const [showCadCliente, setShowCadCliente] = useState(false);
   const [cadCliente, setCadCliente] = useState<Omit<Cliente, 'id' | 'createdAt'>>({
-    nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+    nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
     compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
     regimeTributario: 'Lucro Presumido',
     aniversarioEmpresa: '', redesSociais: '',
@@ -247,6 +248,43 @@ export default function OrcamentosPage() {
       c.telefone.includes(clienteSearch) || c.email.toLowerCase().includes(s) ||
       c.endereco?.toLowerCase().includes(s) || c.whatsapp?.includes(clienteSearch) || compradorMatch;
   });
+
+  useEffect(() => {
+    const limpo = cadCliente.cnpj.replace(/\D/g, '');
+    if (limpo.length === 14 && showCadCliente) {
+      fetchCNPJ(limpo).then(dados => {
+        if (dados) {
+          const regime = dados.opcao_pelo_simples ? 'Simples Nacional' : 'Lucro Presumido';
+          
+          setCadCliente(prev => {
+            const updates: Partial<typeof cadCliente> = {};
+            
+            if (!prev.nome) updates.nome = dados.razao_social || '';
+            if (!prev.endereco) {
+              const numStr = dados.numero ? `, ${dados.numero}` : '';
+              const compStr = dados.complemento ? ` - ${dados.complemento}` : '';
+              const bairroStr = dados.bairro ? ` - ${dados.bairro}` : '';
+              updates.endereco = `${dados.logradouro || ''}${numStr}${compStr}${bairroStr}`.trim();
+            }
+            if (!prev.cidade) updates.cidade = dados.municipio || '';
+            if (!prev.estado) updates.estado = dados.uf || '';
+            if (!prev.telefone && dados.ddd_telefone_1) updates.telefone = formatTelefone(dados.ddd_telefone_1);
+            if (!prev.email) updates.email = dados.email || '';
+            if (prev.regimeTributario !== regime) updates.regimeTributario = regime as any;
+
+            if (Object.keys(updates).length > 0) {
+              toast.success('Consultamos o CNPJ e preenchemos os dados automaticamente!');
+              if (dados.descricao_situacao_cadastral && dados.descricao_situacao_cadastral !== 'ATIVA') {
+                toast.warning(`Atenção: Situação Cadastral na Receita está ${dados.descricao_situacao_cadastral}`, { duration: 6000 });
+              }
+              return { ...prev, ...updates };
+            }
+            return prev;
+          });
+        }
+      });
+    }
+  }, [cadCliente.cnpj, showCadCliente]);
 
   // Orçamentos do cliente selecionado (ordenados por data, mais recente primeiro)
   const clienteOrcamentos = clienteId
@@ -592,7 +630,7 @@ export default function OrcamentosPage() {
     setClienteId(id); setClienteSearch(cadCliente.nome);
     setShowCadCliente(false);
     setCadCliente({
-      nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+      nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
       compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
       regimeTributario: 'Lucro Presumido',
       aniversarioEmpresa: '', redesSociais: '',
@@ -1748,6 +1786,8 @@ export default function OrcamentosPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: formatCPForCNPJ(e.target.value) })} /></div>
+                <div><label className="text-xs text-muted-foreground">Inscrição Estadual</label><Input value={cadCliente.inscricaoEstadual || ''} onChange={e => setCadCliente({ ...cadCliente, inscricaoEstadual: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Inscrição Municipal</label><Input value={cadCliente.inscricaoMunicipal || ''} onChange={e => setCadCliente({ ...cadCliente, inscricaoMunicipal: e.target.value })} /></div>
                 <div>
                   <label className="text-xs text-muted-foreground">Regime Tributário</label>
                   <select value={cadCliente.regimeTributario} onChange={e => setCadCliente({ ...cadCliente, regimeTributario: e.target.value as RegimeTributario })}

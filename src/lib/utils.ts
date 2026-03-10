@@ -15,3 +15,17 @@ export const ICMS_INTERESTADUAL_SP: Record<string, number> = {
 
 export const PIS_FIXO = 0.65;
 export const COFINS_FIXO = 3.00;
+
+export async function fetchCNPJ(cnpj: string) {
+  const cleanCnpj = cnpj.replace(/\D/g, '');
+  if (cleanCnpj.length !== 14) return null;
+  try {
+    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (error) {
+    console.error('Erro ao buscar CNPJ:', error);
+    return null;
+  }
+}
+
