@@ -821,6 +821,19 @@ export default function OrcamentosPage() {
           <Button variant="outline" onClick={() => setView('list')} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
+          {(viewOrc.status === 'RASCUNHO' || viewOrc.status === 'ENVIADO') && (
+            <Button 
+              onClick={() => {
+                const updated = orcamentos.map(o => o.id === viewOrc.id ? { ...o, status: 'APROVADO' as const } : o);
+                store.saveOrcamentos(updated); setOrcamentos(updated);
+                setViewOrc({ ...viewOrc, status: 'APROVADO' as const });
+                toast.success(`Orçamento ${viewOrc.numero} aprovado com sucesso!`);
+              }} 
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Check className="h-4 w-4" /> Aprovar Orçamento
+            </Button>
+          )}
           <Button variant="outline" onClick={() => window.print()} className="gap-2">
             <Printer className="h-4 w-4" /> Imprimir
           </Button>
