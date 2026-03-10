@@ -772,14 +772,27 @@ export default function OrcamentosPage() {
             <div className="flex items-center gap-3">
               <img src={logo} alt={empresaEmissora.nome} className="h-16 object-contain" />
               <div>
-                <h2 className="text-base font-bold leading-tight">{empresaEmissora.razaoSocial}</h2>
-                <p className="text-[10px] font-semibold">Nome Fantasia: {empresaEmissora.nome}</p>
-                <p className="text-[10px]">Endereço: {empresaEmissora.endereco}</p>
-                <p className="text-[10px]">Bairro: {empresaEmissora.bairro} <span className="ml-4">CEP: {empresaEmissora.cep}</span></p>
-                <p className="text-[10px]">Cidade: {empresaEmissora.cidade} - {empresaEmissora.estado}</p>
-                <p className="text-[10px]">CNPJ/MF n° {empresaEmissora.cnpj}</p>
-                <p className="text-[10px]">Inscrição Estadual: {empresaEmissora.ie}</p>
-                <p className="text-[10px]">Fone: {empresaEmissora.telefone} • E-mail: {empresaEmissora.email}</p>
+                {empresaEmissora.nome === 'ROLLERPORT' ? (
+                  <>
+                    <h2 className="text-base font-bold leading-tight">Rollerport Fabrica de Roletes</h2>
+                    <p className="text-[10px]">Endereço: Rua: João Marcos Pimenta Rocha, 16. <span className="ml-2">Bairro Polo Industrial</span></p>
+                    <p className="text-[10px]">CEP: 07832-460 <span className="ml-2">cidade franco da rocha</span></p>
+                    <p className="text-[10px]">Cnpj: 58.234.180/0001-56</p>
+                    <p className="text-[10px]">Inscrição Estadual: 312.259.169.119</p>
+                    <p className="text-[10px]">telefone: 11 4441-3572 / 11 4811-1588 <span className="ml-2">E-mail: faturamento@rollerport.com.br</span></p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-base font-bold leading-tight">{empresaEmissora.razaoSocial}</h2>
+                    <p className="text-[10px] font-semibold">Nome Fantasia: {empresaEmissora.nome}</p>
+                    <p className="text-[10px]">Endereço: {empresaEmissora.endereco}</p>
+                    <p className="text-[10px]">Bairro: {empresaEmissora.bairro} <span className="ml-4">CEP: {empresaEmissora.cep}</span></p>
+                    <p className="text-[10px]">Cidade: {empresaEmissora.cidade} - {empresaEmissora.estado}</p>
+                    <p className="text-[10px]">CNPJ/MF n° {empresaEmissora.cnpj}</p>
+                    <p className="text-[10px]">Inscrição Estadual: {empresaEmissora.ie}</p>
+                    <p className="text-[10px]">Fone: {empresaEmissora.telefone} • E-mail: {empresaEmissora.email}</p>
+                  </>
+                )}
               </div>
               <div className="flex flex-col items-center ml-2">
                 <img src={qrcode} alt="QR Code" className="h-14 w-14 object-contain" />
@@ -1074,16 +1087,29 @@ export default function OrcamentosPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="text-xs space-y-1">
-                  <p className="font-bold text-sm mb-2">{empresaPreview.razaoSocial}</p>
-                  <p><span className="font-semibold">Nome Fantasia:</span> {empresaPreview.nome}</p>
-                  <p><span className="font-semibold">Endereço:</span> {empresaPreview.endereco}</p>
-                  <p><span className="font-semibold">Bairro:</span> {empresaPreview.bairro} <span className="ml-4 font-semibold">CEP:</span> {empresaPreview.cep}</p>
-                  <p><span className="font-semibold">Cidade:</span> {empresaPreview.cidade} - {empresaPreview.estado}</p>
-                  <p><span className="font-semibold">CNPJ/MF n°:</span> {empresaPreview.cnpj}</p>
-                  <p><span className="font-semibold">Inscrição Estadual:</span> {empresaPreview.ie}</p>
-                  <p><span className="font-semibold">Fone:</span> {empresaPreview.telefone}</p>
-                  <p><span className="font-semibold">E-mail:</span> {empresaPreview.email}</p>
-                  <p><span className="font-semibold">Regime Tributário:</span> {empresaPreview.regimeTributario}</p>
+                  {empresaPreview.nome === 'ROLLERPORT' ? (
+                    <>
+                      <p className="font-bold text-sm mb-2">Rollerport Fabrica de Roletes</p>
+                      <p><span className="font-semibold">Endereço:</span> Rua: João Marcos Pimenta Rocha, 16. <span className="font-semibold">Bairro:</span> Polo Industrial</p>
+                      <p><span className="font-semibold">CEP:</span> 07832-460 <span className="font-semibold ml-2">Cidade:</span> Franco da Rocha</p>
+                      <p><span className="font-semibold">CNPJ/MF n°:</span> 58.234.180/0001-56 <span className="font-semibold ml-2">Inscrição Estadual:</span> 312.259.169.119</p>
+                      <p><span className="font-semibold">Telefone:</span> 11 4441-3572 / 11 4811-1588</p>
+                      <p><span className="font-semibold">E-mail:</span> faturamento@rollerport.com.br</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-bold text-sm mb-2">{empresaPreview.razaoSocial}</p>
+                      <p><span className="font-semibold">Nome Fantasia:</span> {empresaPreview.nome}</p>
+                      <p><span className="font-semibold">Endereço:</span> {empresaPreview.endereco}</p>
+                      <p><span className="font-semibold">Bairro:</span> {empresaPreview.bairro} <span className="ml-4 font-semibold">CEP:</span> {empresaPreview.cep}</p>
+                      <p><span className="font-semibold">Cidade:</span> {empresaPreview.cidade} - {empresaPreview.estado}</p>
+                      <p><span className="font-semibold">CNPJ/MF n°:</span> {empresaPreview.cnpj}</p>
+                      <p><span className="font-semibold">Inscrição Estadual:</span> {empresaPreview.ie}</p>
+                      <p><span className="font-semibold">Fone:</span> {empresaPreview.telefone}</p>
+                      <p><span className="font-semibold">E-mail:</span> {empresaPreview.email}</p>
+                      <p><span className="font-semibold">Regime Tributário:</span> {empresaPreview.regimeTributario}</p>
+                    </>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
