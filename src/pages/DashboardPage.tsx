@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,14 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardFooter, CardDescription, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
-  ClipboardList
+  ClipboardList, Play, Check, AlertCircle, Wrench
 } from 'lucide-react';
+import GaugeChart from 'react-gauge-chart';
 import VendorReportView from '@/components/VendorReportView';
 import { toast } from 'sonner';
 
@@ -57,7 +58,7 @@ function StatCard({
   value: string | number;
   color: string;
   onClick?: () => void;
-  items?: { id: string, label: string, user: string }[];
+  items?: { id: string, label: string, user: string, statusColor?: 'red' | 'yellow' | 'green' }[];
   onViewAll?: () => void;
 }) {
   return (
@@ -76,7 +77,14 @@ function StatCard({
           <div className="space-y-1.5 border-t pt-2">
             {items.map((item) => (
               <div key={item.id} className="flex justify-between items-center text-[11px] gap-2">
-                <span className="font-mono text-muted-foreground shrink-0">{item.label}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {item.statusColor && (
+                    <div className={`h-2 w-2 rounded-full ${item.statusColor === 'red' ? 'bg-red-500' :
+                      item.statusColor === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'
+                      }`} title={`Status: ${item.statusColor}`} />
+                  )}
+                  <span className="font-mono text-muted-foreground">{item.label}</span>
+                </div>
                 <span className="font-medium truncate text-right">{item.user}</span>
               </div>
             ))}
@@ -123,7 +131,7 @@ type DashView = 'main' | 'vendor-detail' | 'vendor-print' | 'report-detail' | 'r
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [data, setData] = useState({
-    orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[],
+    orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[], produtos: [] as any[]
   });
   const [dataLoaded, setDataLoaded] = useState(false);
   const [metas, setMetas] = useState(store.getMetas());
@@ -141,6 +149,81 @@ export default function DashboardPage() {
   const { onlineUserIds } = usePresenceContext();
 
   /* ---------------------------------------------------------------- */
+  /*  Industrial Management Logic - Machine Load (Capacidade)          */
+  /* ---------------------------------------------------------------- */
+  // 1 dia = 960 minutos (16h de carga em 2 turnos, por ex?) ou (8h = 480m)
+  // Requisito do user: "Capacidade diária de 960 minutos"
+  const DAILY_CAPACITY_MINUTES = 960;
+
+  // Calculate load
+  const activeOS = data.os.filter(os => os.status === 'ABERTA' || os.status === 'EM_ANDAMENTO');
+
+  const totalLoadMinutes = activeOS.reduce((acc, os) => {
+    // Para cada item na OS, tentar achar o produto e multiplicar pelo tempo
+    const sumItems = os.itens.reduce((itemAcc, item) => {
+      // Find the template product or just use a default 10 min per rolete if not matched for now
+      // The requirement asks for Produto.tempo_fabricacao_minutos.
+      const matchProd = data.produtos.find(p => p.tipo === item.tipo);
+      const tempo = matchProd?.tempo_fabricacao_minutos || 10; // default 10 min fallback se admin n cadastrou
+      return itemAcc + (item.quantidade * tempo);
+    }, 0);
+    return acc + sumItems;
+  }, 0);
+
+  const capacityPercentage = Math.min(totalLoadMinutes / DAILY_CAPACITY_MINUTES, 1.5); // cap visual
+  const actualPercentage = (totalLoadMinutes / DAILY_CAPACITY_MINUTES) * 100;
+
+  /* ---------------------------------------------------------------- */
+  /*  Industrial Management Logic - Traffic Lights                     */
+  /* ---------------------------------------------------------------- */
+  // Determine color based on ultima_interacao and data_entrega_prevista
+  const getTrafficLightColor = (item: any): 'red' | 'yellow' | 'green' => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check delivery date delay
+    if (item.data_entrega_prevista) {
+      const deliveryDate = new Date(item.data_entrega_prevista);
+      if (deliveryDate < today) return 'red';
+    }
+
+    // Check last interaction
+    const lastInteraction = item.ultima_interacao ? new Date(item.ultima_interacao) : new Date(item.createdAt || item.created_at);
+    const diffTime = Math.abs(new Date().getTime() - lastInteraction.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 5) return 'red';
+    if (diffDays > 2) return 'yellow';
+    return 'green';
+  };
+
+  /* ---------------------------------------------------------------- */
+  /*  Industrial Management Logic - Delayed OS List                    */
+  /* ---------------------------------------------------------------- */
+  const delayedOSList = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return activeOS.map(os => {
+      const deliveryDateStr = os.data_entrega_prevista || os.entrega;
+      if (!deliveryDateStr) return null;
+
+      const deliveryDate = new Date(deliveryDateStr);
+      if (deliveryDate < today) {
+        const diffTime = Math.abs(today.getTime() - deliveryDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
+        const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
+        const clienteNome = ped?.clienteNome || orc?.clienteNome || 'Desconhecido';
+
+        return { ...os, diffDays, clienteNome };
+      }
+      return null;
+    }).filter(Boolean).sort((a: any, b: any) => b.diffDays - a.diffDays);
+  }, [activeOS, data.pedidos, data.orcamentos]);
+
+  /* ---------------------------------------------------------------- */
   /*  Data loading - Direct from Supabase DB only                      */
   /* ---------------------------------------------------------------- */
   const loadingRef = useRef(false);
@@ -150,12 +233,13 @@ export default function DashboardPage() {
     if (loadingRef.current || suppressReloadRef.current) return;
     loadingRef.current = true;
     try {
-      const [orcRes, pedRes, cliRes, osRes, metRes] = await Promise.all([
+      const [orcRes, pedRes, cliRes, osRes, metRes, prodRes] = await Promise.all([
         supabase.from('orcamentos').select('data'),
         supabase.from('pedidos').select('data'),
         supabase.from('clientes').select('data'),
         supabase.from('ordens_servico').select('data'),
         supabase.from('metas_vendedores').select('data'),
+        supabase.from('produtos').select('data'),
       ]);
 
       const orcData = (orcRes.data || []).map((r: any) => r.data);
@@ -163,6 +247,7 @@ export default function DashboardPage() {
       const cliData = (cliRes.data || []).map((r: any) => r.data);
       const osData = (osRes.data || []).map((r: any) => r.data);
       const metData = (metRes.data || []).map((r: any) => r.data);
+      const prodData = (prodRes.data || []).map((r: any) => r.data);
 
       // Set direct from DB (DO NOT FALLBACK TO LOCAL STORAGE SEEDS unless strictly empty!)
       const parsedCliData = cliData.length > 0 ? cliData : (store.getClientes().length > 0 ? store.getClientes() : []);
@@ -172,6 +257,7 @@ export default function DashboardPage() {
         pedidos: pedData,
         clientes: parsedCliData,
         os: osData,
+        produtos: prodData,
       });
       setMetas(metData);
       setDataLoaded(true);
@@ -208,6 +294,7 @@ export default function DashboardPage() {
         pedidos: store.getPedidos(),
         clientes: store.getClientes(),
         os: store.getOrdensServico(),
+        produtos: store.getProdutos(),
       });
       setMetas(store.getMetas());
       setDataLoaded(true);
@@ -679,7 +766,7 @@ export default function DashboardPage() {
           onViewAll={() => navigate(isMaster ? '/orcamentos' : `/orcamentos?vendedor=${currentUserName}`)}
           items={(isMaster ? data.orcamentos : getUserOrcs(currentUserName))
             .slice(-3).reverse()
-            .map(o => ({ id: o.id, label: o.numero, user: o.vendedor }))}
+            .map(o => ({ id: o.id, label: o.numero, user: o.vendedor, statusColor: getTrafficLightColor(o) }))}
         />
 
         {/* PEDIDOS */}
@@ -693,7 +780,7 @@ export default function DashboardPage() {
             .slice(-3).reverse()
             .map(p => {
               const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-              return { id: p.id, label: p.numero, user: orc?.vendedor || 'Sistema' };
+              return { id: p.id, label: p.numero, user: orc?.vendedor || 'Sistema', statusColor: getTrafficLightColor(p) };
             })}
         />
 
@@ -737,47 +824,119 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Espaço de 2 linhas */}
+      {/* Espaço Carga & Status */}
       <div className="h-8" />
 
-      {/* 3 Cards de Status - clicáveis */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
-          <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* CARGA DE MÁQUINA (GAUGE) */}
+        <Card className="col-span-1 flex flex-col items-center p-6 justify-center">
+          <CardHeader className="p-0 mb-4 text-center">
+            <CardTitle className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <Factory className="h-4 w-4" /> Capacidade Produtiva
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
-            <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
-            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
-            <StatusBar label="Cancelado" value={globalOrc.cancelado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
+          <CardContent className="w-full flex flex-col items-center">
+            <GaugeChart id="capacity-gauge"
+              nrOfLevels={30}
+              colors={["#22c55e", "#eab308", "#ef4444"]}
+              arcWidth={0.3}
+              percent={capacityPercentage}
+              textColor="#888"
+              hideText={true}
+            />
+            <div className="mt-4 text-center">
+              <span className="text-3xl font-bold">{actualPercentage.toFixed(1)}%</span>
+              <p className="text-xs text-muted-foreground">Ocupação Atual</p>
+              <p className="text-xs text-muted-foreground mt-1">{totalLoadMinutes} / {DAILY_CAPACITY_MINUTES} min</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos')}>
-          <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
-            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
-            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
-            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('CONCLUIDO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
-          </CardContent>
-        </Card>
+        {/* 3 Cards de Status - clicáveis */}
+        <div className="col-span-1 lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
+            <CardHeader className="pb-2">
+              <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
+              <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
+              <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
+              <StatusBar label="Cancelado" value={globalOrc.cancelado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
+            </CardContent>
+          </Card>
 
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/producao')}>
-          <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
-            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
-            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
-            <StatusBar label="Entregue" value={globalOs.total > 0 ? globalOs.concluida : 0} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
-          </CardContent>
-        </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos')}>
+            <CardHeader className="pb-2">
+              <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
+              <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
+              <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
+              <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('CONCLUIDO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/producao')}>
+            <CardHeader className="pb-2">
+              <h2 className="font-semibold flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
+              <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
+              <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+              <StatusBar label="Entregue" value={globalOs.total > 0 ? globalOs.concluida : 0} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* --------------------------------- */}
+      {/* ATENÇÃO: O.S. ATRASADAS (LISTA) */}
+      {/* --------------------------------- */}
+      {delayedOSList.length > 0 && (
+        <>
+          <div className="h-8" />
+          <Card className="border-red-500/30 overflow-hidden">
+            <CardHeader className="bg-red-500/10 pb-3">
+              <h2 className="font-semibold flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-4 w-4" /> Ordens de Serviço em Atraso ({delayedOSList.length})
+              </h2>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[300px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 sticky top-0 text-xs text-muted-foreground z-10">
+                    <tr>
+                      <th className="font-medium text-left p-3">O.S.</th>
+                      <th className="font-medium text-left p-3">Cliente</th>
+                      <th className="font-medium text-left p-3 hidden sm:table-cell">Status</th>
+                      <th className="font-medium text-right p-3">Atraso</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {delayedOSList.map((os: any) => (
+                      <tr key={os.id} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/producao?status=' + os.status)}>
+                        <td className="p-3 font-mono font-medium">{os.numero}</td>
+                        <td className="p-3 truncate max-w-[150px]">{os.clienteNome}</td>
+                        <td className="p-3 hidden sm:table-cell">
+                          <Badge variant="outline" className={os.status === 'ABERTA' ? 'bg-muted text-foreground' : 'bg-secondary/10 text-secondary'}>
+                            {os.status.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right text-red-600 font-bold whitespace-nowrap">
+                          {os.diffDays} {os.diffDays === 1 ? 'dia' : 'dias'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Espaço de 2 linhas */}
       <div className="h-8" />

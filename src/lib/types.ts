@@ -100,6 +100,7 @@ export interface Produto {
   descricao: string;
   miniDescricao?: string;
   valor: number;
+  tempo_fabricacao_minutos?: number;
   createdAt: string;
 }
 
@@ -180,6 +181,8 @@ export interface Orcamento {
   status: StatusOrcamento;
   empresaEmissoraId: string;
   valorTotal: number;
+  data_entrega_prevista?: string;
+  ultima_interacao?: string;
   createdAt: string;
   dataAprovacao?: string;
 }
@@ -196,6 +199,8 @@ export interface Pedido {
   dataEntrega: string;
   status: StatusPedido;
   valorTotal: number;
+  data_entrega_prevista?: string;
+  ultima_interacao?: string;
   createdAt: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;
@@ -241,6 +246,8 @@ export interface OrdemServico {
   diasPropostos: number;
   status: StatusOS;
   itens: ItemOS[];
+  data_entrega_prevista?: string;
+  ultima_interacao?: string;
   createdAt: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;
