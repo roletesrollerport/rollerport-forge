@@ -16,16 +16,51 @@ export const ICMS_INTERESTADUAL_SP: Record<string, number> = {
 export const PIS_FIXO = 0.65;
 export const COFINS_FIXO = 3.00;
 
-export async function fetchCNPJ(cnpj: string) {
+export async function fetchCNPJ(cnpj: string): Promise<any | null> {
   const cleanCnpj = cnpj.replace(/\D/g, '');
   if (cleanCnpj.length !== 14) return null;
+
+  try {
+    const res = await fetch(`https://publica.cnpj.ws/cnpj/${cleanCnpj}`);
+    if (res.ok) {
+      const data = await res.json();
+      const est = data.estabelecimento || {};
+      
+      let ie = '';
+      if (est.inscricoes_estaduais && est.inscricoes_estaduais.length > 0) {
+        const ativoInfo = est.inscricoes_estaduais.find((i: any) => i.ativo);
+        ie = ativoInfo ? ativoInfo.inscricao_estadual : est.inscricoes_estaduais[0].inscricao_estadual;
+      }
+
+      return {
+        razao_social: data.razao_social,
+        logradouro: est.logradouro,
+        numero: est.numero,
+        complemento: est.complemento,
+        bairro: est.bairro,
+        municipio: est.cidade?.nome || '',
+        uf: est.estado?.sigla || '',
+        cep: est.cep,
+        ddd_telefone_1: est.ddd1 && est.telefone1 ? `${est.ddd1}${est.telefone1}` : '',
+        email: est.email,
+        inscricao_estadual: ie,
+        data_inicio_atividade: est.data_inicio_atividade,
+        opcao_pelo_simples: data.simples ? data.simples.simples === 'Sim' : false,
+        descricao_situacao_cadastral: est.situacao_cadastral ? est.situacao_cadastral.toUpperCase() : 'ATIVA'
+      };
+    }
+  } catch (err) {
+    console.error('Erro fabrica.cnpj.ws:', err);
+  }
+
+  // Fallback BrasilAPI
   try {
     const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`);
-    if (!res.ok) return null;
-    return await res.json();
+    if (res.ok) return await res.json();
   } catch (error) {
-    console.error('Erro ao buscar CNPJ:', error);
-    return null;
+    console.error('Erro BrasilAPI:', error);
   }
+  
+  return null;
 }
 

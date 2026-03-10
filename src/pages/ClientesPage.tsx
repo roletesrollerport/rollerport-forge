@@ -8,7 +8,7 @@ import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar
 import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { formatCPForCNPJ, formatTelefone } from '@/lib/formatters';
+import { formatCPForCNPJ, formatTelefone, formatDateBR } from '@/lib/formatters';
 import { fetchCNPJ } from '@/lib/utils';
 
 const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
@@ -337,7 +337,7 @@ export default function ClientesPage() {
                 <div><span className="text-muted-foreground">Cidade:</span> <strong>{viewCliente.cidade}/{viewCliente.estado}</strong></div>
                 <div><span className="text-muted-foreground">Telefone:</span> <strong>{viewCliente.telefone}</strong></div>
                 <div><span className="text-muted-foreground">Email:</span> <strong>{viewCliente.email}</strong></div>
-                <div><span className="text-muted-foreground">Aniv. Empresa:</span> <strong>{viewCliente.aniversarioEmpresa || '-'}</strong></div>
+                <div><span className="text-muted-foreground">Aniv. Empresa:</span> <strong>{formatDateBR(viewCliente.aniversarioEmpresa)}</strong></div>
                 <div><span className="text-muted-foreground">Redes (Empresa):</span> <strong>{viewCliente.redesSociais || '-'}</strong></div>
                 <div className="col-span-2"><span className="text-muted-foreground">Endereço:</span> <strong>{viewCliente.endereco} {viewCliente.bairro ? `- ${viewCliente.bairro}` : ''} {viewCliente.cep ? `(CEP: ${viewCliente.cep})` : ''}</strong></div>
               </div>
@@ -346,7 +346,7 @@ export default function ClientesPage() {
                 {(viewCliente.compradores || []).map((c, i) => (
                   <div key={i} className="bg-muted/20 rounded p-2 mb-1 text-xs">
                     <strong>{c.nome}</strong> • {c.telefone} • {c.email}
-                    {c.aniversario && ` • Aniv: ${c.aniversario}`}
+                    {c.aniversario && ` • Aniv: ${formatDateBR(c.aniversario)}`}
                     {c.redesSociais && ` • Redes: ${c.redesSociais}`}
                   </div>
                 ))}
@@ -359,7 +359,7 @@ export default function ClientesPage() {
       {/* GRID de Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filtered.map(c => {
-          const anivCompradores = (c.compradores || []).filter(comp => comp.aniversario).map(comp => `${comp.nome}: ${comp.aniversario}`);
+          const anivCompradores = (c.compradores || []).filter(comp => comp.aniversario).map(comp => `${comp.nome}: ${formatDateBR(comp.aniversario)}`);
           return (
             <div key={c.id} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
@@ -392,11 +392,11 @@ export default function ClientesPage() {
               <div className="mt-3 pt-3 border-t space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Último Orçamento:</span>
-                  <span className="font-medium">{getUltimoOrcamento(c.id)}</span>
+                  <span className="font-medium">{formatDateBR(getUltimoOrcamento(c.id))}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Última Compra:</span>
-                  <span className="font-medium">{getUltimaCompra(c.nome)}</span>
+                  <span className="font-medium">{formatDateBR(getUltimaCompra(c.nome))}</span>
                 </div>
               </div>
 
@@ -404,7 +404,7 @@ export default function ClientesPage() {
                 <div className="flex items-center gap-1.5">
                   <Cake className="h-3 w-3 text-primary flex-shrink-0" />
                   <span className="text-muted-foreground">Empresa:</span>
-                  <span className="font-medium">{c.aniversarioEmpresa || '-'}</span>
+                  <span className="font-medium">{formatDateBR(c.aniversarioEmpresa)}</span>
                 </div>
                 {anivCompradores.length > 0 && (
                   <div className="flex items-start gap-1.5">

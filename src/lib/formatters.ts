@@ -123,3 +123,14 @@ export const isValidCPForCNPJ = (value: string) => {
   }
   return isValidCNPJ(numericValue);
 };
+
+export const formatDateBR = (dateStr?: string) => {
+  if (!dateStr) return '-';
+  // Check if it's already YYYY-MM-DD
+  if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+};
