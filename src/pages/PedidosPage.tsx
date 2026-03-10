@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import logo from '@/assets/logo.png';
 
 const daysSince = (dateStr: string): number => {
@@ -167,6 +168,10 @@ export default function PedidosPage() {
   const [cancelTarget, setCancelTarget] = useState<Pedido | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
 
+  // Modals de Confirmação
+  const [confirmDeleteOrc, setConfirmDeleteOrc] = useState<string | null>(null);
+  const [confirmDeletePedido, setConfirmDeletePedido] = useState<string | null>(null);
+
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
 
@@ -216,7 +221,6 @@ export default function PedidosPage() {
   };
 
   const cancelarPedido = (pedido: Pedido) => {
-    if (!confirm(`Tem certeza que deseja cancelar o pedido ${pedido.numero}?`)) return;
     setCancelTarget(pedido);
     setCancelMotivo('');
     setCancelDialogOpen(true);
@@ -233,8 +237,8 @@ export default function PedidosPage() {
   };
 
   const deletePedido = (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este pedido?')) return;
     const updated = pedidos.filter(p => p.id !== id); store.savePedidos(updated); setPedidos(updated); toast.success('Pedido excluído!');
+    setConfirmDeletePedido(null);
   };
 
   const gerarOS = (pedido: Pedido) => {
@@ -395,7 +399,7 @@ export default function PedidosPage() {
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
                         <button onClick={() => gerarPedido(o)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar Pedido"><ShoppingCart className="h-4 w-4" /></button>
-                        <button onClick={() => { if (!confirm('Tem certeza que deseja excluir este orçamento?')) return; const updated = orcamentos.filter(x => x.id !== o.id); store.saveOrcamentos(updated); setOrcamentos(updated); toast.success('Orçamento excluído!'); }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={() => setConfirmDeleteOrc(o.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -448,7 +452,7 @@ export default function PedidosPage() {
                       {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-xs h-7">Concluir</Button>}
                       {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-xs h-7">Entregar</Button>}
                       <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
-                      <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => setConfirmDeletePedido(p.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -479,6 +483,29 @@ export default function PedidosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmações */}
+      <ConfirmDialog
+        open={!!confirmDeleteOrc}
+        onOpenChange={(open) => !open && setConfirmDeleteOrc(null)}
+        title="Excluir Orçamento"
+        description="Tem certeza que deseja excluir este orçamento?"
+        onConfirm={() => {
+          if (!confirmDeleteOrc) return;
+          const updated = orcamentos.filter(x => x.id !== confirmDeleteOrc);
+          store.saveOrcamentos(updated); setOrcamentos(updated);
+          toast.success('Orçamento excluído!');
+          setConfirmDeleteOrc(null);
+        }}
+      />
+      
+      <ConfirmDialog
+        open={!!confirmDeletePedido}
+        onOpenChange={(open) => !open && setConfirmDeletePedido(null)}
+        title="Excluir Pedido"
+        description="Tem certeza que deseja excluir permanentemente este pedido?"
+        onConfirm={() => confirmDeletePedido && deletePedido(confirmDeletePedido)}
+      />
     </div>
   );
 }

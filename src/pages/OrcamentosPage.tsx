@@ -13,6 +13,7 @@ import {
   FileText, Mail, Settings2 as SettingsIcon, Check, PlusCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import logo from '@/assets/logo.png';
 import logoFerreira from '@/assets/logo-ferreira.jpg';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
@@ -133,6 +134,10 @@ export default function OrcamentosPage() {
   const [viewOrc, setViewOrc] = useState<Orcamento | null>(null);
   const [editingOrc, setEditingOrc] = useState<Orcamento | null>(null);
   const [searchList, setSearchList] = useState('');
+
+  // Modals de Confirmação
+  const [confirmDeleteOrc, setConfirmDeleteOrc] = useState<string | null>(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<{id: string, isProd: boolean} | null>(null);
 
   // Categoria: cliente ou revenda
   const [categoriaOrc, setCategoriaOrc] = useState<'cliente' | 'revenda'>('cliente');
@@ -442,10 +447,10 @@ export default function OrcamentosPage() {
   };
 
   const deleteOrcamento = (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este orçamento?')) return;
     const updated = orcamentos.filter(o => o.id !== id);
     store.saveOrcamentos(updated); setOrcamentos(updated);
     toast.success('Orçamento removido!');
+    setConfirmDeleteOrc(null);
   };
 
   const convertToPedido = (orc: Orcamento) => {
@@ -1708,9 +1713,7 @@ export default function OrcamentosPage() {
                           }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Editar"><Edit className="h-4 w-4" /></button>
                           
                           <button onClick={() => {
-                            if (!confirm('Tem certeza que deseja remover este item?')) return;
-                            if ('isProd' in item && item.isProd) setItensProduto(itensProduto.filter(it => it.id !== item.id));
-                            else setItensRolete(itensRolete.filter(it => it.id !== item.id));
+                            setConfirmDeleteItem(item);
                           }} className="p-1 text-muted-foreground hover:text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </td>
@@ -1878,7 +1881,7 @@ export default function OrcamentosPage() {
                     <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
                     <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
                     <button onClick={() => convertToPedido(o)} className="p-1 rounded hover:bg-muted text-primary" title="Transformar em Pedido"><ShoppingCart className="h-4 w-4" /></button>
-                    <button onClick={() => deleteOrcamento(o.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => setConfirmDeleteOrc(o.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </td>
               </tr>
@@ -1889,6 +1892,27 @@ export default function OrcamentosPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Confirmações */}
+      <ConfirmDialog
+        open={!!confirmDeleteOrc}
+        onOpenChange={(open) => !open && setConfirmDeleteOrc(null)}
+        title="Excluir Orçamento"
+        description="Tem certeza que deseja excluir este orçamento permanentemente?"
+        onConfirm={() => confirmDeleteOrc && deleteOrcamento(confirmDeleteOrc)}
+      />
+      <ConfirmDialog
+        open={!!confirmDeleteItem}
+        onOpenChange={(open) => !open && setConfirmDeleteItem(null)}
+        title="Remover Item"
+        description="Deseja remover este item do orçamento?"
+        onConfirm={() => {
+          if (!confirmDeleteItem) return;
+          if ('isProd' in confirmDeleteItem && confirmDeleteItem.isProd) setItensProduto(itensProduto.filter(it => it.id !== confirmDeleteItem.id));
+          else setItensRolete(itensRolete.filter(it => it.id !== confirmDeleteItem.id));
+          setConfirmDeleteItem(null);
+        }}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
 
@@ -26,6 +27,7 @@ export default function ClientesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Cliente>(emptyCliente());
   const [viewCliente, setViewCliente] = useState<Cliente | null>(null);
+  const [confirmDeleteClient, setConfirmDeleteClient] = useState<string | null>(null);
 
   useEffect(() => {
     const load = () => {
@@ -76,7 +78,6 @@ export default function ClientesPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm(`Tem certeza que deseja excluir est${isRevenda ? 'a revenda' : 'e cliente'}?`)) return;
     if (isRevenda) {
       const updated = revendas.filter(c => c.id !== id);
       store.saveFornecedores(updated); setRevendas(updated);
@@ -85,6 +86,7 @@ export default function ClientesPage() {
       store.saveClientes(updated); setClientes(updated);
     }
     toast.success(`${isRevenda ? 'Revenda' : 'Cliente'} removido!`);
+    setConfirmDeleteClient(null);
   };
 
   const updateComprador = (idx: number, partial: Partial<Comprador>) => {
@@ -222,7 +224,7 @@ export default function ClientesPage() {
                 <div className="flex gap-1 ml-2 flex-shrink-0">
                   <button onClick={() => setViewCliente(c)} className="p-1 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5" /></button>
                   <button onClick={() => { setEditing({ ...c, compradores: c.compradores?.length ? c.compradores : [emptyComprador()] }); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => handleDelete(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setConfirmDeleteClient(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
 
@@ -286,6 +288,15 @@ export default function ClientesPage() {
           <div className="col-span-full text-center py-12 text-muted-foreground">Nenhum(a) {isRevenda ? 'revenda' : 'cliente'} encontrado(a).</div>
         )}
       </div>
+
+      {/* Confirmação */}
+      <ConfirmDialog
+        open={!!confirmDeleteClient}
+        onOpenChange={(open) => !open && setConfirmDeleteClient(null)}
+        title={`Excluir ${isRevenda ? 'Revenda' : 'Cliente'}`}
+        description={`Tem certeza que deseja excluir est${isRevenda ? 'a revenda' : 'e cliente'}?`}
+        onConfirm={() => confirmDeleteClient && handleDelete(confirmDeleteClient)}
+      />
     </div>
   );
 }

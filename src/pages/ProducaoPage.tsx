@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import logo from '@/assets/logo.png';
 
 const daysSince = (dateStr: string): number => {
@@ -32,6 +33,10 @@ export default function ProducaoPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
+  
+  // Modals de Confirmação
+  const [confirmDeleteOS, setConfirmDeleteOS] = useState<string | null>(null);
+
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
 
@@ -69,7 +74,10 @@ export default function ProducaoPage() {
     toast.success('O.S. cancelada. Pedido voltou para pendente.'); navigate('/pedidos');
   };
 
-  const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
+  const deleteOS = (id: string) => { 
+    saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); 
+    setConfirmDeleteOS(null);
+  };
 
   const openView = (os: OrdemServico) => { setCurrent(os); setView('view'); };
   const openEdit = (os: OrdemServico) => { setCurrent(os); setEditItems([...os.itens]); setView('edit'); };
@@ -353,7 +361,7 @@ export default function ProducaoPage() {
                       {os.status === 'ABERTA' && <button onClick={() => updateStatus(os.id, 'EM_ANDAMENTO')} className="p-1.5 rounded hover:bg-muted text-primary" title="Aprovar"><CheckCircle className="h-4 w-4" /></button>}
                       {os.status === 'EM_ANDAMENTO' && <button onClick={() => updateStatus(os.id, 'CONCLUIDA')} className="p-1.5 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-4 w-4" /></button>}
                       <button onClick={() => cancelarOS(os)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
-                      <button onClick={() => deleteOS(os.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => setConfirmDeleteOS(os.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -383,6 +391,15 @@ export default function ProducaoPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmações */}
+      <ConfirmDialog
+        open={!!confirmDeleteOS}
+        onOpenChange={(open) => !open && setConfirmDeleteOS(null)}
+        title="Excluir O.S."
+        description="Tem certeza que deseja excluir permanentemente esta O.S.?"
+        onConfirm={() => confirmDeleteOS && deleteOS(confirmDeleteOS)}
+      />
     </div>
   );
 }
