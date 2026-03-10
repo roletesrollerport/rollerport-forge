@@ -824,8 +824,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Traffic Light Colors Legend */}
-      <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2 mt-1 text-xs text-muted-foreground mr-1">
+      <div className="flex flex-wrap items-center justify-start gap-x-6 gap-y-2 mt-3 text-[11px] text-muted-foreground pl-1">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Interação Recente
         </div>
@@ -833,7 +832,7 @@ export default function DashboardPage() {
           <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span> Atenção
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Atrasado ou Desassistido
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Atrasado ou Crítico
         </div>
       </div>
 
