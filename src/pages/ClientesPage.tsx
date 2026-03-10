@@ -12,6 +12,7 @@ const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', wh
 const emptyCliente = (): Cliente => ({
   id: '', nome: '', cnpj: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
   compradores: [emptyComprador()], aniversarioEmpresa: '', redesSociais: '',
+  regimeTributario: 'Lucro Presumido',
   createdAt: new Date().toISOString().split('T')[0],
 });
 
@@ -75,6 +76,7 @@ export default function ClientesPage() {
   };
 
   const handleDelete = (id: string) => {
+    if (!confirm(`Tem certeza que deseja excluir est${isRevenda ? 'a revenda' : 'e cliente'}?`)) return;
     if (isRevenda) {
       const updated = revendas.filter(c => c.id !== id);
       store.saveFornecedores(updated); setRevendas(updated);

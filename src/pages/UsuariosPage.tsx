@@ -144,6 +144,7 @@ export default function UsuariosPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
     const u = usuarios.find(x => x.id === id);
     if (u?.nivel === 'master') { toast.error('Não é possível excluir o usuário Master!'); return; }
     await deleteUsuario(id);

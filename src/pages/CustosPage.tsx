@@ -187,11 +187,11 @@ export default function CustosPage() {
   const addRevestimento = (isSpiraflex: boolean) => { const id = 'new_' + crypto.randomUUID(); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : 'ABI-', valorMetroOuPeca: '' as any }]); setEditingId(id); };
   const addEncaixe = () => { const id = 'new_' + crypto.randomUUID(); setEncaixes([...encaixes, { id, tipo: '', preco: '' as any }]); setEditingId(id); };
 
-  const handleDeleteTubo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteTubo(id); setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); };
-  const handleDeleteEixo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEixo(id); setEixos(eixos.filter(e => e.id !== id)); toast.success('Removido!'); };
-  const handleDeleteConjunto = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteConjunto(id); setConjuntos(conjuntos.filter(c => c.id !== id)); toast.success('Removido!'); };
-  const handleDeleteRevestimento = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteRevestimento(id); setRevestimentos(revestimentos.filter(r => r.id !== id)); toast.success('Removido!'); };
-  const handleDeleteEncaixe = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEncaixe(id); setEncaixes(encaixes.filter(e => e.id !== id)); toast.success('Removido!'); };
+  const handleDeleteTubo = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este tubo do sistema de custos?')) return; if (!id.startsWith('new_')) await custos.deleteTubo(id); setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); };
+  const handleDeleteEixo = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este eixo do sistema de custos?')) return; if (!id.startsWith('new_')) await custos.deleteEixo(id); setEixos(eixos.filter(e => e.id !== id)); toast.success('Removido!'); };
+  const handleDeleteConjunto = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este conjunto do sistema de custos?')) return; if (!id.startsWith('new_')) await custos.deleteConjunto(id); setConjuntos(conjuntos.filter(c => c.id !== id)); toast.success('Removido!'); };
+  const handleDeleteRevestimento = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este revestimento do sistema de custos?')) return; if (!id.startsWith('new_')) await custos.deleteRevestimento(id); setRevestimentos(revestimentos.filter(r => r.id !== id)); toast.success('Removido!'); };
+  const handleDeleteEncaixe = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este encaixe do sistema de custos?')) return; if (!id.startsWith('new_')) await custos.deleteEncaixe(id); setEncaixes(encaixes.filter(e => e.id !== id)); toast.success('Removido!'); };
 
   const ActionButtons = ({ id, item, onDelete }: { id: string; item: any; onDelete: (id: string) => void }) => (
     <div className="flex gap-1">

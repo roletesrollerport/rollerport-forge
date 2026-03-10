@@ -442,6 +442,7 @@ export default function OrcamentosPage() {
   };
 
   const deleteOrcamento = (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este orçamento?')) return;
     const updated = orcamentos.filter(o => o.id !== id);
     store.saveOrcamentos(updated); setOrcamentos(updated);
     toast.success('Orçamento removido!');
@@ -1707,6 +1708,7 @@ export default function OrcamentosPage() {
                           }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Editar"><Edit className="h-4 w-4" /></button>
                           
                           <button onClick={() => {
+                            if (!confirm('Tem certeza que deseja remover este item?')) return;
                             if ('isProd' in item && item.isProd) setItensProduto(itensProduto.filter(it => it.id !== item.id));
                             else setItensRolete(itensRolete.filter(it => it.id !== item.id));
                           }} className="p-1 text-muted-foreground hover:text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>

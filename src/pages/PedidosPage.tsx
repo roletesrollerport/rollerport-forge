@@ -216,6 +216,7 @@ export default function PedidosPage() {
   };
 
   const cancelarPedido = (pedido: Pedido) => {
+    if (!confirm(`Tem certeza que deseja cancelar o pedido ${pedido.numero}?`)) return;
     setCancelTarget(pedido);
     setCancelMotivo('');
     setCancelDialogOpen(true);
@@ -232,6 +233,7 @@ export default function PedidosPage() {
   };
 
   const deletePedido = (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este pedido?')) return;
     const updated = pedidos.filter(p => p.id !== id); store.savePedidos(updated); setPedidos(updated); toast.success('Pedido excluído!');
   };
 
@@ -393,7 +395,7 @@ export default function PedidosPage() {
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
                         <button onClick={() => gerarPedido(o)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar Pedido"><ShoppingCart className="h-4 w-4" /></button>
-                        <button onClick={() => { const updated = orcamentos.filter(x => x.id !== o.id); store.saveOrcamentos(updated); setOrcamentos(updated); toast.success('Orçamento excluído!'); }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={() => { if (!confirm('Tem certeza que deseja excluir este orçamento?')) return; const updated = orcamentos.filter(x => x.id !== o.id); store.saveOrcamentos(updated); setOrcamentos(updated); toast.success('Orçamento excluído!'); }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
