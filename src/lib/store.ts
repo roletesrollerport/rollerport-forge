@@ -1,7 +1,7 @@
 import type {
   Tubo, Eixo, Conjunto, Revestimento, Encaixe,
   Cliente, Fornecedor, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
-  Notificacao, MetaVendedor, EmpresaEmissora
+  Notificacao, MetaVendedor, EmpresaEmissora, RegistroProspeccao
 } from './types';
 
 function load<T>(key: string, fallback: T): T {
@@ -301,6 +301,9 @@ export const store = {
 
   getFornecedores: (): Fornecedor[] => load('rp_fornecedores', []),
   saveFornecedores: (d: Fornecedor[]) => save('rp_fornecedores', d),
+
+  getProspeccoes: (): RegistroProspeccao[] => load('rp_prospeccoes', []),
+  saveProspeccoes: (d: RegistroProspeccao[]) => save('rp_prospeccoes', d),
 
   getProdutos: (): Produto[] => load('rp_produtos', SEED_PRODUTOS),
   saveProdutos: (d: Produto[]) => save('rp_produtos', d),

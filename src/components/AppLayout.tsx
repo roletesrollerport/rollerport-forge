@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw
+  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw, Target
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +21,7 @@ const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo 
   { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
   { to: '/produtos', label: 'Produtos', icon: Package, modulo: 'produtos' },
   { to: '/orcamentos', label: 'Orçamentos', icon: FileText, modulo: 'orcamentos' },
+  { to: '/prospeccao', label: 'Prospecção', icon: Target, modulo: 'prospeccao' },
   { to: '/pedidos', label: 'Pedidos', icon: ShoppingCart, modulo: 'pedidos' },
   { to: '/producao', label: 'Produção', icon: Factory, modulo: 'producao' },
   { to: '/estoque', label: 'Estoque', icon: Warehouse, modulo: 'estoque' },
@@ -131,7 +132,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
 
   const isMaster = currentUser.nivel === 'master';
-  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios'];
+  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','prospeccao','pedidos','producao','estoque','chat','ia','usuarios'];
   const userPerms = currentUser.permissoes?.ver || allModulos;
 
   const visibleNavItems = isMaster

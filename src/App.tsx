@@ -11,6 +11,7 @@ import CustosPage from "./pages/CustosPage";
 import ClientesPage from "./pages/ClientesPage";
 import ProdutosPage from "./pages/ProdutosPage";
 import OrcamentosPage from "./pages/OrcamentosPage";
+import ProspeccaoPage from "./pages/ProspeccaoPage";
 import PedidosPage from "./pages/PedidosPage";
 import ProducaoPage from "./pages/ProducaoPage";
 import EstoquePage from "./pages/EstoquePage";
@@ -162,6 +163,7 @@ function AppContent() {
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/produtos" element={<ProdutosPage />} />
           <Route path="/orcamentos" element={<OrcamentosPage />} />
+          <Route path="/prospeccao" element={<ProspeccaoPage />} />
           <Route path="/pedidos" element={<PedidosPage />} />
           <Route path="/producao" element={<ProducaoPage />} />
           <Route path="/estoque" element={<EstoquePage />} />
