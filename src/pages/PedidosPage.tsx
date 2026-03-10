@@ -24,7 +24,7 @@ const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos, setCurrentPedido, setView }: {
   pedido: Pedido; orcamentos: Orcamento[]; pedidos: Pedido[];
   setOrcamentos: (o: Orcamento[]) => void; setPedidos: (p: Pedido[]) => void;
-  setCurrentPedido: (p: Pedido) => void; setView: (v: 'list' | 'view' | 'print') => void;
+  setCurrentPedido: (p: Pedido) => void; setView: (v: 'list' | 'view' | 'edit' | 'print') => void;
 }) {
   const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
   const [editOrc, setEditOrc] = useState<Orcamento | null>(orc ? { ...orc, itensRolete: [...(orc.itensRolete || [])], itensProduto: [...(orc.itensProduto || [])] } : null);
@@ -141,6 +141,112 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
     </div>
   );
 }
+
+function PedidoReadView({ pedido, orcamentos, setView }: {
+  pedido: Pedido; orcamentos: Orcamento[];
+  setView: (v: 'list' | 'view' | 'edit' | 'print') => void;
+}) {
+  const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
+  const vendedorNome = (orc as any)?.vendedor || 'Não informado';
+  const condicaoPagamento = (orc as any)?.condicaoPagamento || 'Não informada';
+  const prazoPagamento = (orc as any)?.prazoPagamento || 'Não informado';
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+        <Button variant="outline" onClick={() => setView('print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
+        <Button onClick={() => setView('edit')} className="gap-2"><Edit className="h-4 w-4" /> Editar Pedido</Button>
+      </div>
+      <div className="bg-card border shadow-sm rounded-lg p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Pedido {pedido.numero}</h2>
+            <p className="text-muted-foreground text-sm">Orçamento de origem: {pedido.orcamentoNumero || '-'}</p>
+          </div>
+          <div>
+            <StatusProgressBar status={pedido.status} />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8 bg-muted/20 p-4 rounded-lg border border-muted">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Cliente</p>
+            <p className="font-medium">{pedido.clienteNome}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Data de Emissão</p>
+            <p className="font-medium">{pedido.createdAt}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Prazo de Entrega</p>
+            <p className="font-medium">{pedido.dataEntrega}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Vendedor</p>
+            <p className="font-medium">{vendedorNome}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Condição de Pagamento</p>
+            <p className="font-medium">{condicaoPagamento}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Prazo de Pagamento</p>
+            <p className="font-medium">{prazoPagamento}</p>
+          </div>
+        </div>
+
+        {orc && (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted text-muted-foreground uppercase text-xs">
+                  <th className="font-semibold text-left p-3 w-12">#</th>
+                  <th className="font-semibold text-left p-3">Descrição do Item</th>
+                  <th className="font-semibold text-center p-3 w-20">Qtd</th>
+                  <th className="font-semibold text-right p-3 w-32">Vlr. Unit</th>
+                  <th className="font-semibold text-right p-3 w-32">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {(orc.itensRolete || []).map((item, i) => (
+                  <tr key={`r-${i}`} className="hover:bg-muted/30">
+                    <td className="p-3 text-center">{i + 1}</td>
+                    <td className="p-3">
+                      <p className="font-medium">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo}</p>
+                      <p className="text-xs text-muted-foreground">Tubo: {item.comprimentoTubo}mm | Eixo: ø{item.diametroEixo} {item.comprimentoEixo}mm | Enc: {item.tipoEncaixe} {item.medidaFresado || ''} | Rev: {item.especificacaoRevestimento || '-'}</p>
+                    </td>
+                    <td className="p-3 text-center font-medium">{item.quantidade}</td>
+                    <td className="p-3 text-right">{fmt(item.valorPorPeca)}</td>
+                    <td className="p-3 text-right font-medium">{fmt(item.valorTotal)}</td>
+                  </tr>
+                ))}
+                {(orc.itensProduto || []).map((item, i) => (
+                  <tr key={`p-${i}`} className="hover:bg-muted/30">
+                    <td className="p-3 text-center">{(orc.itensRolete?.length || 0) + i + 1}</td>
+                    <td className="p-3">
+                      <p className="font-medium">{item.produtoNome}</p>
+                      {(item as any).medidas && <p className="text-xs text-muted-foreground">{(item as any).medidas}</p>}
+                    </td>
+                    <td className="p-3 text-center font-medium">{item.quantidade}</td>
+                    <td className="p-3 text-right">{fmt(item.valorUnitario)}</td>
+                    <td className="p-3 text-right font-medium">{fmt(item.valorTotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-muted/20 border-t">
+                <tr>
+                  <td colSpan={4} className="p-4 text-right font-bold text-muted-foreground">VALOR TOTAL DO PEDIDO:</td>
+                  <td className="p-4 text-right font-bold text-lg text-primary">{fmt(pedido.valorTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 const statusProgress: Record<string, number> = {
   'PENDENTE': 20, 'CONFIRMADO': 40, 'EM_PRODUCAO': 60, 'CONCLUIDO': 80, 'ENTREGUE': 100,
 };
@@ -155,7 +261,7 @@ function StatusProgressBar({ status }: { status: string }) {
   );
 }
 
-type View = 'list' | 'view' | 'print';
+type View = 'list' | 'view' | 'edit' | 'print';
 
 export default function PedidosPage() {
   const navigate = useNavigate();
@@ -354,8 +460,13 @@ export default function PedidosPage() {
     );
   }
 
-  // ========== VIEW (editable) ==========
+  // ========== VIEW (read-only modern) ==========
   if (view === 'view' && currentPedido) {
+    return <PedidoReadView pedido={currentPedido} orcamentos={orcamentos} setView={setView} />;
+  }
+
+  // ========== EDIT ==========
+  if (view === 'edit' && currentPedido) {
     return <PedidoEditView pedido={currentPedido} orcamentos={orcamentos} pedidos={pedidos}
       setOrcamentos={setOrcamentos} setPedidos={setPedidos} setCurrentPedido={setCurrentPedido}
       setView={setView} />;
@@ -445,8 +556,8 @@ export default function PedidosPage() {
                   <td className="p-3 text-right font-mono">{fmt(p.valorTotal)}</td>
                   <td className="p-3">
                     <div className="flex gap-1 justify-end">
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded hover:bg-muted" title="Ver Pedido"><Eye className="h-4 w-4" /></button>
+                      <button onClick={() => { setCurrentPedido(p); setView('edit'); }} className="p-1.5 rounded hover:bg-muted" title="Editar Itens"><Edit className="h-4 w-4" /></button>
                       <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
                       {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-4 w-4" /></button>}
                       {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-xs h-7">Concluir</Button>}
