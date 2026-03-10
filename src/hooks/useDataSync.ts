@@ -37,10 +37,6 @@ async function pushToDb(key: string) {
   const config = SYNC_MAP[key];
   if (!config) return;
 
-  // For usuarios, we skip background push to avoid overwriting with plain text passwords.
-  // User creation/updates happen via edge functions in useUsuarios.
-  if (key === 'rp_usuarios') return;
-
   const localData = getLocalData(key);
   
   // NEVER push empty data to DB - this would erase real data

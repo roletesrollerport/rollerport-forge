@@ -81,6 +81,15 @@ function AppContent() {
     const updateLastSeen = () => {
       supabase.functions.invoke('chat-api', {
         body: { action: 'heartbeat', sessionToken },
+      }).then(({ data, error }) => {
+        if (error || data?.error === 'Invalid or expired session') {
+          // Session expired on server — force logout
+          localStorage.removeItem('rp_logged_user');
+          localStorage.removeItem('rp_session_token');
+          setLoggedUserId(null);
+          setSessionToken(null);
+          setCurrentUser(null);
+        }
       }).catch(() => {});
     };
     updateLastSeen();
