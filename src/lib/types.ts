@@ -15,6 +15,10 @@ export interface RegistroProspeccao {
   checkWhatsapp: boolean;
   checkEmail: boolean;
   
+  // Exclusividade / Trava
+  emAtendimentoPor?: string; // ID do Usuário
+  emAtendimentoDesde?: string; // ISO String
+  
   numeroInteracoes: number;
   dataUltimaInteracao: string; // ISO String (para calcular os 30 dias de ociosidade)
   createdAt: string;
