@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe, RegimeTributario, EmpresaEmissora } from '@/lib/types';
 import { useCustos } from '@/hooks/useCustos';
@@ -48,12 +49,12 @@ function getAlíquotas(origem: RegimeTributario, destino: RegimeTributario, ufCl
 }
 
 function calcItem(
-  item: ItemOrcamento, 
-  tubos: Tubo[], 
-  eixos: Eixo[], 
-  conjuntos: Conjunto[], 
-  revestimentos: Revestimento[], 
-  encaixes: Encaixe[], 
+  item: ItemOrcamento,
+  tubos: Tubo[],
+  eixos: Eixo[],
+  conjuntos: Conjunto[],
+  revestimentos: Revestimento[],
+  encaixes: Encaixe[],
   ufCliente: string = 'SP',
   regimeOrigem: RegimeTributario = 'Simples Nacional',
   regimeDestino: RegimeTributario = 'Lucro Presumido'
@@ -97,7 +98,7 @@ function calcItem(
   const custo = custoTubo + custoEixo + custoConj + custoEnc + custoRev;
   const multiplicador = item.multiplicador || 1.8;
   const desconto = item.desconto || 0;
-  
+
   // O valor total é o preço final de venda. Os impostos são destacados "por dentro".
   const valorPorPeca = custo * multiplicador * (1 - desconto / 100);
   const valorTotal = valorPorPeca * item.quantidade;
@@ -111,10 +112,10 @@ function calcItem(
   const valorICMS = valorTotal * (aliqICMS / 100);
   const valorIPI = valorTotal * (aliqIPI / 100);
 
-  return { 
-    ...item, 
-    custo: +custo.toFixed(2), 
-    valorPorPeca: +valorPorPeca.toFixed(2), 
+  return {
+    ...item,
+    custo: +custo.toFixed(2),
+    valorPorPeca: +valorPorPeca.toFixed(2),
     valorTotal: +valorTotal.toFixed(2),
     aliqPIS, aliqCOFINS, aliqICMS, aliqIPI,
     valorPIS: +valorPIS.toFixed(2),
@@ -137,7 +138,7 @@ export default function OrcamentosPage() {
 
   // Modals de Confirmação
   const [confirmDeleteOrc, setConfirmDeleteOrc] = useState<string | null>(null);
-  const [confirmDeleteItem, setConfirmDeleteItem] = useState<{id: string, isProd: boolean} | null>(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<{ id: string, isProd: boolean } | null>(null);
 
   // Categoria: cliente ou revenda
   const [categoriaOrc, setCategoriaOrc] = useState<'cliente' | 'revenda'>('cliente');
@@ -248,9 +249,9 @@ export default function OrcamentosPage() {
 
   // Orçamentos do cliente selecionado (ordenados por data, mais recente primeiro)
   const clienteOrcamentos = clienteId
-    ? orcamentos.filter(o => o.clienteId === clienteId).sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
+    ? orcamentos.filter(o => o.clienteId === clienteId).sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
     : [];
 
   const filteredProdutos = produtos.filter(p =>
@@ -294,7 +295,7 @@ export default function OrcamentosPage() {
           setView('form');
         }
       }
-    } catch {}
+    } catch { }
   }, []);
 
   // Autosave draft to localStorage on every change when in form view
@@ -354,6 +355,16 @@ export default function OrcamentosPage() {
 
   const openNew = () => { resetForm(); setView('form'); };
 
+  // Auto-open new form when navigated with ?new=1 (e.g. from Dashboard)
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      openNew();
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
+
   const openEdit = (orc: Orcamento) => {
     setEditingOrc(orc);
     setClienteId(orc.clienteId); setClienteSearch(orc.clienteNome);
@@ -409,7 +420,7 @@ export default function OrcamentosPage() {
     setPrazoPagamento((orc as any).prazoPagamento || '');
     setEditingOrc(null); // Não é edição, é novo
     setShowClienteHistory(false);
-    
+
     toast.success(`Orçamento ${orc.numero} clonado com preços atualizados!`);
   };
 
@@ -520,7 +531,7 @@ export default function OrcamentosPage() {
     const empRegime = empresas.find(e => e.id === empresaEmissoraId)?.regimeTributario || 'Simples Nacional';
 
     const calculated = calcItem(
-      { ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete }, 
+      { ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete },
       tubos, eixos, conjuntos, revestimentos, encaixes, cliUF, empRegime, cliRegime
     );
     setItensRolete([...itensRolete, calculated]);
@@ -674,9 +685,9 @@ export default function OrcamentosPage() {
       const aliqPIS = ip.aliqPIS !== undefined ? ip.aliqPIS : (taxaPIS * 100);
       const aliqCOFINS = ip.aliqCOFINS !== undefined ? ip.aliqCOFINS : (taxaCOFINS * 100);
       const aliqICMS = ip.aliqICMS !== undefined ? ip.aliqICMS : (taxaICMSOrig * 100);
-      
+
       const aliqIPI = ip.aliqIPI !== undefined ? ip.aliqIPI : 0;
-      
+
       const valorPISTotal = ip.valorPIS !== undefined ? ip.valorPIS : +((ip.valorUnitario * ip.quantidade) * (aliqPIS / 100)).toFixed(2);
       const valorCOFINSTotal = ip.valorCOFINS !== undefined ? ip.valorCOFINS : +((ip.valorUnitario * ip.quantidade) * (aliqCOFINS / 100)).toFixed(2);
       const valorICMSTotal = ip.valorICMS !== undefined ? ip.valorICMS : +((ip.valorUnitario * ip.quantidade) * (aliqICMS / 100)).toFixed(2);
@@ -706,9 +717,9 @@ export default function OrcamentosPage() {
       const aliqPIS = ir.aliqPIS !== undefined ? ir.aliqPIS : (taxaPIS * 100);
       const aliqCOFINS = ir.aliqCOFINS !== undefined ? ir.aliqCOFINS : (taxaCOFINS * 100);
       const aliqICMS = ir.aliqICMS !== undefined ? ir.aliqICMS : (taxaICMSOrig * 100);
-      
+
       const aliqIPI = ir.aliqIPI !== undefined ? ir.aliqIPI : 0;
-      
+
       const valorPISTotal = ir.valorPIS !== undefined ? ir.valorPIS : +((ir.valorPorPeca * ir.quantidade) * (aliqPIS / 100)).toFixed(2);
       const valorCOFINSTotal = ir.valorCOFINS !== undefined ? ir.valorCOFINS : +((ir.valorPorPeca * ir.quantidade) * (aliqCOFINS / 100)).toFixed(2);
       const valorICMSTotal = ir.valorICMS !== undefined ? ir.valorICMS : +((ir.valorPorPeca * ir.quantidade) * (aliqICMS / 100)).toFixed(2);
@@ -761,9 +772,9 @@ export default function OrcamentosPage() {
           <Button variant="outline" onClick={() => window.print()} className="gap-2">
             <FileText className="h-4 w-4" /> Gerar PDF
           </Button>
-          <Button 
-            variant={showTecnico ? "default" : "outline"} 
-            onClick={() => setShowTecnico(!showTecnico)} 
+          <Button
+            variant={showTecnico ? "default" : "outline"}
+            onClick={() => setShowTecnico(!showTecnico)}
             className="gap-2"
           >
             <SettingsIcon className="h-4 w-4" /> Orçamento Técnico
@@ -801,7 +812,7 @@ export default function OrcamentosPage() {
               </div>
               <div className="flex flex-col items-center ml-2">
                 <img src={qrcode} alt="QR Code" className="h-14 w-14 object-contain" />
-                <p className="text-[7px] text-gray-500 mt-0.5 text-center leading-tight">Aponte a câmera<br/>para nossas redes</p>
+                <p className="text-[7px] text-gray-500 mt-0.5 text-center leading-tight">Aponte a câmera<br />para nossas redes</p>
               </div>
             </div>
             {cli && (
@@ -846,14 +857,14 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center whitespace-nowrap" style={{ width: '48px' }} rowSpan={2}>CÓD. CLI.</th>
                 <th className="border p-1 text-left" rowSpan={2}>DESCRIÇÃO</th>
                 <th className="border p-1 text-center whitespace-nowrap" style={{ width: '38px' }} rowSpan={2}>QTD</th>
-                <th className="border p-1 text-right whitespace-nowrap" rowSpan={2}>VLR UNIT.<br/>(SEM IMP)</th>
-                <th className="border p-1 text-center whitespace-nowrap" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
+                <th className="border p-1 text-right whitespace-nowrap" rowSpan={2}>VLR UNIT.<br />(SEM IMP)</th>
+                <th className="border p-1 text-center whitespace-nowrap" rowSpan={2}>VLR TOTAL<br />(SEM IMP)</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>PIS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS ORIGEM</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS DEST.</th>
                 <th className="border p-1 text-center whitespace-nowrap" rowSpan={2}>IPI</th>
-                <th className="border p-1 text-right whitespace-nowrap bg-green-200" rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
+                <th className="border p-1 text-right whitespace-nowrap bg-green-200" rowSpan={2}>VLR TOTAL<br />COM IMPOS.</th>
               </tr>
               <tr className="bg-gray-100 text-[6px] uppercase font-bold">
                 <th className="border p-1 text-center whitespace-nowrap">ALÍQ.</th>
@@ -877,19 +888,19 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
                   <td className="border p-1 text-center whitespace-nowrap">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
-                  
+
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqPIS.toFixed(2)}%</td>
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorPIS)}</td>
-                  
+
                   <td className="border p-1 text-center whitespace-nowrap">{row.aliqCOFINS.toFixed(2)}%</td>
                   <td className="border p-1 text-center whitespace-nowrap font-medium">{fmt(row.valorCOFINS)}</td>
-                  
+
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqICMS.toFixed(2)}%</td>
                   <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorICMS)}</td>
 
                   <td className="border p-1 text-center whitespace-nowrap">{Number(0).toFixed(2)}%</td>
                   <td className="border p-1 text-center whitespace-nowrap font-medium">{fmt(0)}</td>
-                  
+
                   <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorIPI)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold bg-green-100">{fmt(row.valorTotalComImpostos)}</td>
                 </tr>
@@ -970,7 +981,7 @@ export default function OrcamentosPage() {
               <div className="flex justify-between items-center mb-3">
                 <div className="w-10"></div>
                 <h3 className="text-center font-bold text-xs">ESPECIFICAÇÕES TÉCNICAS GERAIS DO ROLO</h3>
-                <button 
+                <button
                   onClick={() => setTecnicoData([...tecnicoData, 'Nova especificação...'])}
                   className="print:hidden text-primary hover:text-primary/80 transition-colors"
                   title="Adicionar linha"
@@ -978,7 +989,7 @@ export default function OrcamentosPage() {
                   <PlusCircle className="h-4 w-4" />
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 gap-y-1.5">
                 {tecnicoData.map((content, idx) => {
                   // Color highlighting logic
@@ -996,7 +1007,7 @@ export default function OrcamentosPage() {
                   for (const color of colors) {
                     if (content.toLowerCase().includes(color.name)) {
                       const parts = content.split(new RegExp(`(${color.name}[a-z]*)`, 'gi'));
-                      displayContent = parts.map((p, i) => 
+                      displayContent = parts.map((p, i) =>
                         p.toLowerCase().includes(color.name) ? <span key={i} className={`${color.class} font-bold`}>{p}</span> : p
                       );
                       break;
@@ -1010,25 +1021,25 @@ export default function OrcamentosPage() {
                         <span className="hidden print:inline font-bold underline">{displayContent}</span>
                       </p>
                       <div className="print:hidden flex items-center gap-1 mt-0.5">
-                        <input 
-                          type="text" 
-                          className="h-5 px-2 border rounded text-[9px] bg-blue-50/20 w-full focus:bg-white focus:ring-1 focus:ring-primary outline-none transition-all" 
-                          value={content} 
+                        <input
+                          type="text"
+                          className="h-5 px-2 border rounded text-[9px] bg-blue-50/20 w-full focus:bg-white focus:ring-1 focus:ring-primary outline-none transition-all"
+                          value={content}
                           onChange={e => {
                             const newData = [...tecnicoData];
                             newData[idx] = e.target.value;
                             setTecnicoData(newData);
                           }}
                         />
-                        <button 
-                          className="text-success p-0.5 hover:bg-success/10 rounded" 
+                        <button
+                          className="text-success p-0.5 hover:bg-success/10 rounded"
                           title="Confirmar"
                         >
                           <Check className="h-3.5 w-3.5" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => setTecnicoData(tecnicoData.filter((_, i) => i !== idx))}
-                          className="text-destructive p-0.5 hover:bg-destructive/10 rounded opacity-0 group-hover:opacity-100 transition-opacity" 
+                          className="text-destructive p-0.5 hover:bg-destructive/10 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                           title="Remover linha"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1193,12 +1204,11 @@ export default function OrcamentosPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm font-medium">{clienteOrcamentos[0].numero}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        clienteOrcamentos[0].status === 'APROVADO' ? 'bg-success/10 text-success' :
-                        clienteOrcamentos[0].status === 'ENVIADO' ? 'bg-info/10 text-info' :
-                        clienteOrcamentos[0].status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
-                        'bg-muted text-muted-foreground'
-                      }`}>{clienteOrcamentos[0].status}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${clienteOrcamentos[0].status === 'APROVADO' ? 'bg-success/10 text-success' :
+                          clienteOrcamentos[0].status === 'ENVIADO' ? 'bg-info/10 text-info' :
+                            clienteOrcamentos[0].status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
+                              'bg-muted text-muted-foreground'
+                        }`}>{clienteOrcamentos[0].status}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {clienteOrcamentos[0].dataOrcamento || clienteOrcamentos[0].createdAt} • {fmt(clienteOrcamentos[0].valorTotal)} • {(clienteOrcamentos[0].itensRolete?.length || 0) + (clienteOrcamentos[0].itensProduto?.length || 0)} itens
@@ -1441,8 +1451,8 @@ export default function OrcamentosPage() {
                 <span className="text-xs text-primary">Impostos (Destaque)</span><br />
                 <span className="text-[10px] text-muted-foreground">
                   {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) +
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) +
                     (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0)
                   )) / 100)}
                 </span>
@@ -1452,8 +1462,8 @@ export default function OrcamentosPage() {
                 <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
                 <strong className="text-primary">
                   {fmt((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (1 - (
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) +
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) +
                     (ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0)
                   ) / 100))}
                 </strong>
@@ -1494,18 +1504,18 @@ export default function OrcamentosPage() {
                 <select value={roleteItem.diametroTubo || ''} onChange={e => updateRoleteField({ diametroTubo: +e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                        {diametrosTubo.map((d: any) => (
-                          <option key={`tubo-diam-${d}`} value={d}>{d}</option>
-                        ))}</select>
+                  {diametrosTubo.map((d: any) => (
+                    <option key={`tubo-diam-${d}`} value={d}>{d}</option>
+                  ))}</select>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Parede do Tubo</label>
                 <select value={roleteItem.paredeTubo || ''} onChange={e => updateRoleteField({ paredeTubo: +e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                        {paredesTubo(roleteItem.diametroTubo as number).map((p: any) => (
-                          <option key={`tubo-par-${p}`} value={p}>{p}</option>
-                        ))}</select>
+                  {paredesTubo(roleteItem.diametroTubo as number).map((p: any) => (
+                    <option key={`tubo-par-${p}`} value={p}>{p}</option>
+                  ))}</select>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Tubo (mm)</label>
@@ -1539,7 +1549,7 @@ export default function OrcamentosPage() {
               </div>
               {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
                 <div>
-                   <label className="text-xs text-primary font-medium">Medida do Encaixe</label>
+                  <label className="text-xs text-primary font-medium">Medida do Encaixe</label>
                   <Input placeholder="Medida do encaixe" value={roleteItem.medidaFresado} onChange={e => updateRoleteField({ medidaFresado: e.target.value })} />
                 </div>
               )}
@@ -1621,8 +1631,8 @@ export default function OrcamentosPage() {
               <div>
                 <span className="text-[10px] text-muted-foreground">
                   {fmt((roleteItem.valorTotal * (
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) +
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) +
                     (roleteItem.aliqICMS || 0)
                   )) / 100)}
                 </span>
@@ -1632,8 +1642,8 @@ export default function OrcamentosPage() {
                 <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
                 <strong className="text-primary">
                   {fmt(roleteItem.valorTotal * (1 - (
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) + 
-                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) + 
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? PIS_FIXO : 0) +
+                    (store.getEmpresas().find(e => e.id === empresaEmissoraId)?.regimeTributario === 'Lucro Presumido' ? COFINS_FIXO : 0) +
                     (roleteItem.aliqICMS || 0)
                   ) / 100))}
                 </strong>
@@ -1698,12 +1708,12 @@ export default function OrcamentosPage() {
                               setRoleteItem(item as any); setCodigoRolete((item as any).codigoProduto || ''); setShowRoleteForm(true);
                             }
                           }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Ver"><Eye className="h-4 w-4" /></button>
-                          
+
                           <button onClick={() => {
                             if ('isProd' in item && item.isProd) {
                               const prod = produtos.find(p => p.id === (item as any).produtoId);
-                              if (prod) { 
-                                setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); 
+                              if (prod) {
+                                setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0);
                                 setItensProduto(itensProduto.filter(it => it.id !== item.id));
                               }
                             } else {
@@ -1711,7 +1721,7 @@ export default function OrcamentosPage() {
                               setItensRolete(itensRolete.filter(it => it.id !== item.id));
                             }
                           }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Editar"><Edit className="h-4 w-4" /></button>
-                          
+
                           <button onClick={() => {
                             setConfirmDeleteItem(item);
                           }} className="p-1 text-muted-foreground hover:text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>
@@ -1867,13 +1877,12 @@ export default function OrcamentosPage() {
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.dataOrcamento || o.createdAt}</td>
                 <td className="p-3 text-right font-mono font-medium">{fmt(o.valorTotal)}</td>
                 <td className="p-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    o.status === 'APROVADO' ? 'bg-success/10 text-success' :
-                    o.status === 'ENVIADO' ? 'bg-info/10 text-info' :
-                    o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
-                    o.status === 'AGUARDANDO' ? 'bg-secondary/10 text-secondary' :
-                    'bg-muted text-muted-foreground'
-                  }`}>{o.status}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' :
+                      o.status === 'ENVIADO' ? 'bg-info/10 text-info' :
+                        o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
+                          o.status === 'AGUARDANDO' ? 'bg-secondary/10 text-secondary' :
+                            'bg-muted text-muted-foreground'
+                    }`}>{o.status}</span>
                 </td>
                 <td className="p-3">
                   <div className="flex items-center gap-1">
