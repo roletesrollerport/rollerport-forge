@@ -484,7 +484,7 @@ export default function OrcamentosPage() {
   const totalGeral = totalRoletes + totalProdutos;
   const totalItens = itensRolete.length + itensProduto.length;
 
-  const handleSave = () => {
+  const handleSave = (isDraft: boolean = true) => {
     const orc: Orcamento = {
       id: editingOrc?.id || store.nextId('orc'),
       numero: editingOrc?.numero || store.nextNumero('orc'),
@@ -494,7 +494,7 @@ export default function OrcamentosPage() {
       previsaoEntrega, observacao,
       dataEntrega: previsaoEntrega,
       itensRolete, itensProduto,
-      status: editingOrc?.status || 'RASCUNHO',
+      status: isDraft ? 'RASCUNHO' : (editingOrc?.status === 'RASCUNHO' ? 'ENVIADO' : (editingOrc?.status || 'ENVIADO')),
       empresaEmissoraId,
       valorTotal: +totalGeral.toFixed(2),
       createdAt: editingOrc?.createdAt || new Date().toISOString().split('T')[0],
@@ -509,7 +509,7 @@ export default function OrcamentosPage() {
     setOrcamentos(updated);
     setView('list');
     resetForm();
-    toast.success(`Orçamento ${orc.numero} salvo!`);
+    toast.success(isDraft ? `Orçamento ${orc.numero} salvo como rascunho!` : `Orçamento ${orc.numero} finalizado!`);
   };
 
   const deleteOrcamento = (id: string) => {
@@ -1822,8 +1822,13 @@ export default function OrcamentosPage() {
 
         {/* Save */}
         <div className="flex gap-2 mt-4">
-          <Button onClick={handleSave} className="gap-2">Salvar Orçamento</Button>
-          <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+          <Button onClick={() => handleSave(true)} variant="outline" className="gap-2 border-primary text-primary hover:bg-primary/10">
+            <SettingsIcon className="h-4 w-4" /> Salvar Rascunho
+          </Button>
+          <Button onClick={() => handleSave(false)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Check className="h-4 w-4" /> Salvar e Finalizar
+          </Button>
+          <Button variant="ghost" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
         </div>
 
         {/* ===== Quick register modals ===== */}
@@ -1968,7 +1973,8 @@ export default function OrcamentosPage() {
                       o.status === 'ENVIADO' ? 'bg-info/10 text-info' :
                         o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' :
                           o.status === 'AGUARDANDO' ? 'bg-secondary/10 text-secondary' :
-                            'bg-muted text-muted-foreground'
+                            o.status === 'RASCUNHO' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                              'bg-muted text-muted-foreground'
                     }`}>{o.status}</span>
                 </td>
                 <td className="p-3">
@@ -1976,6 +1982,9 @@ export default function OrcamentosPage() {
                     <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Visualizar"><Eye className="h-4 w-4" /></button>
                     <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
                     <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
+                    {o.status === 'RASCUNHO' && (
+                      <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-success/20 text-success" title="Conferir e Finalizar"><Check className="h-4 w-4" /></button>
+                    )}
                     <button onClick={() => convertToPedido(o)} className="p-1 rounded hover:bg-muted text-primary" title="Transformar em Pedido"><ShoppingCart className="h-4 w-4" /></button>
                     <button onClick={() => setConfirmDeleteOrc(o.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                   </div>
