@@ -120,6 +120,28 @@ export default function UsuariosPage() {
 
     setSaving(true);
     try {
+      let fotoUrl = editing.foto;
+
+      // If foto is base64, upload to storage first
+      if (fotoUrl && fotoUrl.startsWith('data:image')) {
+        const sessionToken = localStorage.getItem('rp_session_token');
+        const matches = fotoUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches && sessionToken) {
+          const { data, error } = await supabase.functions.invoke('avatar-api', {
+            body: {
+              action: 'upload_avatar',
+              sessionToken,
+              userId: editing.id || crypto.randomUUID(),
+              file_base64: matches[2],
+              content_type: matches[1],
+            },
+          });
+          if (!error && data?.url) {
+            fotoUrl = data.url;
+          }
+        }
+      }
+
       await saveUsuario({
         id: editing.id || undefined,
         nome: editing.nome,
@@ -131,7 +153,7 @@ export default function UsuariosPage() {
         nivel: editing.nivel,
         genero: editing.genero,
         ativo: editing.ativo,
-        foto: editing.foto,
+        foto: fotoUrl,
         permissoes: perms,
       });
       setOpen(false);
