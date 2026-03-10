@@ -79,6 +79,7 @@ export interface Cliente {
   regimeTributario: RegimeTributario;
   aniversarioEmpresa?: string;
   redesSociais?: string;
+  usuarioCriador?: string;
   createdAt: string;
 }
 

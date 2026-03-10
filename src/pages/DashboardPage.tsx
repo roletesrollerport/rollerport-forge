@@ -43,20 +43,20 @@ function StatusChip({ label, count, colorClass, onClick }: { label: string; coun
 /* ------------------------------------------------------------------ */
 /*  Top-level stat card (Orçamentos / Pedidos / Clientes / O.S.)       */
 /* ------------------------------------------------------------------ */
-function StatCard({ 
-  icon: Icon, 
-  label, 
-  value, 
-  color, 
-  onClick, 
-  items, 
-  onViewAll 
-}: { 
-  icon: any; 
-  label: string; 
-  value: string | number; 
-  color: string; 
-  onClick?: () => void; 
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  onClick,
+  items,
+  onViewAll
+}: {
+  icon: any;
+  label: string;
+  value: string | number;
+  color: string;
+  onClick?: () => void;
   items?: { id: string, label: string, user: string }[];
   onViewAll?: () => void;
 }) {
@@ -86,9 +86,9 @@ function StatCard({
         )}
       </CardContent>
       <CardFooter className="pt-0">
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="w-full h-8 text-xs text-muted-foreground hover:bg-red-600 hover:text-white transition-colors"
           onClick={(e) => {
             e.stopPropagation();
@@ -166,7 +166,7 @@ export default function DashboardPage() {
 
       // Set direct from DB (DO NOT FALLBACK TO LOCAL STORAGE SEEDS unless strictly empty!)
       const parsedCliData = cliData.length > 0 ? cliData : (store.getClientes().length > 0 ? store.getClientes() : []);
-      
+
       setData({
         orcamentos: orcData,
         pedidos: pedData,
@@ -309,23 +309,23 @@ export default function DashboardPage() {
     let updated;
     if (existing) { updated = metas.map(m => m.vendedor === vendedorNome ? { ...m, metaMensal: valor } : m); }
     else { updated = [...metas, { vendedor: vendedorNome, metaMensal: valor }]; }
-    
+
     // Update UI immediately
-    setMetas(updated); 
+    setMetas(updated);
     setEditingMeta(null);
-    
+
     // Suppress realtime reload to prevent reverting
     suppressReloadRef.current = true;
-    
+
     // Write directly to Supabase (skip localStorage middleman)
     const metaData = { vendedor: vendedorNome, metaMensal: valor };
     await supabase
       .from('metas_vendedores')
       .upsert({ vendedor: vendedorNome, data: metaData, updated_at: new Date().toISOString() } as any, { onConflict: 'vendedor' });
-    
+
     // Also update localStorage for consistency
     store.saveMetas(updated);
-    
+
     // Allow reloads again after a delay
     setTimeout(() => { suppressReloadRef.current = false; }, 3000);
     toast.success('Meta salva!');
@@ -602,38 +602,38 @@ export default function DashboardPage() {
             <div className="text-xs space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground font-medium">Meta do Mês</span>
-          {isMaster && editingMeta?.vendedor === usuario.nome ? (
-                <div className="flex items-center gap-1">
-                  <Input 
-                    type="text" 
-                    inputMode="numeric"
-                    className="h-6 w-28 text-xs px-1" 
-                    value={formatCurrencyInput(editingMeta.valor)} 
-                    onChange={e => {
-                      const raw = e.target.value.replace(/\D/g, '');
-                      const cents = parseInt(raw || '0', 10);
-                      setEditingMeta({ ...editingMeta, valor: cents / 100 });
-                    }} 
-                    autoFocus 
-                  />
-                  <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <strong>{meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}</strong>
-                  {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3.5 w-3.5" /></button>}
-                </div>
-              )}
-            </div>
-            {meta && meta.metaMensal > 0 && (
-              <>
-                <div className="flex items-center gap-2">
-                  <Progress value={metaPct} className="h-2 flex-1" />
-                  <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
-              </>
+                {isMaster && editingMeta?.vendedor === usuario.nome ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      className="h-6 w-28 text-xs px-1"
+                      value={formatCurrencyInput(editingMeta.valor)}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        const cents = parseInt(raw || '0', 10);
+                        setEditingMeta({ ...editingMeta, valor: cents / 100 });
+                      }}
+                      autoFocus
+                    />
+                    <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <strong>{meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}</strong>
+                    {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3.5 w-3.5" /></button>}
+                  </div>
+                )}
+              </div>
+              {meta && meta.metaMensal > 0 && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Progress value={metaPct} className="h-2 flex-1" />
+                    <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
+                </>
               )}
             </div>
           )}
@@ -671,11 +671,11 @@ export default function DashboardPage() {
       {/* 4 Cards globais - contagens persistentes e clicáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* ORÇAMENTOS */}
-        <StatCard 
-          icon={FileText} 
-          label="Orçamentos" 
-          value={(isMaster ? data.orcamentos : getUserOrcs(currentUserName)).length} 
-          color="bg-primary/10 text-primary" 
+        <StatCard
+          icon={FileText}
+          label="Orçamentos"
+          value={(isMaster ? data.orcamentos : getUserOrcs(currentUserName)).length}
+          color="bg-primary/10 text-primary"
           onViewAll={() => navigate(isMaster ? '/orcamentos' : `/orcamentos?vendedor=${currentUserName}`)}
           items={(isMaster ? data.orcamentos : getUserOrcs(currentUserName))
             .slice(-3).reverse()
@@ -683,11 +683,11 @@ export default function DashboardPage() {
         />
 
         {/* PEDIDOS */}
-        <StatCard 
-          icon={ShoppingCart} 
-          label="Pedidos" 
-          value={(isMaster ? data.pedidos : getUserPeds(currentUserName)).length} 
-          color="bg-secondary/20 text-secondary" 
+        <StatCard
+          icon={ShoppingCart}
+          label="Pedidos"
+          value={(isMaster ? data.pedidos : getUserPeds(currentUserName)).length}
+          color="bg-secondary/20 text-secondary"
           onViewAll={() => navigate(isMaster ? '/pedidos' : `/pedidos?vendedor=${currentUserName}`)}
           items={(isMaster ? data.pedidos : getUserPeds(currentUserName))
             .slice(-3).reverse()
@@ -698,32 +698,34 @@ export default function DashboardPage() {
         />
 
         {/* CLIENTES */}
-        <StatCard 
-          icon={Users} 
-          label="Clientes" 
+        <StatCard
+          icon={Users}
+          label="Clientes"
           value={(isMaster ? data.clientes : data.clientes.filter(c => {
-            // ACL: For common users, show clients they have budgets/orders with
+            // ACL: For common users, show clients they registered themselves OR have budgets/orders with
+            if (c.usuarioCriador === currentUserName) return true;
             const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
             const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
             return hasOrc || hasPed;
-          })).length} 
-          color="bg-info/10 text-info" 
+          })).length}
+          color="bg-info/10 text-info"
           onViewAll={() => navigate('/clientes')}
           items={(isMaster ? data.clientes : data.clientes.filter(c => {
+            if (c.usuarioCriador === currentUserName) return true;
             const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
             const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
             return hasOrc || hasPed;
           }))
             .slice(-3).reverse()
-            .map(c => ({ id: c.id, label: 'CLI', user: c.nome }))}
+            .map(c => ({ id: c.id, label: c.nome, user: c.usuarioCriador || 'Sistema' }))}
         />
 
         {/* ORDENS DE SERVIÇO */}
-        <StatCard 
-          icon={Factory} 
-          label="Ordens de Serviço" 
-          value={(isMaster ? data.os : getUserOS(currentUserName)).length} 
-          color="bg-accent/10 text-accent" 
+        <StatCard
+          icon={Factory}
+          label="Ordens de Serviço"
+          value={(isMaster ? data.os : getUserOS(currentUserName)).length}
+          color="bg-accent/10 text-accent"
           onViewAll={() => navigate('/producao')}
           items={(isMaster ? data.os : getUserOS(currentUserName))
             .slice(-3).reverse()

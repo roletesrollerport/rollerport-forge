@@ -30,7 +30,7 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState<UsuarioDB | null>(null);
   const [checking, setChecking] = useState(true);
   const { getById } = useUsuarios();
-  
+
   // Initialize bidirectional data sync with database
   useDataSync();
 
@@ -80,7 +80,7 @@ function AppContent() {
     const updateLastSeen = () => {
       supabase.functions.invoke('chat-api', {
         body: { action: 'heartbeat', sessionToken },
-      }).catch(() => {});
+      }).catch(() => { });
     };
     updateLastSeen();
     const interval = setInterval(updateLastSeen, 60000);
@@ -119,7 +119,7 @@ function AppContent() {
     if (token) {
       await supabase.functions.invoke('hash-password', {
         body: { action: 'logout', sessionToken: token },
-      }).catch(() => {});
+      }).catch(() => { });
     }
     localStorage.removeItem('rp_logged_user');
     localStorage.removeItem('rp_session_token');

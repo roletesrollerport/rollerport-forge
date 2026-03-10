@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
@@ -28,6 +29,11 @@ export default function ClientesPage() {
   const [editing, setEditing] = useState<Cliente>(emptyCliente());
   const [viewCliente, setViewCliente] = useState<Cliente | null>(null);
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<string | null>(null);
+
+  const { usuarios: dbUsuarios } = useUsuarios();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
+  const currentUserName = currentUser?.nome || 'Sistema';
 
   useEffect(() => {
     const load = () => {
@@ -66,12 +72,12 @@ export default function ClientesPage() {
     if (isRevenda) {
       let updated: Cliente[];
       if (editing.id) { updated = revendas.map(c => c.id === editing.id ? editing : c); }
-      else { updated = [...revendas, { ...editing, id: store.nextId('rev') }]; }
+      else { updated = [...revendas, { ...editing, id: store.nextId('rev'), usuarioCriador: currentUserName }]; }
       store.saveFornecedores(updated); setRevendas(updated);
     } else {
       let updated: Cliente[];
       if (editing.id) { updated = clientes.map(c => c.id === editing.id ? editing : c); }
-      else { updated = [...clientes, { ...editing, id: store.nextId('cli') }]; }
+      else { updated = [...clientes, { ...editing, id: store.nextId('cli'), usuarioCriador: currentUserName }]; }
       store.saveClientes(updated); setClientes(updated);
     }
     setOpen(false); toast.success(`${isRevenda ? 'Revenda' : 'Cliente'} salvo!`);
