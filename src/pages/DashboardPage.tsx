@@ -803,7 +803,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Traffic Light Colors Legend */}
-      <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2 mt-3 text-xs text-muted-foreground mr-1">
+      <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2 mt-1 text-xs text-muted-foreground mr-1">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Interação Recente
         </div>
@@ -815,8 +815,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Space before lower session */}
-      <div className="h-6" />
+      {/* Minimal space before lower session */}
+      <div className="h-2" />
 
       {/* 3 Cards de Status - clicáveis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
