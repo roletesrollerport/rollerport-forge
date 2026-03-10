@@ -166,6 +166,11 @@ export default function ClientesPage() {
             if (!prev.cep) updates.cep = dados.cep || '';
             if (!prev.cidade) updates.cidade = dados.municipio || '';
             if (!prev.estado) updates.estado = dados.uf || '';
+            if (!prev.telefone && dados.ddd_telefone_1) updates.telefone = formatTelefone(dados.ddd_telefone_1);
+            if (!prev.whatsapp) {
+              if (dados.ddd_telefone_2) updates.whatsapp = formatTelefone(dados.ddd_telefone_2);
+              else if (dados.ddd_telefone_1) updates.whatsapp = formatTelefone(dados.ddd_telefone_1);
+            }
             if (!prev.email) updates.email = dados.email || '';
             if (!prev.inscricaoEstadual && dados.inscricao_estadual) updates.inscricaoEstadual = dados.inscricao_estadual;
             if (!prev.inscricaoMunicipal && dados.inscricao_municipal) updates.inscricaoMunicipal = dados.inscricao_municipal; // Usually not returned by BrasilAPI but just in case

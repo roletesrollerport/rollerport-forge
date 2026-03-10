@@ -42,8 +42,10 @@ export async function fetchCNPJ(cnpj: string): Promise<any | null> {
         uf: est.estado?.sigla || '',
         cep: est.cep,
         ddd_telefone_1: est.ddd1 && est.telefone1 ? `${est.ddd1}${est.telefone1}` : '',
+        ddd_telefone_2: est.ddd2 && est.telefone2 ? `${est.ddd2}${est.telefone2}` : '',
         email: est.email,
         inscricao_estadual: ie,
+        inscricao_municipal: est.inscricao_municipal || data.inscricao_municipal || '',
         data_inicio_atividade: est.data_inicio_atividade,
         opcao_pelo_simples: data.simples ? data.simples.simples === 'Sim' : false,
         descricao_situacao_cadastral: est.situacao_cadastral ? est.situacao_cadastral.toUpperCase() : 'ATIVA'
