@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { store } from '@/lib/store';
 import type { Cliente, Comprador } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store, Upload, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -34,6 +34,80 @@ export default function ClientesPage() {
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const currentUserName = currentUser?.nome || 'Sistema';
+  const isMaster = currentUser?.nivel === 'master';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /* ---- Import CSV/Excel handler ---- */
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      if (!text) return;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { toast.error('Arquivo vazio ou sem dados.'); return; }
+      // Detect separator (tab for Excel export, comma, or semicolon)
+      const sep = lines[0].includes('\t') ? '\t' : lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const existing = isRevenda ? revendas : clientes;
+      let count = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+        const get = (name: string) => {
+          const idx = headers.indexOf(name);
+          return idx >= 0 ? cols[idx] || '' : '';
+        };
+        const nome = get('nome') || get('empresa') || get('name') || get('razao social') || get('raz\u00e3o social') || cols[0] || '';
+        if (!nome) continue;
+        // Skip duplicates by name
+        if (existing.some(c => c.nome.toLowerCase() === nome.toLowerCase())) continue;
+        const novo: Cliente = {
+          id: store.nextId(isRevenda ? 'rev' : 'cli'),
+          nome,
+          cnpj: get('cnpj') || get('cpf/cnpj') || '',
+          email: get('email') || get('e-mail') || '',
+          telefone: get('telefone') || get('fone') || get('tel') || '',
+          whatsapp: get('whatsapp') || get('celular') || '',
+          endereco: get('endereco') || get('endere\u00e7o') || get('logradouro') || '',
+          cidade: get('cidade') || get('municipio') || get('munic\u00edpio') || '',
+          estado: get('estado') || get('uf') || '',
+          contato: get('contato') || nome,
+          compradores: [],
+          regimeTributario: (get('regime') || 'Lucro Presumido') as any,
+          usuarioCriador: currentUserName,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        existing.push(novo);
+        count++;
+      }
+      if (isRevenda) { store.saveFornecedores(existing); setRevendas([...existing]); }
+      else { store.saveClientes(existing); setClientes([...existing]); }
+      toast.success(`${count} ${isRevenda ? 'revenda(s)' : 'cliente(s)'} importado(s)!`);
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // reset input
+  };
+
+  /* ---- Export CSV handler (master only) ---- */
+  const handleExportCSV = () => {
+    const data = isRevenda ? revendas : clientes;
+    const headers = ['Nome', 'CNPJ', 'Email', 'Telefone', 'WhatsApp', 'Endere\u00e7o', 'Cidade', 'Estado', 'Regime Tribut\u00e1rio', 'Criado Por', 'Data Cadastro'];
+    const rows = data.map(c => [
+      c.nome, c.cnpj, c.email, c.telefone, c.whatsapp,
+      c.endereco, c.cidade, c.estado, c.regimeTributario,
+      c.usuarioCriador || '', c.createdAt
+    ].map(v => `"${(v || '').replace(/"/g, '""')}"`).join(';'));
+    const csv = [headers.join(';'), ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${isRevenda ? 'revendas' : 'clientes'}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Planilha exportada com sucesso!');
+  };
 
   useEffect(() => {
     const load = () => {
@@ -119,49 +193,61 @@ export default function ClientesPage() {
           <h1 className="page-header">Clientes & Revendas</h1>
           <p className="page-subtitle">Cadastro de clientes e revendas</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditing(emptyCliente())} className="gap-2"><Plus className="h-4 w-4" /> {isRevenda ? 'Nova Revenda' : 'Novo Cliente'}</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo(a)'} {isRevenda ? 'Revenda' : 'Cliente'}</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={editing.cnpj} onChange={e => setEditing({ ...editing, cnpj: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={editing.telefone} onChange={e => setEditing({ ...editing, telefone: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={editing.whatsapp} onChange={e => setEditing({ ...editing, whatsapp: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Email</label><Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></div>
-              <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={editing.endereco} onChange={e => setEditing({ ...editing, endereco: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={editing.cidade} onChange={e => setEditing({ ...editing, cidade: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Estado</label><Input value={editing.estado} onChange={e => setEditing({ ...editing, estado: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Aniversário da Empresa</label><Input type="date" value={editing.aniversarioEmpresa || ''} onChange={e => setEditing({ ...editing, aniversarioEmpresa: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Redes Sociais da Empresa</label><Input value={editing.redesSociais || ''} onChange={e => setEditing({ ...editing, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
-            </div>
-            <div className="mt-4 border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-sm">{labelContatos}</h3>
-                <Button variant="outline" size="sm" onClick={addComprador} className="gap-1"><Plus className="h-3.5 w-3.5" /> Adicionar</Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Hidden file input for import */}
+          <input ref={fileInputRef} type="file" accept=".csv,.tsv,.txt,.xls,.xlsx" className="hidden" onChange={handleImportFile} />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
+            <Upload className="h-4 w-4" /> Importar
+          </Button>
+          {isMaster && (
+            <Button variant="outline" onClick={handleExportCSV} className="gap-2">
+              <Download className="h-4 w-4" /> Baixar Planilha
+            </Button>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditing(emptyCliente())} className="gap-2"><Plus className="h-4 w-4" /> {isRevenda ? 'Nova Revenda' : 'Novo Cliente'}</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo(a)'} {isRevenda ? 'Revenda' : 'Cliente'}</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={editing.cnpj} onChange={e => setEditing({ ...editing, cnpj: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={editing.telefone} onChange={e => setEditing({ ...editing, telefone: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={editing.whatsapp} onChange={e => setEditing({ ...editing, whatsapp: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Email</label><Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></div>
+                <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={editing.endereco} onChange={e => setEditing({ ...editing, endereco: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={editing.cidade} onChange={e => setEditing({ ...editing, cidade: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Estado</label><Input value={editing.estado} onChange={e => setEditing({ ...editing, estado: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Aniversário da Empresa</label><Input type="date" value={editing.aniversarioEmpresa || ''} onChange={e => setEditing({ ...editing, aniversarioEmpresa: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Redes Sociais da Empresa</label><Input value={editing.redesSociais || ''} onChange={e => setEditing({ ...editing, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
               </div>
-              {editing.compradores.map((comp, idx) => (
-                <div key={idx} className="border rounded-lg p-3 mb-2 bg-muted/20">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">{labelContato} {idx + 1}</span>
-                    {editing.compradores.length > 1 && <button onClick={() => removeComprador(idx)} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><label className="text-xs text-muted-foreground">Nome</label><Input value={comp.nome} onChange={e => updateComprador(idx, { nome: e.target.value })} /></div>
-                    <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={comp.telefone} onChange={e => updateComprador(idx, { telefone: e.target.value })} /></div>
-                    <div><label className="text-xs text-muted-foreground">Email</label><Input value={comp.email} onChange={e => updateComprador(idx, { email: e.target.value })} /></div>
-                    <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={comp.whatsapp} onChange={e => updateComprador(idx, { whatsapp: e.target.value })} /></div>
-                    <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={comp.aniversario || ''} onChange={e => updateComprador(idx, { aniversario: e.target.value })} /></div>
-                    <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={comp.redesSociais || ''} onChange={e => updateComprador(idx, { redesSociais: e.target.value })} placeholder="Instagram..." /></div>
-                  </div>
+              <div className="mt-4 border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">{labelContatos}</h3>
+                  <Button variant="outline" size="sm" onClick={addComprador} className="gap-1"><Plus className="h-3.5 w-3.5" /> Adicionar</Button>
                 </div>
-              ))}
-            </div>
-            <div className="flex justify-end mt-4"><Button onClick={handleSave}>Salvar</Button></div>
-          </DialogContent>
-        </Dialog>
+                {editing.compradores.map((comp, idx) => (
+                  <div key={idx} className="border rounded-lg p-3 mb-2 bg-muted/20">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-medium text-muted-foreground">{labelContato} {idx + 1}</span>
+                      {editing.compradores.length > 1 && <button onClick={() => removeComprador(idx)} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><label className="text-xs text-muted-foreground">Nome</label><Input value={comp.nome} onChange={e => updateComprador(idx, { nome: e.target.value })} /></div>
+                      <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={comp.telefone} onChange={e => updateComprador(idx, { telefone: e.target.value })} /></div>
+                      <div><label className="text-xs text-muted-foreground">Email</label><Input value={comp.email} onChange={e => updateComprador(idx, { email: e.target.value })} /></div>
+                      <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={comp.whatsapp} onChange={e => updateComprador(idx, { whatsapp: e.target.value })} /></div>
+                      <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={comp.aniversario || ''} onChange={e => updateComprador(idx, { aniversario: e.target.value })} /></div>
+                      <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={comp.redesSociais || ''} onChange={e => updateComprador(idx, { redesSociais: e.target.value })} placeholder="Instagram..." /></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end mt-4"><Button onClick={handleSave}>Salvar</Button></div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Botões de categoria */}
