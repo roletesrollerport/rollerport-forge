@@ -96,6 +96,44 @@ export default function ProducaoPage() {
     const items = [...editItems]; items[idx] = { ...items[idx], [field]: value }; setEditItems(items);
   };
 
+  const triggerEtapaUpdate = (osId: string, itemIdx: number, etapa: string) => {
+    const osList = [...ordens];
+    const osIndex = osList.findIndex(o => o.id === osId);
+    if (osIndex === -1) return;
+    
+    const os = osList[osIndex];
+    const newItems = [...os.itens];
+    newItems[itemIdx] = { ...newItems[itemIdx], [etapa]: !(newItems[itemIdx] as any)[etapa] };
+    
+    // Evaluate status
+    const etapas = ['corte', 'torno', 'fresa', 'solda', 'pintura', 'montagem'];
+    let allTicked = true;
+    let anyTicked = false;
+    for (const item of newItems) {
+      for (const e of etapas) {
+        if ((item as any)[e]) anyTicked = true;
+        else allTicked = false;
+      }
+    }
+    
+    let novoStatus: StatusOS = os.status;
+    if (allTicked) novoStatus = 'CONCLUIDA';
+    else if (anyTicked) novoStatus = 'EM_ANDAMENTO';
+    else novoStatus = 'ABERTA';
+
+    const history = os.status !== novoStatus ? [...(os.statusHistory || []), { status: novoStatus, date: new Date().toISOString() }] : os.statusHistory;
+
+    const updatedOS = { ...os, itens: newItems, status: novoStatus, statusHistory: history };
+    osList[osIndex] = updatedOS;
+    
+    saveOrdens(osList);
+    toast.success(`Etapa ${etapa} ${newItems[itemIdx][etapa as keyof ItemOS] ? 'concluída' : 'desmarcada'}!`);
+    
+    if (current && current.id === osId) {
+      setCurrent(updatedOS);
+    }
+  };
+
   // Comprehensive search
   const clienteMatchesSearch = (empresa: string, s: string) => {
     const cli = clientes.find(c => c.nome === empresa);
@@ -157,22 +195,25 @@ export default function ProducaoPage() {
     </div>
   );
 
-  const EtapasSection = ({ items, editable }: { items: ItemOS[], editable?: boolean }) => (
+  const EtapasSection = ({ items, editable, osId }: { items: ItemOS[], editable?: boolean, osId?: string }) => (
     <div className="mt-4 border-t pt-3">
       <h3 className="font-bold text-xs mb-2">ETAPAS DE PRODUÇÃO</h3>
       <div className="space-y-2">
         {items.map((item, itemIdx) => (
-          <div key={itemIdx} className="flex items-center gap-4 border rounded p-2 bg-muted/20">
+          <div key={itemIdx} className="flex items-center gap-4 border rounded p-2 bg-muted/20 overflow-x-auto">
             <span className="text-xs font-semibold min-w-[60px]">Item {item.item}</span>
             {etapas.map(etapa => (
-              <label key={etapa} className="flex items-center gap-1.5 text-xs">
+              <label key={etapa} className="flex items-center gap-1.5 text-xs cursor-pointer">
                 <input type="checkbox"
                   checked={(item as any)[etapa] || false}
-                  onChange={() => editable && toggleEtapa(itemIdx, etapa)}
-                  readOnly={!editable}
+                  onChange={() => {
+                    if (editable) toggleEtapa(itemIdx, etapa);
+                    else if (osId) triggerEtapaUpdate(osId, itemIdx, etapa);
+                  }}
+                  disabled={!editable && !osId}
                   className="h-4 w-4 rounded border-primary text-primary accent-primary"
                 />
-                <span className="font-medium uppercase">{etapa}</span>
+                <span className="font-medium uppercase select-none">{etapa}</span>
               </label>
             ))}
           </div>
@@ -276,7 +317,7 @@ export default function ProducaoPage() {
             <div><span className="text-muted-foreground">Status:</span> <strong>{current.status}</strong></div>
           </div>
           <OSTable items={current.itens} />
-          <EtapasSection items={current.itens} />
+          <EtapasSection items={current.itens} osId={current.id} />
           <MateriaisSection editable />
         </div>
       </div>
@@ -330,7 +371,10 @@ export default function ProducaoPage() {
           </tr></thead>
           <tbody>
             {filteredOrdens.map(os => {
-              const pct = statusProgress[os.status] || 0;
+              const totalSteps = os.itens.length * etapas.length;
+              const tickedSteps = os.itens.reduce((acc, it) => acc + etapas.filter(e => (it as any)[e]).length, 0);
+              const pct = totalSteps > 0 ? Math.round((tickedSteps / totalSteps) * 100) : statusProgress[os.status] || 0;
+              
               const days = daysSince(os.createdAt);
               const lastStatusChange = os.statusHistory?.length ? os.statusHistory[os.statusHistory.length - 1] : null;
               const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
@@ -342,9 +386,12 @@ export default function ProducaoPage() {
                   <td className="p-3 hidden md:table-cell">{os.emissao}</td>
                   <td className="p-3 hidden lg:table-cell">{os.entrega}</td>
                   <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Progress value={pct} className="h-2 flex-1" />
-                      <span className={`text-xs font-medium whitespace-nowrap ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>{os.status.replace('_', ' ')}</span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Progress value={pct} className="h-2 flex-1" />
+                        <span className="text-[10px] font-bold">{pct}%</span>
+                      </div>
+                      <span className={`text-xs text-center font-medium whitespace-nowrap ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>{os.status.replace('_', ' ')}</span>
                     </div>
                   </td>
                   <td className="p-3 hidden md:table-cell">
