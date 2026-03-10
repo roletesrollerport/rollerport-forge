@@ -77,6 +77,8 @@ export interface Cliente {
   contato: string;
   compradores: Comprador[];
   regimeTributario: RegimeTributario;
+  inscricaoEstadual?: string;
+  inscricaoMunicipal?: string;
   aniversarioEmpresa?: string;
   redesSociais?: string;
   usuarioCriador?: string;
