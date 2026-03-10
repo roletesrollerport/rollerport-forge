@@ -640,7 +640,7 @@ export default function DashboardPage() {
     const userPeds = getUserPeds(usuario.nome);
     const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
     const meta = metas.find(m => m.vendedor === usuario.nome);
-    const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    const metaPct = meta && meta.metaMensal > 0 ? (totalVendido / meta.metaMensal) * 100 : 0;
 
     return (
       <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
@@ -703,8 +703,8 @@ export default function DashboardPage() {
               {meta && meta.metaMensal > 0 && (
                 <>
                   <div className="flex items-center gap-2">
-                    <Progress value={metaPct} className="h-2 flex-1" />
-                    <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
+                    <Progress value={Math.min(metaPct, 100)} className="h-2 flex-1" />
+                    <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(1)}%</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
                 </>

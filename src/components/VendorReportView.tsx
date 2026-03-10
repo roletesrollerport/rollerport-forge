@@ -4,11 +4,10 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import {
-  ArrowLeft, Printer, FileText, ShoppingCart, Factory, Brain,
-  Loader2, Save, Edit, Sparkles, ChevronLeft, ChevronRight, Calendar
+  ArrowLeft, Printer, FileText, ShoppingCart, Factory,
+  Save, Edit, ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
 import { store } from '@/lib/store';
-import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
 /* ── helpers ─────────────────────────────────────────────────────── */
@@ -80,8 +79,6 @@ function statusColor(status: string) {
   }
 }
 
-const statusLabel = (s: string) => s?.replace(/_/g, ' ') || '-';
-
 /* ── types ───────────────────────────────────────────────────────── */
 interface VendorReportViewProps {
   vendorName: string;
@@ -97,14 +94,7 @@ interface VendorReportViewProps {
   onSaveMasterPrompt?: (prompt: string) => void;
 }
 
-const DEFAULT_AI_PROMPT = `Você é um consultor de vendas sênior da Rollerport. Analise o relatório do vendedor e:
-1. Avalie o desempenho geral (bateu a meta? por quê?)
-2. Identifique padrões de cancelamentos e dê dicas para evitar perdas
-3. Dê dicas motivacionais personalizadas
-4. Sugira como melhorar os textos de e-mail/orçamento para fechar mais vendas
-5. Busque na internet e sugira 3 potenciais clientes que consomem roletes para correias transportadoras (inclua nome da empresa, telefone e e-mail se possível)
-6. Se o vendedor bateu a meta, parabenize com entusiasmo mas incentive a ir mais alto
-Responda em português do Brasil, de forma clara e motivadora.`;
+const statusLabel = (s: string) => s?.replace(/_/g, ' ') || '-';
 
 /* ── calendar component ──────────────────────────────────────────── */
 interface CalendarGridProps {
@@ -314,13 +304,6 @@ export default function VendorReportView({
   /* Doc Detail state */
   const [selectedDocDetail, setSelectedDocDetail] = useState<{ doc: any; type: 'orcamento' | 'pedido' | 'os' } | null>(null);
 
-  /* AI state */
-  const [aiResponse, setAiResponse] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [editingPrompt, setEditingPrompt] = useState(false);
-  const [promptText, setPromptText] = useState(masterPrompt || DEFAULT_AI_PROMPT);
-  const abortRef = useRef<AbortController | null>(null);
-
   /* ── year list (from earliest doc date to now+1) ── */
   const years = useMemo(() => {
     const allDates: number[] = [];
@@ -383,111 +366,8 @@ export default function VendorReportView({
   /* ── summary stats for selected period ── */
   const meta = metas.find(m => m.vendedor === vendorName);
   const totalVendido = displayPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
-  const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+  const metaPct = meta && meta.metaMensal > 0 ? (totalVendido / meta.metaMensal) * 100 : 0;
   const bateuMeta = meta && meta.metaMensal > 0 && totalVendido >= meta.metaMensal;
-
-  /* ── AI report builder ── */
-  const buildReportText = () => {
-    const period = selectedDay
-      ? `Dia ${formatDayKey(selectedDay)}`
-      : `${MONTHS[selectedMonth]}/${selectedYear}`;
-    let text = `## Relatório do Vendedor: ${vendorName}\n`;
-    text += `**Período:** ${period}\n`;
-    text += `**Meta Mensal:** ${meta ? fmt(meta.metaMensal) : 'Não definida'}\n`;
-    text += `**Total Vendido no período:** ${fmt(totalVendido)}\n`;
-    text += `**Atingimento:** ${metaPct.toFixed(1)}%\n`;
-    text += `**Bateu a meta:** ${bateuMeta ? 'SIM ✅' : 'NÃO ❌'}\n\n`;
-
-    text += `### Orçamentos (${displayOrcs.length})\n`;
-    displayOrcs.forEach(o => {
-      text += `- Nº ${o.numero} | ${o.clienteNome} | ${fmt(o.valorTotal || 0)} | Status: ${o.status} | Tempo: ${elapsedTime(o.dataOrcamento || o.createdAt)}`;
-      if (o.status === 'REPROVADO' && o.motivoCancelamento) text += ` | Motivo: ${o.motivoCancelamento}`;
-      text += '\n';
-    });
-
-    text += `\n### Pedidos (${displayPeds.length})\n`;
-    displayPeds.forEach(p => {
-      text += `- Nº ${p.numero} | ${p.clienteNome} | ${fmt(p.valorTotal || 0)} | Status: ${p.status} | Tempo: ${elapsedTime(p.createdAt)}`;
-      if (p.motivoCancelamento) text += ` | Motivo: ${p.motivoCancelamento}`;
-      text += '\n';
-    });
-
-    text += `\n### Ordens de Serviço (${displayOS.length})\n`;
-    displayOS.forEach(os => {
-      text += `- O.S. ${os.numero} | ${os.empresa} | Pedido: ${os.pedidoNumero} | Status: ${os.status} | Tempo: ${elapsedTime(os.createdAt)}`;
-      if (os.motivoCancelamento) text += ` | Motivo: ${os.motivoCancelamento}`;
-      text += '\n';
-    });
-
-    return text;
-  };
-
-  const runAiAnalysis = async () => {
-    setAiLoading(true);
-    setAiResponse('');
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) { toast.error('Sessão expirada'); setAiLoading(false); return; }
-
-    try {
-      abortRef.current = new AbortController();
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: `${promptText}\n\n---\n\n${buildReportText()}` }],
-          mode: 'ia',
-          sessionToken,
-        }),
-        signal: abortRef.current.signal,
-      });
-
-      if (!resp.ok || !resp.body) {
-        if (resp.status === 429) toast.error('Limite de requisições. Tente novamente em instantes.');
-        else if (resp.status === 402) toast.error('Créditos insuficientes.');
-        else toast.error('Erro ao analisar relatório.');
-        setAiLoading(false);
-        return;
-      }
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let full = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, idx);
-          buffer = buffer.slice(idx + 1);
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (!line.startsWith('data: ')) continue;
-          const json = line.slice(6).trim();
-          if (json === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(json);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) { full += content; setAiResponse(full); }
-          } catch { /* partial chunk */ }
-        }
-      }
-    } catch (e: any) {
-      if (e.name !== 'AbortError') { toast.error('Erro na análise de IA.'); console.error(e); }
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const handleSavePrompt = () => {
-    setEditingPrompt(false);
-    onSaveMasterPrompt?.(promptText);
-    toast.success('Prompt da IA salvo!');
-  };
 
   const periodLabel = selectedDay
     ? formatDayKey(selectedDay)
@@ -567,78 +447,7 @@ export default function VendorReportView({
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* AI button (right-aligned) */}
-        {isMaster ? (
-          <Button
-            variant="outline"
-            onClick={() => setEditingPrompt(!editingPrompt)}
-            className="gap-2 ml-auto border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-          >
-            <Edit className="h-4 w-4" />
-            {editingPrompt ? 'Fechar Editor IA' : 'Editar Prompt IA'}
-          </Button>
-        ) : (
-          <Button
-            onClick={runAiAnalysis}
-            disabled={aiLoading}
-            className="gap-2 ml-auto bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90"
-          >
-            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {aiLoading ? 'Analisando...' : 'Análise IA'}
-          </Button>
-        )}
       </div>
-
-      {/* ── master prompt editor ── */}
-      {isMaster && editingPrompt && (
-        <Card className="print:hidden">
-          <CardHeader className="pb-2">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Brain className="h-4 w-4 text-primary" /> Prompt de Treinamento da IA
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Edite o texto abaixo para treinar como a IA avalia e motiva os vendedores.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Textarea
-              value={promptText}
-              onChange={e => setPromptText(e.target.value)}
-              rows={10}
-              className="text-xs font-mono"
-            />
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" onClick={handleSavePrompt} className="gap-1.5">
-                <Save className="h-3.5 w-3.5" /> Salvar Prompt
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setPromptText(DEFAULT_AI_PROMPT)} className="gap-1.5">
-                Restaurar Padrão
-              </Button>
-              <Button size="sm" variant="secondary" onClick={runAiAnalysis} disabled={aiLoading} className="gap-1.5 ml-auto">
-                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                Testar Análise
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── AI response ── */}
-      {aiResponse && (
-        <Card className="border-primary/30 print:hidden">
-          <CardHeader className="pb-2">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> Análise da IA — {periodLabel}
-            </h3>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-              <ReactMarkdown>{aiResponse}</ReactMarkdown>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* ── report layout ── */}
       <div className="grid grid-cols-1 gap-4">
@@ -670,7 +479,7 @@ export default function VendorReportView({
               <div className="border rounded p-3 text-center">
                 <p className="text-[11px] text-muted-foreground">Meta {MONTHS[selectedMonth]}</p>
                 <p className={`text-xl font-bold ${bateuMeta ? 'text-success' : metaPct > 0 ? 'text-secondary' : 'text-muted-foreground'}`}>
-                  {metaPct.toFixed(0)}%
+                  {metaPct.toFixed(1)}%
                 </p>
               </div>
             </div>
