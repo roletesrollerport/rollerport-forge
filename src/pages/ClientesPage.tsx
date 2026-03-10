@@ -165,8 +165,10 @@ export default function ClientesPage() {
             }
             if (!prev.cidade) updates.cidade = dados.municipio || '';
             if (!prev.estado) updates.estado = dados.uf || '';
-            if (!prev.telefone && dados.ddd_telefone_1) updates.telefone = formatTelefone(dados.ddd_telefone_1);
             if (!prev.email) updates.email = dados.email || '';
+            if (!prev.inscricaoEstadual && dados.inscricao_estadual) updates.inscricaoEstadual = dados.inscricao_estadual;
+            if (!prev.inscricaoMunicipal && dados.inscricao_municipal) updates.inscricaoMunicipal = dados.inscricao_municipal; // Usually not returned by BrasilAPI but just in case
+            if (!prev.aniversarioEmpresa && dados.data_inicio_atividade) updates.aniversarioEmpresa = dados.data_inicio_atividade;
             if (prev.regimeTributario !== regime) updates.regimeTributario = regime as any;
 
             if (Object.keys(updates).length > 0) {
