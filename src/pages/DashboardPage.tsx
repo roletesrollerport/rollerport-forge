@@ -802,6 +802,22 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Traffic Light Colors Legend */}
+      <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2 mt-3 text-xs text-muted-foreground mr-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Interação Recente (&lt;24h)
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span> Atenção (&gt;48h)
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Atrasado ou Desassistido (&gt;5d)
+        </div>
+      </div>
+
+      {/* Increased space before lower session */}
+      <div className="h-12" />
+
       {/* 3 Cards de Status - clicáveis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
