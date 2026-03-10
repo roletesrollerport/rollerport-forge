@@ -777,7 +777,7 @@ export default function OrcamentosPage() {
                     <h2 className="text-base font-bold leading-tight">Rollerport Fabrica de Roletes</h2>
                     <p className="text-[10px]">Endereço: Rua: João Marcos Pimenta Rocha, 16. <span className="ml-2">Bairro Polo Industrial</span></p>
                     <p className="text-[10px]">CEP: 07832-460 <span className="ml-2">cidade franco da rocha</span></p>
-                    <p className="text-[10px]">Cnpj: 58.234.180/0001-56</p>
+                    <p className="text-[10px]">CNPJ: 58.234.180/0001-56</p>
                     <p className="text-[10px]">Inscrição Estadual: 312.259.169.119</p>
                     <p className="text-[10px]">telefone: 11 4441-3572 / 11 4811-1588 <span className="ml-2">E-mail: faturamento@rollerport.com.br</span></p>
                   </>
@@ -1096,7 +1096,8 @@ export default function OrcamentosPage() {
                       <p className="font-bold text-sm mb-2">Rollerport Fabrica de Roletes</p>
                       <p><span className="font-semibold">Endereço:</span> Rua: João Marcos Pimenta Rocha, 16. <span className="font-semibold">Bairro:</span> Polo Industrial</p>
                       <p><span className="font-semibold">CEP:</span> 07832-460 <span className="font-semibold ml-2">Cidade:</span> Franco da Rocha</p>
-                      <p><span className="font-semibold">CNPJ/MF n°:</span> 58.234.180/0001-56 <span className="font-semibold ml-2">Inscrição Estadual:</span> 312.259.169.119</p>
+                      <p><span className="font-semibold">CNPJ:</span> 58.234.180/0001-56</p>
+                      <p><span className="font-semibold">Inscrição Estadual:</span> 312.259.169.119</p>
                       <p><span className="font-semibold">Telefone:</span> 11 4441-3572 / 11 4811-1588</p>
                       <p><span className="font-semibold">E-mail:</span> faturamento@rollerport.com.br</p>
                     </>
