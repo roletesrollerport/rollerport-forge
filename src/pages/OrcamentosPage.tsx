@@ -128,6 +128,17 @@ function calcItem(
 }
 
 const fmt = (v: number) => `R$\u2009${v.toFixed(2).replace('.', ',')}`;
+const fmtDateShort = (d?: string) => {
+  if (!d) return '-';
+  const parts = d.split('/');
+  if (parts.length === 3) return `${parts[0]}/${parts[1]}/${parts[2].slice(-2)}`;
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return d;
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+};
 
 type View = 'list' | 'form' | 'view' | 'print';
 
@@ -1979,7 +1990,7 @@ export default function OrcamentosPage() {
                 <td className="p-3">{o.clienteNome || 'Sem cliente'}</td>
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.vendedor || '-'}</td>
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.compradorNome || '-'}</td>
-                <td className="p-3 hidden md:table-cell text-muted-foreground">{o.dataOrcamento || o.createdAt}</td>
+                <td className="p-3 hidden md:table-cell text-muted-foreground">{fmtDateShort(o.dataOrcamento || o.createdAt)}</td>
                 <td className="p-3 text-right font-mono font-medium whitespace-nowrap">{fmt(o.valorTotal)}</td>
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' :
