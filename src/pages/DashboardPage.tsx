@@ -16,7 +16,7 @@ import {
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
   ClipboardList, Play, Check, AlertCircle, Wrench
 } from 'lucide-react';
-import GaugeChart from 'react-gauge-chart';
+
 import VendorReportView from '@/components/VendorReportView';
 import { toast } from 'sonner';
 
@@ -149,19 +149,9 @@ export default function DashboardPage() {
   const { onlineUserIds } = usePresenceContext();
 
   /* ---------------------------------------------------------------- */
-  /*  Industrial Management Logic - Machine Load (Capacidade)          */
+  /*  Industrial Management Logic - Active OS Filter                   */
   /* ---------------------------------------------------------------- */
-  // Requisito do user: "Capacidade alta = 3 OS na fila de produção"
-  const DAILY_CAPACITY_OS = 3;
-
-  // Calculate load
   const activeOS = data.os.filter(os => os.status === 'ABERTA' || os.status === 'EM_ANDAMENTO');
-
-  const totalLoadOS = activeOS.length;
-  const capacityPercentage = Math.min(totalLoadOS / DAILY_CAPACITY_OS, 1.5); // cap visual (em 150%)
-  const actualPercentage = (totalLoadOS / DAILY_CAPACITY_OS) * 100;
-
-  /* ---------------------------------------------------------------- */
   /*  Industrial Management Logic - Traffic Lights                     */
   /* ---------------------------------------------------------------- */
   // Determine color based on ultima_interacao and data_entrega_prevista
@@ -812,119 +802,92 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Espaço Carga & Status */}
-      <div className="h-8" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* CARGA DE MÁQUINA (GAUGE) */}
-        <Card className="col-span-1 flex flex-col items-center p-6 justify-center">
-          <CardHeader className="p-0 mb-4 text-center">
-            <CardTitle className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-              <Factory className="h-4 w-4" /> Capacidade Produtiva
-            </CardTitle>
+      {/* 3 Cards de Status - clicáveis */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
           </CardHeader>
-          <CardContent className="w-full flex flex-col items-center">
-            <GaugeChart id="capacity-gauge"
-              nrOfLevels={30}
-              colors={["#22c55e", "#eab308", "#ef4444"]}
-              arcWidth={0.3}
-              percent={capacityPercentage}
-              textColor="#888"
-              hideText={true}
-            />
-            <div className="mt-4 text-center">
-              <span className="text-3xl font-bold">{actualPercentage.toFixed(1)}%</span>
-              <p className="text-xs text-muted-foreground">Ocupação Atual</p>
-              <p className="text-xs text-muted-foreground mt-1">{totalLoadOS} / {DAILY_CAPACITY_OS} O.S. na Fila</p>
-            </div>
+          <CardContent className="space-y-3">
+            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
+            <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
+            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
+            <StatusBar label="Cancelado" value={globalOrc.cancelado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
           </CardContent>
         </Card>
 
-        {/* 3 Cards de Status - clicáveis */}
-        <div className="col-span-1 lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
-            <CardHeader className="pb-2">
-              <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
-              <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
-              <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
-              <StatusBar label="Cancelado" value={globalOrc.cancelado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
-            </CardContent>
-          </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
+            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
+            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
+            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('CONCLUIDO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
+          </CardContent>
+        </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos')}>
-            <CardHeader className="pb-2">
-              <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
-              <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
-              <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
-              <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('CONCLUIDO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/producao')}>
-            <CardHeader className="pb-2">
-              <h2 className="font-semibold flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
-              <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
-              <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
-              <StatusBar label="Entregue" value={globalOs.total > 0 ? globalOs.concluida : 0} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/producao')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
+            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
+            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+            <StatusBar label="Entregue" value={globalOs.total > 0 ? globalOs.concluida : 0} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* --------------------------------- */}
       {/* ATENÇÃO: O.S. ATRASADAS (LISTA) */}
       {/* --------------------------------- */}
-      {delayedOSList.length > 0 && (
-        <>
-          <div className="h-8" />
-          <Card className="border-red-500/30 overflow-hidden">
-            <CardHeader className="bg-red-500/10 pb-3">
-              <h2 className="font-semibold flex items-center gap-2 text-red-600">
-                <AlertCircle className="h-4 w-4" /> Ordens de Serviço em Atraso ({delayedOSList.length})
-              </h2>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[300px] overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 sticky top-0 text-xs text-muted-foreground z-10">
-                    <tr>
-                      <th className="font-medium text-left p-3">O.S.</th>
-                      <th className="font-medium text-left p-3">Cliente</th>
-                      <th className="font-medium text-left p-3 hidden sm:table-cell">Status</th>
-                      <th className="font-medium text-right p-3">Atraso</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {delayedOSList.map((os: any) => (
-                      <tr key={os.id} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/producao?status=' + os.status)}>
-                        <td className="p-3 font-mono font-medium">{os.numero}</td>
-                        <td className="p-3 truncate max-w-[150px]">{os.clienteNome}</td>
-                        <td className="p-3 hidden sm:table-cell">
-                          <Badge variant="outline" className={os.status === 'ABERTA' ? 'bg-muted text-foreground' : 'bg-secondary/10 text-secondary'}>
-                            {os.status.replace('_', ' ')}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-right text-red-600 font-bold whitespace-nowrap">
-                          {os.diffDays} {os.diffDays === 1 ? 'dia' : 'dias'}
-                        </td>
+      {
+        delayedOSList.length > 0 && (
+          <>
+            <div className="h-8" />
+            <Card className="border-red-500/30 overflow-hidden">
+              <CardHeader className="bg-red-500/10 pb-3">
+                <h2 className="font-semibold flex items-center gap-2 text-red-600">
+                  <AlertCircle className="h-4 w-4" /> Ordens de Serviço em Atraso ({delayedOSList.length})
+                </h2>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[300px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0 text-xs text-muted-foreground z-10">
+                      <tr>
+                        <th className="font-medium text-left p-3">O.S.</th>
+                        <th className="font-medium text-left p-3">Cliente</th>
+                        <th className="font-medium text-left p-3 hidden sm:table-cell">Status</th>
+                        <th className="font-medium text-right p-3">Atraso</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+                    </thead>
+                    <tbody>
+                      {delayedOSList.map((os: any) => (
+                        <tr key={os.id} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/producao?status=' + os.status)}>
+                          <td className="p-3 font-mono font-medium">{os.numero}</td>
+                          <td className="p-3 truncate max-w-[150px]">{os.clienteNome}</td>
+                          <td className="p-3 hidden sm:table-cell">
+                            <Badge variant="outline" className={os.status === 'ABERTA' ? 'bg-muted text-foreground' : 'bg-secondary/10 text-secondary'}>
+                              {os.status.replace('_', ' ')}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-right text-red-600 font-bold whitespace-nowrap">
+                            {os.diffDays} {os.diffDays === 1 ? 'dia' : 'dias'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )
+      }
 
       {/* Espaço de 2 linhas */}
       <div className="h-8" />
