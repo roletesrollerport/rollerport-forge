@@ -345,7 +345,7 @@ export default function ClientesPage() {
         />
         {urlVendedor && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-[10px] font-bold border border-primary/20">
-            <span>Filtro: {urlVendedor}</span>
+            <span>Filtro: {urlVendedor.split(' ')[0]}</span>
             <button 
               onClick={() => setSearchParams({})} 
               className="hover:text-destructive transition-colors p-0.5 rounded-full hover:bg-destructive/10"

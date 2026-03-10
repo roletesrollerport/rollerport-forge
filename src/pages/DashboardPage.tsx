@@ -800,7 +800,7 @@ export default function DashboardPage() {
               .slice(0, 3)
               .map(([name, count]) => ({
                 id: name,
-                label: name,
+                label: name.split(' ')[0],
                 user: `${count} clientes`,
                 onClick: () => navigate(`/clientes?vendedor=${encodeURIComponent(name)}`)
               }));
