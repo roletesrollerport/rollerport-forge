@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
-  ClipboardList, Play, Check, AlertCircle, Wrench
+  ClipboardList, Play, Check, AlertCircle, Wrench, Plus
 } from 'lucide-react';
 
 import VendorReportView from '@/components/VendorReportView';
@@ -725,9 +725,14 @@ export default function DashboardPage() {
   return (
     <div>
       {/* TOPO */}
-      <div className="mb-2">
-        <h1 className="page-header">Início</h1>
-        <p className="page-subtitle">Sistema Rollerport</p>
+      <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
+        <div>
+          <h1 className="page-header">Início</h1>
+          <p className="page-subtitle">Sistema Rollerport</p>
+        </div>
+        <Button onClick={() => navigate('/orcamentos?new=1')} className="gap-2">
+          <Plus className="h-4 w-4" /> Novo Orçamento
+        </Button>
       </div>
 
       {/* Espaço reduzido para subir os cards */}
