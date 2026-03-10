@@ -730,8 +730,8 @@ export default function DashboardPage() {
         <p className="page-subtitle">Sistema Rollerport</p>
       </div>
 
-      {/* Espaço de 2 linhas */}
-      <div className="h-8" />
+      {/* Espaço reduzido para subir os cards */}
+      <div className="h-4" />
 
       {/* 4 Cards globais - contagens persistentes e clicáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -815,8 +815,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Minimal space before lower session */}
-      <div className="h-2" />
+      {/* Espaço aumentado entre legenda e cards de status */}
+      <div className="h-10" />
 
       {/* 3 Cards de Status - clicáveis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
