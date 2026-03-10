@@ -151,27 +151,15 @@ export default function DashboardPage() {
   /* ---------------------------------------------------------------- */
   /*  Industrial Management Logic - Machine Load (Capacidade)          */
   /* ---------------------------------------------------------------- */
-  // 1 dia = 960 minutos (16h de carga em 2 turnos, por ex?) ou (8h = 480m)
-  // Requisito do user: "Capacidade diária de 960 minutos"
-  const DAILY_CAPACITY_MINUTES = 960;
+  // Requisito do user: "Capacidade alta = 3 OS na fila de produção"
+  const DAILY_CAPACITY_OS = 3;
 
   // Calculate load
   const activeOS = data.os.filter(os => os.status === 'ABERTA' || os.status === 'EM_ANDAMENTO');
 
-  const totalLoadMinutes = activeOS.reduce((acc, os) => {
-    // Para cada item na OS, tentar achar o produto e multiplicar pelo tempo
-    const sumItems = os.itens.reduce((itemAcc, item) => {
-      // Find the template product or just use a default 10 min per rolete if not matched for now
-      // The requirement asks for Produto.tempo_fabricacao_minutos.
-      const matchProd = data.produtos.find(p => p.tipo === item.tipo);
-      const tempo = matchProd?.tempo_fabricacao_minutos || 10; // default 10 min fallback se admin n cadastrou
-      return itemAcc + (item.quantidade * tempo);
-    }, 0);
-    return acc + sumItems;
-  }, 0);
-
-  const capacityPercentage = Math.min(totalLoadMinutes / DAILY_CAPACITY_MINUTES, 1.5); // cap visual
-  const actualPercentage = (totalLoadMinutes / DAILY_CAPACITY_MINUTES) * 100;
+  const totalLoadOS = activeOS.length;
+  const capacityPercentage = Math.min(totalLoadOS / DAILY_CAPACITY_OS, 1.5); // cap visual (em 150%)
+  const actualPercentage = (totalLoadOS / DAILY_CAPACITY_OS) * 100;
 
   /* ---------------------------------------------------------------- */
   /*  Industrial Management Logic - Traffic Lights                     */
@@ -847,7 +835,7 @@ export default function DashboardPage() {
             <div className="mt-4 text-center">
               <span className="text-3xl font-bold">{actualPercentage.toFixed(1)}%</span>
               <p className="text-xs text-muted-foreground">Ocupação Atual</p>
-              <p className="text-xs text-muted-foreground mt-1">{totalLoadMinutes} / {DAILY_CAPACITY_MINUTES} min</p>
+              <p className="text-xs text-muted-foreground mt-1">{totalLoadOS} / {DAILY_CAPACITY_OS} O.S. na Fila</p>
             </div>
           </CardContent>
         </Card>
