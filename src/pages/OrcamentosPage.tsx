@@ -1171,7 +1171,7 @@ export default function OrcamentosPage() {
 
           {/* Dialog Image Preview (Material) */}
           <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
-            <DialogContent className="max-w-2xl bg-transparent border-none shadow-none flex flex-col items-center justify-center p-0">
+            <DialogContent className="max-w-2xl bg-transparent border-none shadow-none flex flex-col items-center justify-center p-0 [&>button]:text-white [&>button]:bg-black/40 hover:[&>button]:bg-black/60 hover:[&>button]:opacity-100 [&>button]:p-1 [&>button]:rounded-full">
               {previewImage && (
                 <div className="relative group flex flex-col items-center">
                   <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl bg-white/5" />
@@ -1849,7 +1849,7 @@ export default function OrcamentosPage() {
                 <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={cadCliente.email} onChange={e => setCadCliente({ ...cadCliente, email: e.target.value })} /></div>
-                <div><label className="text-xs text-muted-foreground">CEP</label><Input value={cadCliente.cep || ''} onChange={e => setCadCliente({ ...cadCliente, cep: e.target.value })} onBlur={e => handleCepAutocomplete(e.target.value)} /></div>
+                <div><label className="text-xs text-muted-foreground">CEP</label><Input value={cadCliente.cep || ''} onChange={e => setCadCliente({ ...cadCliente, cep: e.target.value })} /></div>
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={cadCliente.endereco} onChange={e => setCadCliente({ ...cadCliente, endereco: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Bairro</label><Input value={cadCliente.bairro || ''} onChange={e => setCadCliente({ ...cadCliente, bairro: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={cadCliente.cidade} onChange={e => setCadCliente({ ...cadCliente, cidade: e.target.value })} /></div>
