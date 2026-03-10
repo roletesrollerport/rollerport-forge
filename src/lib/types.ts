@@ -72,8 +72,10 @@ export interface Cliente {
   telefone: string;
   whatsapp: string;
   endereco: string;
+  bairro?: string;
   cidade: string;
   estado: string;
+  cep?: string;
   contato: string;
   compradores: Comprador[];
   regimeTributario: RegimeTributario;

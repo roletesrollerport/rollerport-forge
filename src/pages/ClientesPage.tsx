@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { store } from '@/lib/store';
-import type { Cliente, Comprador } from '@/lib/types';
+import type { Cliente, Comprador, RegimeTributario } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,7 +14,7 @@ import { fetchCNPJ } from '@/lib/utils';
 const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
 
 const emptyCliente = (): Cliente => ({
-  id: '', nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+  id: '', nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', bairro: '', cidade: '', estado: '', cep: '', contato: '',
   compradores: [emptyComprador()], aniversarioEmpresa: '', redesSociais: '',
   regimeTributario: 'Lucro Presumido',
   createdAt: new Date().toISOString().split('T')[0],
@@ -160,9 +160,10 @@ export default function ClientesPage() {
             if (!prev.endereco) {
               const numStr = dados.numero ? `, ${dados.numero}` : '';
               const compStr = dados.complemento ? ` - ${dados.complemento}` : '';
-              const bairroStr = dados.bairro ? ` - ${dados.bairro}` : '';
-              updates.endereco = `${dados.logradouro || ''}${numStr}${compStr}${bairroStr}`.trim();
+              updates.endereco = `${dados.logradouro || ''}${numStr}${compStr}`.trim();
             }
+            if (!prev.bairro) updates.bairro = dados.bairro || '';
+            if (!prev.cep) updates.cep = dados.cep || '';
             if (!prev.cidade) updates.cidade = dados.municipio || '';
             if (!prev.estado) updates.estado = dados.uf || '';
             if (!prev.email) updates.email = dados.email || '';
@@ -257,7 +258,7 @@ export default function ClientesPage() {
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={editing.cnpj} onChange={e => setEditing({ ...editing, cnpj: formatCPForCNPJ(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">Regime Tributário</label>
-                  <select value={editing.regimeTributario} onChange={e => setEditing({ ...editing, regimeTributario: e.target.value as any })} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <select value={editing.regimeTributario} onChange={e => setEditing({ ...editing, regimeTributario: e.target.value as RegimeTributario })} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                     <option value="Simples Nacional">Simples Nacional</option><option value="Lucro Presumido">Lucro Presumido</option><option value="Lucro Real">Lucro Real</option><option value="Isento">Isento</option>
                   </select>
                 </div>
@@ -266,7 +267,9 @@ export default function ClientesPage() {
                 <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={editing.telefone} onChange={e => setEditing({ ...editing, telefone: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={editing.whatsapp} onChange={e => setEditing({ ...editing, whatsapp: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">Email</label><Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">CEP</label><Input value={editing.cep || ''} onChange={e => setEditing({ ...editing, cep: e.target.value })} /></div>
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={editing.endereco} onChange={e => setEditing({ ...editing, endereco: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Bairro</label><Input value={editing.bairro || ''} onChange={e => setEditing({ ...editing, bairro: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={editing.cidade} onChange={e => setEditing({ ...editing, cidade: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Estado</label><Input value={editing.estado} onChange={e => setEditing({ ...editing, estado: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Aniversário da Empresa</label><Input type="date" value={editing.aniversarioEmpresa || ''} onChange={e => setEditing({ ...editing, aniversarioEmpresa: e.target.value })} /></div>
@@ -336,7 +339,7 @@ export default function ClientesPage() {
                 <div><span className="text-muted-foreground">Email:</span> <strong>{viewCliente.email}</strong></div>
                 <div><span className="text-muted-foreground">Aniv. Empresa:</span> <strong>{viewCliente.aniversarioEmpresa || '-'}</strong></div>
                 <div><span className="text-muted-foreground">Redes (Empresa):</span> <strong>{viewCliente.redesSociais || '-'}</strong></div>
-                <div className="col-span-2"><span className="text-muted-foreground">Endereço:</span> <strong>{viewCliente.endereco}</strong></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Endereço:</span> <strong>{viewCliente.endereco} {viewCliente.bairro ? `- ${viewCliente.bairro}` : ''} {viewCliente.cep ? `(CEP: ${viewCliente.cep})` : ''}</strong></div>
               </div>
               <div className="border-t pt-3">
                 <h4 className="font-semibold text-xs mb-2">{labelContatos}</h4>

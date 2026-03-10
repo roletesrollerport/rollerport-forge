@@ -195,7 +195,7 @@ export default function OrcamentosPage() {
   // Cadastro rápido cliente (completo igual à tela de clientes)
   const [showCadCliente, setShowCadCliente] = useState(false);
   const [cadCliente, setCadCliente] = useState<Omit<Cliente, 'id' | 'createdAt'>>({
-    nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+    nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', bairro: '', cidade: '', estado: '', cep: '', contato: '',
     compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
     regimeTributario: 'Lucro Presumido',
     aniversarioEmpresa: '', redesSociais: '',
@@ -263,9 +263,10 @@ export default function OrcamentosPage() {
             if (!prev.endereco) {
               const numStr = dados.numero ? `, ${dados.numero}` : '';
               const compStr = dados.complemento ? ` - ${dados.complemento}` : '';
-              const bairroStr = dados.bairro ? ` - ${dados.bairro}` : '';
-              updates.endereco = `${dados.logradouro || ''}${numStr}${compStr}${bairroStr}`.trim();
+              updates.endereco = `${dados.logradouro || ''}${numStr}${compStr}`.trim();
             }
+            if (!prev.bairro) updates.bairro = dados.bairro || '';
+            if (!prev.cep) updates.cep = dados.cep || '';
             if (!prev.cidade) updates.cidade = dados.municipio || '';
             if (!prev.estado) updates.estado = dados.uf || '';
             if (!prev.telefone && dados.ddd_telefone_1) updates.telefone = formatTelefone(dados.ddd_telefone_1);
@@ -633,7 +634,7 @@ export default function OrcamentosPage() {
     setClienteId(id); setClienteSearch(cadCliente.nome);
     setShowCadCliente(false);
     setCadCliente({
-      nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', cidade: '', estado: '', contato: '',
+      nome: '', cnpj: '', inscricaoEstadual: '', inscricaoMunicipal: '', email: '', telefone: '', whatsapp: '', endereco: '', bairro: '', cidade: '', estado: '', cep: '', contato: '',
       compradores: [{ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' }],
       regimeTributario: 'Lucro Presumido',
       aniversarioEmpresa: '', redesSociais: '',
@@ -1804,7 +1805,9 @@ export default function OrcamentosPage() {
                 <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={cadCliente.email} onChange={e => setCadCliente({ ...cadCliente, email: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">CEP</label><Input value={cadCliente.cep || ''} onChange={e => setCadCliente({ ...cadCliente, cep: e.target.value })} onBlur={e => handleCepAutocomplete(e.target.value)} /></div>
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={cadCliente.endereco} onChange={e => setCadCliente({ ...cadCliente, endereco: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Bairro</label><Input value={cadCliente.bairro || ''} onChange={e => setCadCliente({ ...cadCliente, bairro: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={cadCliente.cidade} onChange={e => setCadCliente({ ...cadCliente, cidade: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Estado</label><Input value={cadCliente.estado} onChange={e => setCadCliente({ ...cadCliente, estado: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Aniversário da Empresa</label><Input type="date" value={cadCliente.aniversarioEmpresa || ''} onChange={e => setCadCliente({ ...cadCliente, aniversarioEmpresa: e.target.value })} /></div>
