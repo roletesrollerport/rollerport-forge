@@ -815,8 +815,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Increased space before lower session */}
-      <div className="h-12" />
+      {/* Space before lower session */}
+      <div className="h-6" />
 
       {/* 3 Cards de Status - clicáveis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
