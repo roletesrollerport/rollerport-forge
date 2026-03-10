@@ -1616,15 +1616,6 @@ export default function OrcamentosPage() {
                 <label className="text-xs text-primary font-medium">Desconto (%)</label>
                 <Input type="number" value={roleteItem.desconto || ''} onChange={e => updateRoleteField({ desconto: e.target.value ? +e.target.value : '' as any })} />
               </div>
-              <div className="col-span-2 sm:col-span-6 h-px bg-muted my-1" />
-              <div>
-                <label className="text-xs text-primary font-medium">ICMS (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqICMS || 0} onChange={e => updateRoleteField({ aliqICMS: +e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">IPI (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqIPI || 0} onChange={e => updateRoleteField({ aliqIPI: +e.target.value })} />
-              </div>
             </div>
             <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-4 gap-3 text-sm">
               <div><span className="text-xs text-primary">Preço Unit. Final</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
