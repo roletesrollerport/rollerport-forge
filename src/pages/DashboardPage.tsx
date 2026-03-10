@@ -63,14 +63,14 @@ function StatCard({
 }) {
   return (
     <Card className="flex flex-col h-full hover:shadow-md transition-all">
-      <CardHeader className="flex flex-row items-center gap-4 pb-2">
-        <div className={`flex items-center justify-center h-12 w-12 rounded-lg ${color}`}>
-          <Icon className="h-6 w-6" />
+      <CardHeader className="flex flex-col gap-2 pb-2">
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center justify-center h-8 w-8 rounded-lg ${color}`}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="text-[13px] font-semibold text-muted-foreground whitespace-nowrap">{label}</span>
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold">{value}</p>
-        </div>
+        <p className="text-2xl font-bold">{value}</p>
       </CardHeader>
       <CardContent className="flex-1 pb-2">
         {items && items.length > 0 ? (
@@ -819,7 +819,7 @@ export default function DashboardPage() {
             .map(os => {
               const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
               const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
-              return { id: os.id, label: os.numero, user: orc?.vendedor || 'Manual' };
+              return { id: os.id, label: os.numero, user: orc?.vendedor || 'Manual', statusColor: getTrafficLightColor(os) };
             })}
         />
       </div>
