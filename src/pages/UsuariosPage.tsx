@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios, type UsuarioDB } from '@/hooks/useUsuarios';
 import type { NivelAcesso, Genero, PermissaoModulo } from '@/lib/types';
 import { Button } from '@/components/ui/button';
