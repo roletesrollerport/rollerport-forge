@@ -1134,18 +1134,20 @@ export default function OrcamentosPage() {
                 </button>
               </div>
             </div>
-              <div className="flex gap-2 w-full md:w-auto mt-2 sm:mt-0">
-                <div className="flex-1 min-w-[200px] relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}...`}
-                    value={clienteSearch}
-                    onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
-                    onFocus={() => setShowClienteDropdown(true)}
-                    className="pl-10"
-                  />
+              <div className="flex items-end gap-2 w-full mt-2 sm:mt-0">
+                <div className="flex-1 min-w-[200px]">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}...`}
+                      value={clienteSearch}
+                      onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
+                      onFocus={() => setShowClienteDropdown(true)}
+                      className="pl-10"
+                    />
+                  </div>
                   {showClienteDropdown && clienteSearch && !clienteId && (
-                    <div className="absolute z-10 w-full border rounded mt-1 max-h-40 overflow-y-auto bg-card shadow-lg">
+                    <div className="absolute z-10 w-full md:w-1/2 border rounded mt-1 max-h-40 overflow-y-auto bg-card shadow-lg">
                       {filteredClientes.map(c => (
                         <button key={c.id} onClick={() => { setClienteId(c.id); setClienteSearch(c.nome); setShowClienteDropdown(false); }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between">
@@ -1160,7 +1162,7 @@ export default function OrcamentosPage() {
                 <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title={`Cadastrar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}`}>
                   <UserPlus className="h-4 w-4" />
                 </Button>
-                <div className="ml-2 pl-2 border-l shrink-0">
+                <div className="shrink-0 flex flex-col justify-end">
                   <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-0.5">Empresa Emissora</label>
                   <select 
                     value={empresaEmissoraId} 
@@ -1168,7 +1170,7 @@ export default function OrcamentosPage() {
                       const emp = store.getEmpresas().find(em => em.id === e.target.value);
                       if (emp) { setEmpresaEmissoraId(emp.id); setEmpresaPreview(emp); }
                     }}
-                    className="flex h-9 min-w-[200px] rounded-md border border-input bg-background px-3 py-1 text-sm text-primary font-medium"
+                    className="flex h-9 w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm text-primary font-medium"
                   >
                     {store.getEmpresas().map(emp => (
                       <option key={emp.id} value={emp.id}>{emp.nome === 'ROLLERPORT' ? 'Rollerport' : 'Ferreira Roletes'}</option>
