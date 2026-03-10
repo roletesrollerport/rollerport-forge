@@ -236,8 +236,8 @@ function PedidoReadView({ pedido, orcamentos, setView }: {
               </tbody>
               <tfoot className="bg-muted/20 border-t">
                 <tr>
-                  <td colSpan={4} className="p-4 text-right font-bold text-muted-foreground">VALOR TOTAL DO PEDIDO:</td>
-                  <td className="p-4 text-right font-bold text-lg text-primary">{fmt(pedido.valorTotal)}</td>
+                  <td colSpan={4} className="p-4 text-right font-bold text-muted-foreground whitespace-nowrap">VALOR TOTAL DO PEDIDO:</td>
+                  <td className="p-4 text-right font-bold text-lg text-primary whitespace-nowrap">{fmt(pedido.valorTotal)}</td>
                 </tr>
               </tfoot>
             </table>
