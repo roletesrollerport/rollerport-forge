@@ -16,7 +16,6 @@ serve(async (req) => {
     const { action, password, hashedPassword, userId, loginStr, sessionToken: bodySessionToken } = body;
 
     if (action === "hash") {
-      // Hash a password
       if (!password || typeof password !== "string" || password.length < 1 || password.length > 128) {
         return new Response(JSON.stringify({ error: "Invalid password" }), {
           status: 400,
@@ -30,7 +29,6 @@ serve(async (req) => {
     }
 
     if (action === "verify") {
-      // Verify password against hash
       if (!password || !hashedPassword) {
         return new Response(JSON.stringify({ error: "Missing fields" }), {
           status: 400,
@@ -44,7 +42,6 @@ serve(async (req) => {
     }
 
     if (action === "login") {
-      // Server-side login: find user and verify password
       if (!loginStr || !password) {
         return new Response(JSON.stringify({ error: "Missing credentials" }), {
           status: 400,
@@ -57,10 +54,10 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       );
 
-      // Find user by login (case-insensitive)
+      // IMPORTANT: Do NOT select 'foto' here — it contains huge base64 data that causes timeouts
       const { data: user, error } = await supabaseAdmin
         .from("usuarios")
-        .select("*")
+        .select("id, nome, email, telefone, whatsapp, login, senha, nivel, genero, ativo, permissoes, created_at, last_seen")
         .ilike("login", loginStr.trim())
         .eq("ativo", true)
         .maybeSingle();
@@ -77,7 +74,6 @@ serve(async (req) => {
         // Legacy bcrypt hash - compare and migrate to plain text
         valid = compareSync(password, user.senha);
         if (valid) {
-          // Migrate to plain text
           await supabaseAdmin
             .from("usuarios")
             .update({ senha: password })
