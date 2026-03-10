@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
+import logoFerreira from '@/assets/logo-ferreira.jpg';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
 
 const emptyItem = (): ItemOrcamento => ({
@@ -770,7 +771,7 @@ export default function OrcamentosPage() {
           {/* ===== HEADER: Logo+Rollerport left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
-              <img src={logo} alt={empresaEmissora.nome} className="h-16 object-contain" />
+              <img src={empresaEmissora.nome === 'ROLLERPORT' ? logo : logoFerreira} alt={empresaEmissora.nome} className="h-16 object-contain" />
               <div>
                 {empresaEmissora.nome === 'ROLLERPORT' ? (
                   <>
@@ -783,14 +784,12 @@ export default function OrcamentosPage() {
                   </>
                 ) : (
                   <>
-                    <h2 className="text-base font-bold leading-tight">{empresaEmissora.razaoSocial}</h2>
-                    <p className="text-[10px] font-semibold">Nome Fantasia: {empresaEmissora.nome}</p>
-                    <p className="text-[10px]">Endereço: {empresaEmissora.endereco}</p>
-                    <p className="text-[10px]">Bairro: {empresaEmissora.bairro} <span className="ml-4">CEP: {empresaEmissora.cep}</span></p>
-                    <p className="text-[10px]">Cidade: {empresaEmissora.cidade} - {empresaEmissora.estado}</p>
-                    <p className="text-[10px]">CNPJ/MF n° {empresaEmissora.cnpj}</p>
-                    <p className="text-[10px]">Inscrição Estadual: {empresaEmissora.ie}</p>
-                    <p className="text-[10px]">Fone: {empresaEmissora.telefone} • E-mail: {empresaEmissora.email}</p>
+                    <h2 className="text-base font-bold leading-tight">FERREIRA ROLETES, INDÚSTRIA</h2>
+                    <p className="text-[10px]">Endereço: Rua: João Marcos Pimenta Rocha, 16. <span className="ml-2">Bairro Polo Industrial</span></p>
+                    <p className="text-[10px]">CEP: 07832-460 <span className="ml-2">cidade franco da rocha</span></p>
+                    <p className="text-[10px]">CNPJ: 10.311.350/0001-22</p>
+                    <p className="text-[10px]">Inscrição Estadual: 312.034.593.110</p>
+                    <p className="text-[10px]">Fone: 11 4441-3572 / 11 4811-1588 <span className="ml-2">E-mail: contato@ferreiraroletes.com.br</span></p>
                   </>
                 )}
               </div>
@@ -1082,12 +1081,10 @@ export default function OrcamentosPage() {
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>
-                    {empresaPreview.nome === 'ROLLERPORT' ? 'Dados Rollerport' : `Dados do Cabeçalho (${empresaPreview.nome})`}
+                    {empresaPreview.nome === 'ROLLERPORT' ? 'Dados Rollerport' : 'Dados Ferreira Roletes'}
                   </DialogTitle>
                   <DialogDescription>
-                    {empresaPreview.nome === 'ROLLERPORT'
-                      ? 'Estas informações serão impressas no topo'
-                      : 'Estas informações serão impressas no topo e rodapé do orçamento.'}
+                    Estas informações serão impressas no topo
                   </DialogDescription>
                 </DialogHeader>
                 <div className="text-xs space-y-1">
@@ -1103,16 +1100,13 @@ export default function OrcamentosPage() {
                     </>
                   ) : (
                     <>
-                      <p className="font-bold text-sm mb-2">{empresaPreview.razaoSocial}</p>
-                      <p><span className="font-semibold">Nome Fantasia:</span> {empresaPreview.nome}</p>
-                      <p><span className="font-semibold">Endereço:</span> {empresaPreview.endereco}</p>
-                      <p><span className="font-semibold">Bairro:</span> {empresaPreview.bairro} <span className="ml-4 font-semibold">CEP:</span> {empresaPreview.cep}</p>
-                      <p><span className="font-semibold">Cidade:</span> {empresaPreview.cidade} - {empresaPreview.estado}</p>
-                      <p><span className="font-semibold">CNPJ/MF n°:</span> {empresaPreview.cnpj}</p>
-                      <p><span className="font-semibold">Inscrição Estadual:</span> {empresaPreview.ie}</p>
-                      <p><span className="font-semibold">Fone:</span> {empresaPreview.telefone}</p>
-                      <p><span className="font-semibold">E-mail:</span> {empresaPreview.email}</p>
-                      <p><span className="font-semibold">Regime Tributário:</span> {empresaPreview.regimeTributario}</p>
+                      <p className="font-bold text-sm mb-2">FERREIRA ROLETES, INDÚSTRIA</p>
+                      <p><span className="font-semibold">Endereço:</span> Rua: João Marcos Pimenta Rocha, 16. <span className="font-semibold">Bairro:</span> Polo Industrial</p>
+                      <p><span className="font-semibold">CEP:</span> 07832-460 <span className="font-semibold ml-2">Cidade:</span> Franco da Rocha</p>
+                      <p><span className="font-semibold">CNPJ:</span> 10.311.350/0001-22</p>
+                      <p><span className="font-semibold">Inscrição Estadual:</span> 312.034.593.110</p>
+                      <p><span className="font-semibold">Telefone:</span> 11 4441-3572 / 11 4811-1588</p>
+                      <p><span className="font-semibold">E-mail:</span> contato@ferreiraroletes.com.br</p>
                     </>
                   )}
                 </div>
