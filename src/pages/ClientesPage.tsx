@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import type { Cliente, Comprador, RegimeTributario } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store, Upload, Download } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store, Upload, Download, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -23,6 +24,8 @@ const emptyCliente = (): Cliente => ({
 type Categoria = 'clientes' | 'revenda';
 
 export default function ClientesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlVendedor = searchParams.get('vendedor') || '';
   const [categoria, setCategoria] = useState<Categoria>('clientes');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [revendas, setRevendas] = useState<Cliente[]>([]);
@@ -129,20 +132,26 @@ export default function ClientesPage() {
   const labelContato = isRevenda ? 'Vendedor' : 'Comprador';
   const items = isRevenda ? revendas : clientes;
 
-  const filtered = items.filter(c => {
-    const s = search.toLowerCase();
-    if (!s) return true;
-    const compradorMatch = (c.compradores || []).some(comp =>
-      comp.nome?.toLowerCase().includes(s) || comp.telefone?.includes(s) ||
-      comp.email?.toLowerCase().includes(s) || comp.whatsapp?.includes(s)
-    );
-    return (
-      c.nome?.toLowerCase().includes(s) || c.cnpj?.includes(s) ||
-      c.email?.toLowerCase().includes(s) || c.telefone?.includes(s) ||
-      c.whatsapp?.includes(s) || c.endereco?.toLowerCase().includes(s) ||
-      c.cidade?.toLowerCase().includes(s) || c.estado?.toLowerCase().includes(s) || compradorMatch
-    );
-  });
+  const filtered = useMemo(() => {
+    return items.filter(c => {
+      // Priority 1: Query param filter (vendedor/usuarioCriador)
+      if (urlVendedor && (c.usuarioCriador || 'Sistema') !== urlVendedor) return false;
+
+      // Priority 2: Search text
+      const s = search.toLowerCase();
+      if (!s) return true;
+      const compradorMatch = (c.compradores || []).some(comp =>
+        comp.nome?.toLowerCase().includes(s) || comp.telefone?.includes(s) ||
+        comp.email?.toLowerCase().includes(s) || comp.whatsapp?.includes(s)
+      );
+      return (
+        c.nome?.toLowerCase().includes(s) || c.cnpj?.includes(s) ||
+        c.email?.toLowerCase().includes(s) || c.telefone?.includes(s) ||
+        c.whatsapp?.includes(s) || c.endereco?.toLowerCase().includes(s) ||
+        c.cidade?.toLowerCase().includes(s) || c.estado?.toLowerCase().includes(s) || compradorMatch
+      );
+    });
+  }, [items, search, urlVendedor]);
 
   // Efeito para preenchimento automático via CNPJ
   useEffect(() => {
@@ -328,7 +337,24 @@ export default function ClientesPage() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder={`Buscar ${isRevenda ? 'revenda' : 'cliente'} por empresa, ${isRevenda ? 'vendedor' : 'comprador'}, CNPJ, endereço, telefone, email...`} value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        <Input 
+          placeholder={`Buscar ${isRevenda ? 'revenda' : 'cliente'} por empresa, ${isRevenda ? 'vendedor' : 'comprador'}, CNPJ, endereço, telefone, email...`} 
+          value={search} 
+          onChange={e => setSearch(e.target.value)} 
+          className="pl-10 pr-32" 
+        />
+        {urlVendedor && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-[10px] font-bold border border-primary/20">
+            <span>Filtro: {urlVendedor}</span>
+            <button 
+              onClick={() => setSearchParams({})} 
+              className="hover:text-destructive transition-colors p-0.5 rounded-full hover:bg-destructive/10"
+              title="Limpar filtro"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       <Dialog open={!!viewCliente} onOpenChange={() => setViewCliente(null)}>

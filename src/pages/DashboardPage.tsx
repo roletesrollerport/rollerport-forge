@@ -58,7 +58,7 @@ function StatCard({
   value: string | number;
   color: string;
   onClick?: () => void;
-  items?: { id: string, label: string, user: string, statusColor?: 'red' | 'yellow' | 'green' }[];
+  items?: { id: string, label: string, user: string, statusColor?: 'red' | 'yellow' | 'green', onClick?: () => void }[];
   onViewAll?: () => void;
 }) {
   return (
@@ -76,7 +76,16 @@ function StatCard({
         {items && items.length > 0 ? (
           <div className="space-y-1.5 border-t pt-2">
             {items.map((item) => (
-              <div key={item.id} className="flex justify-between items-center text-[11px] gap-2">
+              <div 
+                key={item.id} 
+                className={`flex justify-between items-center text-[11px] gap-2 p-0.5 rounded transition-colors ${item.onClick ? 'hover:bg-muted cursor-pointer' : ''}`}
+                onClick={(e) => {
+                  if (item.onClick) {
+                    e.stopPropagation();
+                    item.onClick();
+                  }
+                }}
+              >
                 <div className="flex items-center gap-1.5 shrink-0">
                   {item.statusColor && (
                     <div className={`h-2 w-2 rounded-full ${item.statusColor === 'red' ? 'bg-red-500' :
@@ -780,14 +789,22 @@ export default function DashboardPage() {
           })).length}
           color="bg-info/10 text-info"
           onViewAll={() => navigate('/clientes')}
-          items={(isMaster ? data.clientes : data.clientes.filter(c => {
-            if (c.usuarioCriador === currentUserName) return true;
-            const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
-            const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
-            return hasOrc || hasPed;
-          }))
-            .slice(-3).reverse()
-            .map(c => ({ id: c.id, label: c.nome, user: c.usuarioCriador || 'Sistema' }))}
+          items={(() => {
+            const userCounts: Record<string, number> = {};
+            data.clientes.forEach(c => {
+              const creator = c.usuarioCriador || 'Sistema';
+              userCounts[creator] = (userCounts[creator] || 0) + 1;
+            });
+            return Object.entries(userCounts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([name, count]) => ({
+                id: name,
+                label: name,
+                user: `${count} clientes`,
+                onClick: () => navigate(`/clientes?vendedor=${encodeURIComponent(name)}`)
+              }));
+          })()}
         />
 
         {/* ORDENS DE SERVIÇO */}
