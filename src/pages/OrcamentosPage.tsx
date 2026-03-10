@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { formatCPForCNPJ, formatTelefone } from '@/lib/formatters';
 import logo from '@/assets/logo.png';
 import logoFerreira from '@/assets/logo-ferreira.jpg';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
@@ -1752,7 +1753,7 @@ export default function OrcamentosPage() {
               <div className="flex justify-between"><h3 className="font-semibold text-lg">Cadastrar {categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'}</h3><button onClick={() => setShowCadCliente(false)}><XIcon className="h-4 w-4" /></button></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={cadCliente.nome} onChange={e => setCadCliente({ ...cadCliente, nome: e.target.value })} /></div>
-                <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">CNPJ</label><Input value={cadCliente.cnpj} onChange={e => setCadCliente({ ...cadCliente, cnpj: formatCPForCNPJ(e.target.value) })} /></div>
                 <div>
                   <label className="text-xs text-muted-foreground">Regime Tributário</label>
                   <select value={cadCliente.regimeTributario} onChange={e => setCadCliente({ ...cadCliente, regimeTributario: e.target.value as RegimeTributario })}
@@ -1763,8 +1764,8 @@ export default function OrcamentosPage() {
                     <option value="Isento">Isento</option>
                   </select>
                 </div>
-                <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: e.target.value })} /></div>
-                <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadCliente.telefone} onChange={e => setCadCliente({ ...cadCliente, telefone: formatTelefone(e.target.value) })} /></div>
+                <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadCliente.whatsapp} onChange={e => setCadCliente({ ...cadCliente, whatsapp: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={cadCliente.email} onChange={e => setCadCliente({ ...cadCliente, email: e.target.value })} /></div>
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Endereço</label><Input value={cadCliente.endereco} onChange={e => setCadCliente({ ...cadCliente, endereco: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Cidade</label><Input value={cadCliente.cidade} onChange={e => setCadCliente({ ...cadCliente, cidade: e.target.value })} /></div>
@@ -1788,9 +1789,9 @@ export default function OrcamentosPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div><label className="text-xs text-muted-foreground">Nome</label><Input value={comp.nome} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], nome: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
-                      <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={comp.telefone} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], telefone: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
+                      <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={comp.telefone} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], telefone: formatTelefone(e.target.value) }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
                       <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={comp.email} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], email: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
-                      <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={comp.whatsapp} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], whatsapp: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
+                      <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={comp.whatsapp} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], whatsapp: formatTelefone(e.target.value) }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
                       <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={comp.aniversario || ''} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], aniversario: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} /></div>
                       <div><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={comp.redesSociais || ''} onChange={e => { const c = [...cadCliente.compradores]; c[idx] = { ...c[idx], redesSociais: e.target.value }; setCadCliente({ ...cadCliente, compradores: c }); }} placeholder="Instagram..." /></div>
                     </div>
@@ -1808,8 +1809,8 @@ export default function OrcamentosPage() {
               <div className="flex justify-between"><h3 className="font-semibold">Cadastrar {labelContato}</h3><button onClick={() => setShowCadComprador(false)}><XIcon className="h-4 w-4" /></button></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome</label><Input value={cadComprador.nome} onChange={e => setCadComprador({ ...cadComprador, nome: e.target.value })} /></div>
-                <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadComprador.telefone} onChange={e => setCadComprador({ ...cadComprador, telefone: e.target.value })} /></div>
-                <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadComprador.whatsapp} onChange={e => setCadComprador({ ...cadComprador, whatsapp: e.target.value })} /></div>
+                <div><label className="text-xs text-muted-foreground">Telefone</label><Input value={cadComprador.telefone} onChange={e => setCadComprador({ ...cadComprador, telefone: formatTelefone(e.target.value) })} /></div>
+                <div><label className="text-xs text-muted-foreground">WhatsApp</label><Input value={cadComprador.whatsapp} onChange={e => setCadComprador({ ...cadComprador, whatsapp: formatTelefone(e.target.value) })} /></div>
                 <div><label className="text-xs text-muted-foreground">E-mail</label><Input value={cadComprador.email} onChange={e => setCadComprador({ ...cadComprador, email: e.target.value })} /></div>
                 <div><label className="text-xs text-muted-foreground">Aniversário</label><Input type="date" value={cadComprador.aniversario || ''} onChange={e => setCadComprador({ ...cadComprador, aniversario: e.target.value })} /></div>
                 <div className="col-span-2"><label className="text-xs text-muted-foreground">Redes Sociais</label><Input value={cadComprador.redesSociais || ''} onChange={e => setCadComprador({ ...cadComprador, redesSociais: e.target.value })} placeholder="Instagram, LinkedIn..." /></div>
