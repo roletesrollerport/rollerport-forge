@@ -1734,12 +1734,8 @@ export default function OrcamentosPage() {
           </div>
         )}
 
-        {/* Total + Save */}
-        <div className="border-2 border-primary rounded-lg p-4 flex justify-between items-center">
-          <span className="font-bold text-lg">Total do Orçamento</span>
-          <span className="font-bold text-lg text-primary">{fmt(totalGeral)}</span>
-        </div>
-        <div className="flex gap-2">
+        {/* Save */}
+        <div className="flex gap-2 mt-4">
           <Button onClick={handleSave} className="gap-2">Salvar Orçamento</Button>
           <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
         </div>
