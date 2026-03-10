@@ -52,6 +52,14 @@ function AppContent() {
         getById(loggedUserId).then(user => {
           if (user) {
             setCurrentUser(user);
+            // Auto-migrate photos to storage (one-time, for master users)
+            if (user.nivel === 'master' && !localStorage.getItem('rp_photos_migrated')) {
+              supabase.functions.invoke('avatar-api', {
+                body: { action: 'migrate_photos', sessionToken },
+              }).then(() => {
+                localStorage.setItem('rp_photos_migrated', '1');
+              }).catch(() => {});
+            }
           } else {
             localStorage.removeItem('rp_logged_user');
             localStorage.removeItem('rp_session_token');
@@ -63,7 +71,6 @@ function AppContent() {
           setChecking(false);
         });
       }).catch(() => {
-        // Session invalid or network error - show login
         localStorage.removeItem('rp_logged_user');
         localStorage.removeItem('rp_session_token');
         setLoggedUserId(null);
