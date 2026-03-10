@@ -247,10 +247,7 @@ const SEED_EMPRESAS: EmpresaEmissora[] = [
     cep: '07832-460',
     telefone: '11 4441-3572 / 11 4811-1588',
     email: 'faturamento@rollerport.com.br',
-    regimeTributario: 'Simples Nacional',
-    dadosBancarios: [
-      { banco: 'SANTANDER', agencia: '0040', conta: '13.012244-5' }
-    ]
+    regimeTributario: 'Simples Nacional'
   },
   {
     id: 'emp_2',
@@ -265,11 +262,7 @@ const SEED_EMPRESAS: EmpresaEmissora[] = [
     cep: '07832-460',
     telefone: '11 4441-3572 / 11 4811-1588',
     email: 'contato@ferreiraroletes.com.br',
-    regimeTributario: 'Lucro Presumido',
-    dadosBancarios: [
-      { banco: 'BRADESCO', agencia: '1255', conta: '1158-6' },
-      { banco: 'BANCO DO BRASIL', agencia: '1700', conta: '903825' }
-    ]
+    regimeTributario: 'Lucro Presumido'
   }
 ];
 

@@ -903,17 +903,9 @@ export default function OrcamentosPage() {
           {/* PIX / Transferência data on print */}
           {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
             <div className="mt-3 border rounded p-3 text-[10px]">
-              <p className="font-bold mb-1">Dados Bancários para {viewOrc.condicaoPagamento === 'PIX' ? 'PIX' : 'Transferência Bancária'}:</p>
+              <p className="font-bold mb-1">Dados para {viewOrc.condicaoPagamento === 'PIX' ? 'PIX' : 'Transferência Bancária'}:</p>
               <p className="font-bold">{empresaEmissora.razaoSocial} ({empresaEmissora.nome})</p>
               <p>CNPJ: {empresaEmissora.cnpj}</p>
-              <div className="mt-2 space-y-1">
-                {empresaEmissora.dadosBancarios?.map((db, idx) => (
-                  <div key={idx}>
-                    <p className="font-semibold text-primary">{db.banco}</p>
-                    <p>Agência: {db.agencia} | Conta Corrente: {db.conta}</p>
-                  </div>
-                ))}
-              </div>
               {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): {empresaEmissora.cnpj}</p>}
             </div>
           )}
@@ -1092,13 +1084,6 @@ export default function OrcamentosPage() {
                   <p><span className="font-semibold">Fone:</span> {empresaPreview.telefone}</p>
                   <p><span className="font-semibold">E-mail:</span> {empresaPreview.email}</p>
                   <p><span className="font-semibold">Regime Tributário:</span> {empresaPreview.regimeTributario}</p>
-                  
-                  <div className="mt-3 bg-muted/30 p-2 rounded">
-                    <p className="font-bold mb-1">Dados Bancários Associados:</p>
-                    {empresaPreview.dadosBancarios?.map((db, idx) => (
-                      <p key={idx}>{db.banco} - Ag: {db.agencia} | CC: {db.conta}</p>
-                    ))}
-                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -1296,14 +1281,6 @@ export default function OrcamentosPage() {
               <p className="font-semibold text-primary mb-1">Dados para Transferência Bancária:</p>
               <p className="font-bold">{store.getEmpresas().find(e => e.id === empresaEmissoraId)?.razaoSocial} ({store.getEmpresas().find(e => e.id === empresaEmissoraId)?.nome})</p>
               <p>CNPJ: {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.cnpj}</p>
-              <div className="mt-2 space-y-2">
-                {store.getEmpresas().find(e => e.id === empresaEmissoraId)?.dadosBancarios?.map((db, idx) => (
-                  <div key={idx} className="border-l-2 border-primary/30 pl-2">
-                    <p className="font-semibold text-primary/80">{db.banco}</p>
-                    <p>Agência: {db.agencia} | Conta Corrente: {db.conta}</p>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 

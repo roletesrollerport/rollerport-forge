@@ -52,11 +52,6 @@ export interface EmpresaEmissora {
   regimeTributario: RegimeTributario;
   bairro: string;
   logo?: string;
-  dadosBancarios?: {
-    banco: string;
-    agencia: string;
-    conta: string;
-  }[];
 }
 
 // ======= CLIENTES =======
