@@ -11,7 +11,7 @@ import { ICMS_INTERESTADUAL_SP, PIS_FIXO, COFINS_FIXO } from '@/lib/utils';
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History,
-  FileText, Mail, Settings2 as SettingsIcon, Check, PlusCircle
+  FileText, Mail, Settings2 as SettingsIcon, Check, PlusCircle, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -154,6 +154,7 @@ export default function OrcamentosPage() {
   const [vendedor, setVendedor] = useState('');
   const [empresaEmissoraId, setEmpresaEmissoraId] = useState('emp_1'); // Default Rollerport
   const [empresaPreview, setEmpresaPreview] = useState<EmpresaEmissora | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [dataOrcamento, setDataOrcamento] = useState(new Date().toLocaleDateString('pt-BR'));
   const [previsaoEntrega, setPrevisaoEntrega] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -1168,6 +1169,25 @@ export default function OrcamentosPage() {
             </Dialog>
           )}
 
+          {/* Dialog Image Preview (Material) */}
+          <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+            <DialogContent className="max-w-2xl bg-transparent border-none shadow-none flex flex-col items-center justify-center p-0">
+              {previewImage && (
+                <div className="relative group flex flex-col items-center">
+                  <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl bg-white/5" />
+                  <a
+                    href={previewImage}
+                    download={`imagem_material_${Date.now()}.png`}
+                    className="mt-4 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg hover:bg-primary/90 flex gap-2 items-center transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Salvar imagem</span>
+                  </a>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
           {/* Cliente / Revenda toggle + search */}
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -1595,11 +1615,16 @@ export default function OrcamentosPage() {
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Tipo do Encaixe</label>
-                <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Selecione...</option>
-                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
-                </select>
+                <div className="flex gap-2 items-center">
+                  <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Selecione...</option>
+                    {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
+                  </select>
+                  {encaixes.find(e => e.tipo === roleteItem.tipoEncaixe)?.imagem && (
+                    <img src={encaixes.find(e => e.tipo === roleteItem.tipoEncaixe)?.imagem} alt="Encaixe" className="h-9 w-9 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(encaixes.find(e => e.tipo === roleteItem.tipoEncaixe)?.imagem || null)} />
+                  )}
+                </div>
               </div>
               {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
                 <div>
@@ -1609,29 +1634,44 @@ export default function OrcamentosPage() {
               )}
               <div>
                 <label className="text-xs text-primary font-medium">Conjunto/Kits</label>
-                <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Selecione...</option>
-                  {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
-                </select>
+                <div className="flex gap-2 items-center">
+                  <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Selecione...</option>
+                    {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
+                  </select>
+                  {conjuntos.find(c => c.codigo === roleteItem.conjunto)?.imagem && (
+                    <img src={conjuntos.find(c => c.codigo === roleteItem.conjunto)?.imagem} alt="Conjunto" className="h-9 w-9 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(conjuntos.find(c => c.codigo === roleteItem.conjunto)?.imagem || null)} />
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Revest. Spiraflex</label>
-                <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('SPIRAFLEX') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
-                  onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'SPIRAFLEX' : '', quantidadeAneis: 0 })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Sem Spiraflex</option>
-                  {revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
-                </select>
+                <div className="flex gap-2 items-center">
+                  <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('SPIRAFLEX') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                    onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'SPIRAFLEX' : '', quantidadeAneis: 0 })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Sem Spiraflex</option>
+                    {revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+                  </select>
+                  {revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento)?.imagem && roleteItem.tipoRevestimento === 'SPIRAFLEX' && (
+                    <img src={revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento)?.imagem} alt="Revestimento" className="h-9 w-9 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento)?.imagem || null)} />
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Revest. Borracha</label>
-                <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
-                  onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'ANEIS' : '', quantidadeAneis: e.target.value ? (roleteItem.quantidadeAneis || 1) : 0 })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Sem Anéis</option>
-                  {revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
-                </select>
+                <div className="flex gap-2 items-center">
+                  <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                    onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'ANEIS' : '', quantidadeAneis: e.target.value ? (roleteItem.quantidadeAneis || 1) : 0 })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Sem Anéis</option>
+                    {revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+                  </select>
+                  {revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento)?.imagem && roleteItem.tipoRevestimento === 'ANEIS' && (
+                    <img src={revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento)?.imagem} alt="Anéis" className="h-9 w-9 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento)?.imagem || null)} />
+                  )}
+                </div>
               </div>
               {roleteItem.especificacaoRevestimento && revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento && r.tipo.toUpperCase().includes('ABI')) && (
                 <div>
