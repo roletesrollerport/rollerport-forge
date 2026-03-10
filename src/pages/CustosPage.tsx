@@ -20,7 +20,7 @@ const tabs: { key: CustoTab; label: string }[] = [
   { key: 'encaixes', label: 'Encaixes' },
 ];
 
-const fmt = (v: number) => v ? `R$ ${v.toFixed(2).replace('.', ',')}` : '';
+const fmt = (v: number) => v ? `R$\u2009${v.toFixed(2).replace('.', ',')}` : '';
 
 function ImageCell({ src, onUpload, onRemove }: { src?: string; onUpload: (url: string) => void; onRemove: () => void }) {
   const [preview, setPreview] = useState(false);

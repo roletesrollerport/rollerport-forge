@@ -20,7 +20,7 @@ import {
 import VendorReportView from '@/components/VendorReportView';
 import { toast } from 'sonner';
 
-const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
+const fmt = (v: number) => `R$\u2009${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
 
 const formatCurrencyInput = (value: number): string => {
   if (!value && value !== 0) return '';

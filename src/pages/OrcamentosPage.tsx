@@ -127,7 +127,7 @@ function calcItem(
   };
 }
 
-const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+const fmt = (v: number) => `R$\u2009${v.toFixed(2).replace('.', ',')}`;
 
 type View = 'list' | 'form' | 'view' | 'print';
 
@@ -687,7 +687,7 @@ export default function OrcamentosPage() {
 
   const handleSendEmail = (orc: Orcamento) => {
     const subject = encodeURIComponent(`Orçamento Rollerport - Nº ${orc.numero}`);
-    const body = encodeURIComponent(`Olá,\n\nSegue os dados principais do Orçamento Nº ${orc.numero}:\n\nCliente: ${orc.clienteNome}\nValor Total: R$ ${orc.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\n\nAtenciosamente,\nRollerport`);
+    const body = encodeURIComponent(`Olá,\n\nSegue os dados principais do Orçamento Nº ${orc.numero}:\n\nCliente: ${orc.clienteNome}\nValor Total: R$${orc.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$\xa0', 'R$')}\n\nAtenciosamente,\nRollerport`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
@@ -1967,7 +1967,7 @@ export default function OrcamentosPage() {
               <th className="text-left p-3 font-medium hidden md:table-cell">Usuário</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Comprador</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
-              <th className="text-right p-3 font-medium">Valor</th>
+              <th className="text-right p-3 font-medium w-32">Valor</th>
               <th className="text-left p-3 font-medium">Status</th>
               <th className="p-3 w-40">Ações</th>
             </tr>
@@ -1980,7 +1980,7 @@ export default function OrcamentosPage() {
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.vendedor || '-'}</td>
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.compradorNome || '-'}</td>
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.dataOrcamento || o.createdAt}</td>
-                <td className="p-3 text-right font-mono font-medium">{fmt(o.valorTotal)}</td>
+                <td className="p-3 text-right font-mono font-medium whitespace-nowrap">{fmt(o.valorTotal)}</td>
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' :
                       o.status === 'ENVIADO' ? 'bg-info/10 text-info' :
@@ -1991,15 +1991,25 @@ export default function OrcamentosPage() {
                     }`}>{o.status}</span>
                 </td>
                 <td className="p-3">
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Visualizar"><Eye className="h-4 w-4" /></button>
-                    <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
-                    {o.status === 'RASCUNHO' && (
-                      <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-success/20 text-success" title="Conferir e Finalizar"><Check className="h-4 w-4" /></button>
-                    )}
-                    <button onClick={() => convertToPedido(o)} className="p-1 rounded hover:bg-muted text-primary" title="Transformar em Pedido"><ShoppingCart className="h-4 w-4" /></button>
-                    <button onClick={() => setConfirmDeleteOrc(o.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                  <div className="flex items-center justify-center gap-0.5 px-1">
+                    <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted text-muted-foreground transition-all hover:scale-110" title="Visualizar"><Eye className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-muted text-muted-foreground transition-all hover:scale-110" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted text-muted-foreground transition-all hover:scale-110" title="Imprimir"><Printer className="h-3.5 w-3.5" /></button>
+                    <button 
+                      onClick={() => openEdit(o)} 
+                      className={`p-0.5 rounded-full shadow-sm transition-all hover:scale-110 ${
+                        o.status === 'RASCUNHO' 
+                          ? 'bg-destructive text-white hover:bg-destructive/90' 
+                          : o.status === 'APROVADO' 
+                            ? 'bg-success text-white hover:bg-success/90' 
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`} 
+                      title={o.status === 'RASCUNHO' ? "Conferir e Finalizar" : "Revisar Aprovação"}
+                    >
+                      <Check className="h-3 w-3 stroke-[3px]" />
+                    </button>
+                    <button onClick={() => convertToPedido(o)} className="p-1 rounded hover:bg-muted text-primary transition-all hover:scale-110" title="Transformar em Pedido"><ShoppingCart className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setConfirmDeleteOrc(o.id)} className="p-1 rounded hover:bg-muted text-destructive transition-all hover:scale-110" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </td>
               </tr>

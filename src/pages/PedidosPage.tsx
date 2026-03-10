@@ -19,7 +19,7 @@ const daysSince = (dateStr: string): number => {
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 };
 
-const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+const fmt = (v: number) => `R$\u2009${v.toFixed(2).replace('.', ',')}`;
 
 function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos, setCurrentPedido, setView }: {
   pedido: Pedido; orcamentos: Orcamento[]; pedidos: Pedido[];
