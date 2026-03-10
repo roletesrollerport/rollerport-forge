@@ -292,6 +292,9 @@ export default function OrcamentosPage() {
           setItensRolete(d.itensRolete || []);
           setItensProduto(d.itensProduto || []);
           setPrazoPagamento(d.prazoPagamento || '');
+          if (d.showRoleteForm !== undefined) setShowRoleteForm(d.showRoleteForm);
+          if (d.roleteItem) setRoleteItem(d.roleteItem);
+          if (d.codigoRolete) setCodigoRolete(d.codigoRolete);
           if (d.editingOrc) setEditingOrc(d.editingOrc);
           setView('form');
         }
@@ -302,10 +305,14 @@ export default function OrcamentosPage() {
   // Autosave draft to localStorage on every change when in form view
   useEffect(() => {
     if (view === 'form') {
-      const draft = { clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, empresaEmissoraId, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc };
+      const draft = {
+        clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, empresaEmissoraId,
+        dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete,
+        itensProduto, prazoPagamento, editingOrc, showRoleteForm, roleteItem, codigoRolete
+      };
       localStorage.setItem('orc_draft', JSON.stringify(draft));
     }
-  }, [view, clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, empresaEmissoraId, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc]);
+  }, [view, clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, empresaEmissoraId, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc, showRoleteForm, roleteItem, codigoRolete]);
 
   // Autosave as draft every 10 seconds when in form view
   const autosaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
