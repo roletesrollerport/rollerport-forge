@@ -43,11 +43,19 @@ export function useUsuarios() {
   const fetchUsuarios = useCallback(async () => {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('*')
+      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .order('created_at', { ascending: true });
-    if (!error && data) {
+
+    if (error) {
+      console.error('[useUsuarios] Erro ao carregar usuários:', error);
+      setLoading(false);
+      return;
+    }
+
+    if (data) {
       setUsuarios(data.map(parseUsuario));
     }
+
     setLoading(false);
   }, []);
 
