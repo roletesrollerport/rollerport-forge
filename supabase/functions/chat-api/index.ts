@@ -231,6 +231,86 @@ serve(async (req) => {
       });
     }
 
+    if (action === "get_messages") {
+      const { other_user_id } = params;
+      if (!other_user_id) {
+        return new Response(JSON.stringify({ error: "Missing other_user_id" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from("chat_messages")
+        .select("*")
+        .or(`and(sender_id.eq.${userId},receiver_id.eq.${other_user_id}),and(sender_id.eq.${other_user_id},receiver_id.eq.${userId})`)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        return new Response(JSON.stringify({ error: "Failed to fetch messages" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ messages: data || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "get_messages_between") {
+      // Master-only: view conversation between two other users
+      if (user.nivel !== "master") {
+        return new Response(JSON.stringify({ error: "Not authorized" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { user1_id, user2_id } = params;
+      if (!user1_id || !user2_id) {
+        return new Response(JSON.stringify({ error: "Missing user IDs" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from("chat_messages")
+        .select("*")
+        .or(`and(sender_id.eq.${user1_id},receiver_id.eq.${user2_id}),and(sender_id.eq.${user2_id},receiver_id.eq.${user1_id})`)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        return new Response(JSON.stringify({ error: "Failed to fetch messages" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ messages: data || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "get_unread_count") {
+      const { since } = params;
+      const sinceDate = since || new Date(0).toISOString();
+
+      const { data, error } = await supabaseAdmin
+        .from("chat_messages")
+        .select("sender_id")
+        .neq("sender_id", userId)
+        .eq("deleted_for_all", false)
+        .gt("created_at", sinceDate);
+
+      if (error) {
+        return new Response(JSON.stringify({ error: "Failed to count unread" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const uniqueSenders = new Set((data || []).map((m: any) => m.sender_id));
+      return new Response(JSON.stringify({ count: uniqueSenders.size }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
