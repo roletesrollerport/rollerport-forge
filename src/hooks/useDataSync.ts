@@ -13,7 +13,8 @@ const SYNC_MAP: Record<string, { table: string; idField: string; isFlat?: boolea
   rp_produtos: { table: 'produtos', idField: 'id' },
   rp_estoque: { table: 'estoque', idField: 'id' },
   rp_metas: { table: 'metas_vendedores', idField: 'vendedor' },
-  rp_usuarios: { table: 'usuarios', idField: 'id', isFlat: true },
+  // rp_usuarios removed: passwords were being synced to localStorage via select('*')
+  // User data is fetched securely via useUsuarios hook with explicit column selection
 };
 
 const SYNCED_KEYS = Object.keys(SYNC_MAP);
@@ -216,7 +217,6 @@ export function useDataSync() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, () => handleRealtimeChange('produtos'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, () => handleRealtimeChange('estoque'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, () => handleRealtimeChange('metas_vendedores'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios' }, () => handleRealtimeChange('usuarios'))
       .subscribe();
 
     return () => {
