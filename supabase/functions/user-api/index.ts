@@ -177,35 +177,6 @@ serve(async (req) => {
       });
     }
 
-    if (action === "logout_user") {
-      const { userId: targetId } = params;
-      if (!targetId) {
-        return new Response(JSON.stringify({ error: "Missing userId" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const { error } = await supabaseAdmin.from("sessions").delete().eq("user_id", targetId);
-      if (error) {
-        return new Response(JSON.stringify({ error: "Failed to logout user" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "logout_all_common") {
-      const { data: users } = await supabaseAdmin.from("usuarios").select("id").neq("nivel", "master");
-      if (users && users.length > 0) {
-        const userIds = users.map((u: any) => u.id);
-        await supabaseAdmin.from("sessions").delete().in("user_id", userIds);
-      }
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     if (action === "delete_user") {
       const { userId: targetId } = params;
       if (!targetId) {

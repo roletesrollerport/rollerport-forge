@@ -414,25 +414,14 @@ export default function ChatPage() {
                     size="sm"
                     className="gap-1 text-xs"
                     onClick={() => {
-                      const escapeHtml = (unsafe: string | null): string => {
-                        if (!unsafe) return '';
-                        return unsafe
-                          .replace(/&/g, "&amp;")
-                          .replace(/</g, "&lt;")
-                          .replace(/>/g, "&gt;")
-                          .replace(/"/g, "&quot;")
-                          .replace(/'/g, "&#039;");
-                      };
                       const lines = masterMessages.map(msg => {
-                        const time = escapeHtml(new Date(msg.created_at).toLocaleString('pt-BR'));
-                        const sender = escapeHtml(getUserName(msg.sender_id));
+                        const time = new Date(msg.created_at).toLocaleString('pt-BR');
+                        const sender = getUserName(msg.sender_id);
                         const deleted = msg.deleted_for_all ? ' <span style="color:red">[APAGADA]</span>' : '';
-                        const content = msg.message_type === 'text' ? escapeHtml(msg.content) : msg.message_type === 'audio' ? '<em>[Áudio]</em>' : `<em>[Arquivo: ${escapeHtml(msg.file_name)}]</em>`;
+                        const content = msg.message_type === 'text' ? msg.content : msg.message_type === 'audio' ? '<em>[Áudio]</em>' : `<em>[Arquivo: ${msg.file_name}]</em>`;
                         return `<p><strong>[${time}] ${sender}</strong>${deleted}: ${content}</p>`;
                       });
-                      const u1Name = escapeHtml(masterViewUsers?.u1.nome || '');
-                      const u2Name = escapeHtml(masterViewUsers?.u2.nome || '');
-                      const html = `<html><head><title>Conversa</title><style>body{font-family:sans-serif;padding:20px;font-size:13px}h2{font-size:16px}p{margin:4px 0}</style></head><body><h2>Conversa: ${u1Name} ↔ ${u2Name}</h2><p style="color:gray;font-size:11px">Exportado em: ${new Date().toLocaleString('pt-BR')}</p><hr/>${lines.join('')}</body></html>`;
+                      const html = `<html><head><title>Conversa</title><style>body{font-family:sans-serif;padding:20px;font-size:13px}h2{font-size:16px}p{margin:4px 0}</style></head><body><h2>Conversa: ${masterViewUsers?.u1.nome} ↔ ${masterViewUsers?.u2.nome}</h2><p style="color:gray;font-size:11px">Exportado em: ${new Date().toLocaleString('pt-BR')}</p><hr/>${lines.join('')}</body></html>`;
                       const win = window.open('', '_blank');
                       if (win) { win.document.write(html); win.document.close(); win.print(); }
                     }}
