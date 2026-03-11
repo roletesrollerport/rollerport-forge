@@ -40,8 +40,13 @@ async function pushToDb(key: string) {
   if (!config) return;
 
   // For usuarios, we skip background push to avoid overwriting with plain text passwords.
-  // User creation/updates happen via edge functions in useUsuarios.
   if (key === 'rp_usuarios') return;
+
+  const sessionToken = localStorage.getItem('rp_session_token');
+  if (!sessionToken) {
+    console.log(`[DataSync] Skipping push for ${config.table} - no session`);
+    return;
+  }
 
   const localData = getLocalData(key);
   
@@ -57,34 +62,30 @@ async function pushToDb(key: string) {
     currentIds.add(id);
     
     if (config.isFlat) {
-      // Map properties directly (flat table)
       return { ...item, [config.idField]: id };
     } else {
-      // JSON blob pattern
       return { [config.idField]: id, data: item, updated_at: new Date().toISOString() };
     }
   });
 
-  // Batch upsert in chunks of 50
-  for (let i = 0; i < rows.length; i += 50) {
-    const chunk = rows.slice(i, i + 50);
-    const { error } = await supabase
-      .from(config.table as any)
-      .upsert(chunk as any, { onConflict: config.idField });
-    if (error) console.error(`[DataSync] Upsert error for ${config.table}:`, error);
-  }
+  // Upsert via edge function
+  const { error } = await supabase.functions.invoke('data-api', {
+    body: { action: 'upsert', sessionToken, table: config.table, rows, idField: config.idField },
+  });
+  if (error) console.error(`[DataSync] Upsert error for ${config.table}:`, error);
 
-  // Only delete items that were explicitly known before and are now removed
+  // Delete removed items via edge function
   const prevIds = knownIds[key];
   if (prevIds && prevIds.size > 0) {
+    const deletedIds: string[] = [];
     for (const id of prevIds) {
-      if (!currentIds.has(id)) {
-        const { error } = await supabase
-          .from(config.table as any)
-          .delete()
-          .eq(config.idField, id);
-        if (error) console.error(`[DataSync] Delete error for ${config.table}:`, error);
-      }
+      if (!currentIds.has(id)) deletedIds.push(id);
+    }
+    if (deletedIds.length > 0) {
+      const { error: delError } = await supabase.functions.invoke('data-api', {
+        body: { action: 'delete', sessionToken, table: config.table, ids: deletedIds, idField: config.idField },
+      });
+      if (delError) console.error(`[DataSync] Delete error for ${config.table}:`, delError);
     }
   }
 
