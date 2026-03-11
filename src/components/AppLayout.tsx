@@ -57,18 +57,16 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   // Poll for unread chat messages
   const checkUnreadMessages = useCallback(async () => {
     if (!currentUser?.id) return;
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) return;
     const readKey = `rp_chat_read_${currentUser.id}`;
     const lastRead = localStorage.getItem(readKey);
     const lastReadTime = lastRead ? new Date(lastRead).getTime() : 0;
-    const { data: recentData } = await supabase
-      .from('chat_messages' as any)
-      .select('id, sender_id, created_at')
-      .neq('sender_id', currentUser.id)
-      .eq('deleted_for_all', false)
-      .gt('created_at', new Date(lastReadTime).toISOString());
-    if (recentData) {
-      const uniqueSenders = new Set((recentData as any[]).map(m => m.sender_id));
-      setUnreadChatCount(uniqueSenders.size);
+    const { data, error } = await supabase.functions.invoke('chat-api', {
+      body: { action: 'get_unread_count', sessionToken, since: new Date(lastReadTime).toISOString() },
+    });
+    if (!error && data) {
+      setUnreadChatCount(data.count || 0);
     }
   }, [currentUser?.id]);
 

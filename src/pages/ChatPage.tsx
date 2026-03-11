@@ -248,14 +248,13 @@ export default function ChatPage() {
     loadMessages();
   };
 
-  // Master: view conversation between two users
+  // Master: view conversation between two users (via edge function)
   const masterViewConversation = async (u1: UsuarioDB, u2: UsuarioDB) => {
-    const { data } = await supabase
-      .from('chat_messages' as any)
-      .select('*')
-      .or(`and(sender_id.eq.${u1.id},receiver_id.eq.${u2.id}),and(sender_id.eq.${u2.id},receiver_id.eq.${u1.id})`)
-      .order('created_at', { ascending: true });
-    setMasterMessages((data as unknown as ChatMessage[]) || []);
+    if (!sessionToken) return;
+    const { data, error } = await supabase.functions.invoke('chat-api', {
+      body: { action: 'get_messages_between', sessionToken, user1_id: u1.id, user2_id: u2.id },
+    });
+    setMasterMessages((data?.messages as ChatMessage[]) || []);
     setMasterViewUsers({ u1, u2 });
     setMasterViewDialog(true);
   };
