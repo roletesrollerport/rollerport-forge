@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, LogOut, User, Eye, Trash2, RefreshCw
+  Bell, MessageSquare, LogOut, User, Eye, Trash2, RefreshCw, Database
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,7 @@ const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo 
   { to: '/estoque', label: 'Estoque', icon: Warehouse, modulo: 'estoque' },
   { to: '/chat', label: 'Bate-Papo', icon: MessageSquare, modulo: 'chat' },
   { to: '/usuarios', label: 'Usuários', icon: UserCog, modulo: 'usuarios' },
+  { to: '/gerenciamento', label: 'Gerenciamento', icon: Database, modulo: 'usuarios' },
 ];
 
 export default function AppLayout({ children, currentUser, onLogout }: { children: React.ReactNode; currentUser: Usuario; onLogout: () => void }) {

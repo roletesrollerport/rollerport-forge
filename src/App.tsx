@@ -16,6 +16,7 @@ import ProducaoPage from "./pages/ProducaoPage";
 import EstoquePage from "./pages/EstoquePage";
 import UsuariosPage from "./pages/UsuariosPage";
 import ChatPage from "./pages/ChatPage";
+import GerenciamentoPage from "./pages/GerenciamentoPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import { useUsuarios, type UsuarioDB } from "./hooks/useUsuarios";
@@ -220,6 +221,7 @@ function AppContent() {
           <Route path="/estoque" element={<EstoquePage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/usuarios" element={<UsuariosPage />} />
+          <Route path="/gerenciamento" element={<GerenciamentoPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
