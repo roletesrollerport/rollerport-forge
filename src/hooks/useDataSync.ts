@@ -217,7 +217,6 @@ export function useDataSync() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, () => handleRealtimeChange('produtos'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, () => handleRealtimeChange('estoque'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, () => handleRealtimeChange('metas_vendedores'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios' }, () => handleRealtimeChange('usuarios'))
       .subscribe();
 
     return () => {
