@@ -176,8 +176,11 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { error } = await supabase.from('sessions').delete().eq('user_id', userId);
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'logout_user', sessionToken, userId },
+    });
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
     return { success: true };
   };
@@ -186,14 +189,11 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data: users, error: selectError } = await supabase.from('usuarios').select('id').neq('nivel', 'master');
-    if (selectError) throw selectError;
-
-    if (!users || users.length === 0) return { success: true };
-
-    const userIds = users.map(u => u.id);
-    const { error } = await supabase.from('sessions').delete().in('user_id', userIds);
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'logout_all_common', sessionToken },
+    });
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
     return { success: true };
   };
