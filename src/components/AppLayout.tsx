@@ -57,16 +57,18 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   // Poll for unread chat messages
   const checkUnreadMessages = useCallback(async () => {
     if (!currentUser?.id) return;
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) return;
     const readKey = `rp_chat_read_${currentUser.id}`;
     const lastRead = localStorage.getItem(readKey);
     const lastReadTime = lastRead ? new Date(lastRead).getTime() : 0;
-    const { data, error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'get_unread_count', sessionToken, since: new Date(lastReadTime).toISOString() },
-    });
-    if (!error && data) {
-      setUnreadChatCount(data.count || 0);
+    const { data: recentData } = await supabase
+      .from('chat_messages' as any)
+      .select('id, sender_id, created_at')
+      .neq('sender_id', currentUser.id)
+      .eq('deleted_for_all', false)
+      .gt('created_at', new Date(lastReadTime).toISOString());
+    if (recentData) {
+      const uniqueSenders = new Set((recentData as any[]).map(m => m.sender_id));
+      setUnreadChatCount(uniqueSenders.size);
     }
   }, [currentUser?.id]);
 
@@ -85,8 +87,47 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   }, [location.pathname, chatOpen, currentUser?.id]);
 
   // Realtime subscription for new messages - with toast notifications
-  // Realtime removed: chat_messages SELECT is now blocked for security.
-  // Unread count is handled by polling via checkUnreadMessages above.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const channel = supabase
+      .channel('chat-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+      }, (payload: any) => {
+        const msg = payload.new;
+        if (msg?.sender_id !== currentUser.id && location.pathname !== '/chat') {
+          if (!chatOpen) {
+            setUnreadChatCount(prev => prev + 1);
+          }
+          // Show toast notification with sender info
+          const sender = allUsuarios.find(u => u.id === msg.sender_id);
+          if (sender) {
+            const preview = msg.message_type === 'text'
+              ? (msg.content?.substring(0, 60) + (msg.content?.length > 60 ? '...' : ''))
+              : msg.message_type === 'audio' ? '🎤 Mensagem de áudio' : `📎 ${msg.file_name || 'Arquivo'}`;
+            toast(
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => {
+                setChatInitialUserId(msg.sender_id);
+                setChatOpen(true);
+              }}>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {sender.foto ? <img src={sender.foto} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-primary" />}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold">{sender.nome}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{preview}</p>
+                </div>
+              </div>,
+              { duration: 5000 }
+            );
+          }
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
 
   const isMaster = currentUser.nivel === 'master';
   const allModulos: PermissaoModulo[] = ['inicio', 'custos', 'clientes', 'produtos', 'orcamentos', 'pedidos', 'producao', 'estoque', 'chat', 'usuarios'];

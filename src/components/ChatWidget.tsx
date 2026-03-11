@@ -96,23 +96,25 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
 
   const loadMessages = useCallback(async () => {
     if (!selectedUser || !currentUser) return;
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) return;
-    const { data, error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'get_messages', sessionToken, other_user_id: selectedUser.id },
-    });
-    if (!error && data?.messages) {
-      setMessages(data.messages as ChatMessage[]);
+    const { data, error } = await supabase
+      .from('chat_messages' as any)
+      .select('*')
+      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${currentUser.id})`)
+      .order('created_at', { ascending: true });
+    if (!error && data) {
+      setMessages(data as unknown as ChatMessage[]);
     }
   }, [selectedUser, currentUser]);
 
   useEffect(() => { loadMessages(); }, [loadMessages]);
 
-  // Poll for new messages (replaces realtime since direct SELECT is blocked)
   useEffect(() => {
     if (!selectedUser || !currentUser) return;
-    const interval = setInterval(() => { loadMessages(); }, 3000);
-    return () => clearInterval(interval);
+    const channel = supabase
+      .channel(`widget-chat-${[currentUser.id, selectedUser.id].sort().join('-')}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, () => { loadMessages(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [selectedUser, currentUser, loadMessages]);
 
   useEffect(() => {

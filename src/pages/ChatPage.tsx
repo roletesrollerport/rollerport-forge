@@ -86,24 +86,35 @@ export default function ChatPage() {
     return signedUrls[fileUrl] || '#';
   };
 
-  // Load messages for conversation via edge function (not direct DB access)
+  // Load messages for conversation
   const loadMessages = useCallback(async () => {
-    if (!selectedUser || !currentUser || !sessionToken) return;
-    const { data, error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'get_messages', sessionToken, other_user_id: selectedUser.id },
-    });
-    if (!error && data?.messages) {
-      setMessages(data.messages as ChatMessage[]);
+    if (!selectedUser || !currentUser) return;
+    const { data, error } = await supabase
+      .from('chat_messages' as any)
+      .select('*')
+      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${currentUser.id})`)
+      .order('created_at', { ascending: true });
+    if (!error && data) {
+      setMessages(data as unknown as ChatMessage[]);
     }
-  }, [selectedUser, currentUser, sessionToken]);
+  }, [selectedUser, currentUser]);
 
   useEffect(() => { loadMessages(); }, [loadMessages]);
 
-  // Poll for new messages (replaces realtime since direct SELECT is blocked)
+  // Realtime subscription
   useEffect(() => {
     if (!selectedUser || !currentUser) return;
-    const interval = setInterval(() => { loadMessages(); }, 3000);
-    return () => clearInterval(interval);
+    const channel = supabase
+      .channel(`chat-${[currentUser.id, selectedUser.id].sort().join('-')}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'chat_messages',
+      }, () => {
+        loadMessages();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [selectedUser, currentUser, loadMessages]);
 
   useEffect(() => {
@@ -248,13 +259,14 @@ export default function ChatPage() {
     loadMessages();
   };
 
-  // Master: view conversation between two users (via edge function)
+  // Master: view conversation between two users
   const masterViewConversation = async (u1: UsuarioDB, u2: UsuarioDB) => {
-    if (!sessionToken) return;
-    const { data, error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'get_messages_between', sessionToken, user1_id: u1.id, user2_id: u2.id },
-    });
-    setMasterMessages((data?.messages as ChatMessage[]) || []);
+    const { data } = await supabase
+      .from('chat_messages' as any)
+      .select('*')
+      .or(`and(sender_id.eq.${u1.id},receiver_id.eq.${u2.id}),and(sender_id.eq.${u2.id},receiver_id.eq.${u1.id})`)
+      .order('created_at', { ascending: true });
+    setMasterMessages((data as unknown as ChatMessage[]) || []);
     setMasterViewUsers({ u1, u2 });
     setMasterViewDialog(true);
   };

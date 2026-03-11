@@ -15,17 +15,6 @@ const toConj = (r: ConjuntoRow): Conjunto => ({ id: r.id, codigo: r.codigo, valo
 const toRev = (r: RevestimentoRow): Revestimento => ({ id: r.id, tipo: r.tipo, valorMetroOuPeca: r.valor_metro_ou_peca, imagem: r.imagem || undefined });
 const toEnc = (r: EncaixeRow): Encaixe => ({ id: r.id, tipo: r.tipo, preco: r.preco, imagem: r.imagem || undefined });
 
-function getSessionToken() {
-  return localStorage.getItem('rp_session_token') || '';
-}
-
-async function invokeDataApi(body: any) {
-  const { data, error } = await supabase.functions.invoke('data-api', { body: { ...body, sessionToken: getSessionToken() } });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data;
-}
-
 export function useCustos() {
   const [tubos, setTubos] = useState<Tubo[]>([]);
   const [eixos, setEixos] = useState<Eixo[]>([]);
@@ -52,66 +41,69 @@ export function useCustos() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // CRUD operations via edge function
+  // CRUD operations
   const saveTubo = async (t: Tubo) => {
     const row = { diametro: t.diametro, parede: t.parede, preco_barra_6000mm: t.precoBarra6000mm, imagem: t.imagem || null };
     if (t.id && !t.id.startsWith('new_')) {
-      await invokeDataApi({ action: 'update', table: 'custos_tubos', rows: [row], ids: [t.id] });
+      await supabase.from('custos_tubos' as any).update(row).eq('id', t.id);
     } else {
-      await invokeDataApi({ action: 'insert', table: 'custos_tubos', rows: [row] });
+      await supabase.from('custos_tubos' as any).insert(row);
     }
   };
 
   const saveEixo = async (e: Eixo) => {
     const row = { diametro: e.diametro, preco_barra_6000mm: e.precoBarra6000mm, imagem: e.imagem || null };
     if (e.id && !e.id.startsWith('new_')) {
-      await invokeDataApi({ action: 'update', table: 'custos_eixos', rows: [row], ids: [e.id] });
+      await supabase.from('custos_eixos' as any).update(row).eq('id', e.id);
     } else {
-      await invokeDataApi({ action: 'insert', table: 'custos_eixos', rows: [row] });
+      await supabase.from('custos_eixos' as any).insert(row);
     }
   };
 
   const saveConjunto = async (c: Conjunto) => {
     const row = { codigo: c.codigo, valor: c.valor, imagem: c.imagem || null };
     if (c.id && !c.id.startsWith('new_')) {
-      await invokeDataApi({ action: 'update', table: 'custos_conjuntos', rows: [row], ids: [c.id] });
+      await supabase.from('custos_conjuntos' as any).update(row).eq('id', c.id);
     } else {
-      await invokeDataApi({ action: 'insert', table: 'custos_conjuntos', rows: [row] });
+      await supabase.from('custos_conjuntos' as any).insert(row);
     }
   };
 
   const saveRevestimento = async (r: Revestimento) => {
     const row = { tipo: r.tipo, valor_metro_ou_peca: r.valorMetroOuPeca, imagem: r.imagem || null };
     if (r.id && !r.id.startsWith('new_')) {
-      await invokeDataApi({ action: 'update', table: 'custos_revestimentos', rows: [row], ids: [r.id] });
+      await supabase.from('custos_revestimentos' as any).update(row).eq('id', r.id);
     } else {
-      await invokeDataApi({ action: 'insert', table: 'custos_revestimentos', rows: [row] });
+      await supabase.from('custos_revestimentos' as any).insert(row);
     }
   };
 
   const saveEncaixe = async (e: Encaixe) => {
     const row = { tipo: e.tipo, preco: e.preco, imagem: e.imagem || null };
     if (e.id && !e.id.startsWith('new_')) {
-      await invokeDataApi({ action: 'update', table: 'custos_encaixes', rows: [row], ids: [e.id] });
+      await supabase.from('custos_encaixes' as any).update(row).eq('id', e.id);
     } else {
-      await invokeDataApi({ action: 'insert', table: 'custos_encaixes', rows: [row] });
+      await supabase.from('custos_encaixes' as any).insert(row);
     }
   };
 
-  const deleteTubo = async (id: string) => { await invokeDataApi({ action: 'delete', table: 'custos_tubos', ids: [id] }); };
-  const deleteEixo = async (id: string) => { await invokeDataApi({ action: 'delete', table: 'custos_eixos', ids: [id] }); };
-  const deleteConjunto = async (id: string) => { await invokeDataApi({ action: 'delete', table: 'custos_conjuntos', ids: [id] }); };
-  const deleteRevestimento = async (id: string) => { await invokeDataApi({ action: 'delete', table: 'custos_revestimentos', ids: [id] }); };
-  const deleteEncaixe = async (id: string) => { await invokeDataApi({ action: 'delete', table: 'custos_encaixes', ids: [id] }); };
+  const deleteTubo = async (id: string) => { await supabase.from('custos_tubos' as any).delete().eq('id', id); };
+  const deleteEixo = async (id: string) => { await supabase.from('custos_eixos' as any).delete().eq('id', id); };
+  const deleteConjunto = async (id: string) => { await supabase.from('custos_conjuntos' as any).delete().eq('id', id); };
+  const deleteRevestimento = async (id: string) => { await supabase.from('custos_revestimentos' as any).delete().eq('id', id); };
+  const deleteEncaixe = async (id: string) => { await supabase.from('custos_encaixes' as any).delete().eq('id', id); };
 
-  const deleteAllTubos = async () => { await invokeDataApi({ action: 'delete_filtered', table: 'custos_tubos', filters: { neq: { column: 'id', value: '00000000-0000-0000-0000-000000000000' } } }); };
-  const deleteAllEixos = async () => { await invokeDataApi({ action: 'delete_filtered', table: 'custos_eixos', filters: { neq: { column: 'id', value: '00000000-0000-0000-0000-000000000000' } } }); };
-  const deleteAllConjuntos = async () => { await invokeDataApi({ action: 'delete_filtered', table: 'custos_conjuntos', filters: { neq: { column: 'id', value: '00000000-0000-0000-0000-000000000000' } } }); };
+  const deleteAllTubos = async () => { await supabase.from('custos_tubos' as any).delete().neq('id', '00000000-0000-0000-0000-000000000000'); };
+  const deleteAllEixos = async () => { await supabase.from('custos_eixos' as any).delete().neq('id', '00000000-0000-0000-0000-000000000000'); };
+  const deleteAllConjuntos = async () => { await supabase.from('custos_conjuntos' as any).delete().neq('id', '00000000-0000-0000-0000-000000000000'); };
   const deleteAllRevestimentos = async (tipo: 'spiraflex' | 'aneis') => {
-    const pattern = tipo === 'spiraflex' ? '%SPIRAFLEX%' : '%ABI%';
-    await invokeDataApi({ action: 'delete_filtered', table: 'custos_revestimentos', filters: { ilike: { column: 'tipo', value: pattern } } });
+    if (tipo === 'spiraflex') {
+      await supabase.from('custos_revestimentos' as any).delete().ilike('tipo', '%SPIRAFLEX%');
+    } else {
+      await supabase.from('custos_revestimentos' as any).delete().ilike('tipo', '%ABI%');
+    }
   };
-  const deleteAllEncaixes = async () => { await invokeDataApi({ action: 'delete_filtered', table: 'custos_encaixes', filters: { neq: { column: 'id', value: '00000000-0000-0000-0000-000000000000' } } }); };
+  const deleteAllEncaixes = async () => { await supabase.from('custos_encaixes' as any).delete().neq('id', '00000000-0000-0000-0000-000000000000'); };
 
   const saveAllTubos = async (items: Tubo[]) => { for (const t of items) await saveTubo(t); };
   const saveAllEixos = async (items: Eixo[]) => { for (const e of items) await saveEixo(e); };

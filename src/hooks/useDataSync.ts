@@ -13,8 +13,7 @@ const SYNC_MAP: Record<string, { table: string; idField: string; isFlat?: boolea
   rp_produtos: { table: 'produtos', idField: 'id' },
   rp_estoque: { table: 'estoque', idField: 'id' },
   rp_metas: { table: 'metas_vendedores', idField: 'vendedor' },
-  // rp_usuarios removed: passwords were being synced to localStorage via select('*')
-  // User data is fetched securely via useUsuarios hook with explicit column selection
+  rp_usuarios: { table: 'usuarios', idField: 'id', isFlat: true },
 };
 
 const SYNCED_KEYS = Object.keys(SYNC_MAP);
@@ -40,13 +39,8 @@ async function pushToDb(key: string) {
   if (!config) return;
 
   // For usuarios, we skip background push to avoid overwriting with plain text passwords.
+  // User creation/updates happen via edge functions in useUsuarios.
   if (key === 'rp_usuarios') return;
-
-  const sessionToken = localStorage.getItem('rp_session_token');
-  if (!sessionToken) {
-    console.log(`[DataSync] Skipping push for ${config.table} - no session`);
-    return;
-  }
 
   const localData = getLocalData(key);
   
@@ -62,30 +56,34 @@ async function pushToDb(key: string) {
     currentIds.add(id);
     
     if (config.isFlat) {
+      // Map properties directly (flat table)
       return { ...item, [config.idField]: id };
     } else {
+      // JSON blob pattern
       return { [config.idField]: id, data: item, updated_at: new Date().toISOString() };
     }
   });
 
-  // Upsert via edge function
-  const { error } = await supabase.functions.invoke('data-api', {
-    body: { action: 'upsert', sessionToken, table: config.table, rows, idField: config.idField },
-  });
-  if (error) console.error(`[DataSync] Upsert error for ${config.table}:`, error);
+  // Batch upsert in chunks of 50
+  for (let i = 0; i < rows.length; i += 50) {
+    const chunk = rows.slice(i, i + 50);
+    const { error } = await supabase
+      .from(config.table as any)
+      .upsert(chunk as any, { onConflict: config.idField });
+    if (error) console.error(`[DataSync] Upsert error for ${config.table}:`, error);
+  }
 
-  // Delete removed items via edge function
+  // Only delete items that were explicitly known before and are now removed
   const prevIds = knownIds[key];
   if (prevIds && prevIds.size > 0) {
-    const deletedIds: string[] = [];
     for (const id of prevIds) {
-      if (!currentIds.has(id)) deletedIds.push(id);
-    }
-    if (deletedIds.length > 0) {
-      const { error: delError } = await supabase.functions.invoke('data-api', {
-        body: { action: 'delete', sessionToken, table: config.table, ids: deletedIds, idField: config.idField },
-      });
-      if (delError) console.error(`[DataSync] Delete error for ${config.table}:`, delError);
+      if (!currentIds.has(id)) {
+        const { error } = await supabase
+          .from(config.table as any)
+          .delete()
+          .eq(config.idField, id);
+        if (error) console.error(`[DataSync] Delete error for ${config.table}:`, error);
+      }
     }
   }
 
@@ -218,6 +216,7 @@ export function useDataSync() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, () => handleRealtimeChange('produtos'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, () => handleRealtimeChange('estoque'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'metas_vendedores' }, () => handleRealtimeChange('metas_vendedores'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios' }, () => handleRealtimeChange('usuarios'))
       .subscribe();
 
     return () => {
