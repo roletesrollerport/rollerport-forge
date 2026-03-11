@@ -3,8 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Download, Upload, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { forcePull } from '@/hooks/useDataSync';
+import { RefreshCw } from 'lucide-react';
 
 // Order is important for restoration to respect foreign key constraints
 const TABLES_TO_MANAGE = [
@@ -96,16 +99,55 @@ export default function GerenciamentoPage() {
       for (const table of TABLES_TO_MANAGE) {
         setProgress(prev => prev.map(p => p.table === table ? { ...p, status: 'loading' } : p));
         
-        const data = backupData[table];
+        let data = backupData[table];
         if (data && data.length > 0) {
-          // Process in smaller chunks to avoid large request errors
+          // Identify if we need to wrap the data into a 'data' column
+          // Tables known to be simplified JSONB now:
+          const TABLES_WITH_DATA_COL = [
+            'usuarios', 'sessions', 'chat_messages', 
+            'custos_tubos', 'custos_eixos', 'custos_conjuntos', 
+            'custos_revestimentos', 'custos_encaixes',
+            'clientes', 'produtos', 'orcamentos', 'pedidos', 
+            'ordens_servico', 'estoque', 'fornecedores', 'metas_vendedores'
+          ];
+
+
+          if (TABLES_WITH_DATA_COL.includes(table)) {
+            data = data.map((row: any) => {
+              // If it already has 'data' and nothing else (besides id/created_at), it's already wrapped
+              if (row.data && Object.keys(row).length <= 4) return row;
+              
+              // Otherwise, wrap everything except 'id' and audit columns into 'data'
+              const { id, created_at, updated_at, ...rest } = row;
+              
+              // Only include created_at/updated_at if they are not undefined
+              // and the table is likely to have them (usuarios, sessions, etc.)
+              // But for safety in simplified mode, we can just put them into the 'data' blob
+              // and let the DB use its default now() if the column is missing.
+              
+              const result: any = { id, data: { ...rest } };
+              
+              // If we want to preserve original times, we put them inside 'data' too
+              if (created_at) result.data.created_at = created_at;
+              if (updated_at) result.data.updated_at = updated_at;
+              
+              // We only add them to the root if we're sure the table has them.
+              // For all simplified tables in the latest V2 script, we added them.
+              if (created_at) result.created_at = created_at;
+              if (updated_at) result.updated_at = updated_at;
+              
+              return result;
+            });
+          }
+
           const chunkSize = 50;
           for (let i = 0; i < data.length; i += chunkSize) {
             const chunk = data.slice(i, i + chunkSize);
             const { error } = await supabase.from(table as any).upsert(chunk);
             if (error) {
+              console.error(`Erro no upsert da tabela ${table}:`, error);
               setProgress(prev => prev.map(p => p.table === table ? { ...p, status: 'error', message: error.message } : p));
-              throw new Error(`Erro na tabela ${table} durante o upsert: ${error.message}`);
+              throw new Error(`Erro na tabela ${table}: ${error.message}`);
             }
           }
         }
@@ -113,7 +155,9 @@ export default function GerenciamentoPage() {
         setProgress(prev => prev.map(p => p.table === table ? { ...p, status: 'done' } : p));
       }
 
-      toast.success('Restauração concluída com sucesso!');
+
+      await forcePull();
+      toast.success('Restauração e Sincronização concluídas!');
     } catch (error: any) {
       console.error('Erro na restauração:', error);
       toast.error('Erro ao restaurar dados: ' + (error.message || 'Erro de formato de arquivo'));
@@ -130,7 +174,68 @@ export default function GerenciamentoPage() {
         <p className="text-muted-foreground">Exporte ou restaure todos os dados do sistema diretamente pelo seu navegador.</p>
       </div>
 
+
       <div className="grid gap-6 md:grid-cols-2">
+        <Card className="md:col-span-2 bg-primary/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <RefreshCw className="h-5 w-5" />
+              Sincronização Global
+            </CardTitle>
+            <CardDescription>
+              Força a atualização de todos os dados locais com o que está no banco de dados. Use isso se os dados não aparecerem automaticamente após uma restauração.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-4">
+            <Button 
+              variant="default"
+              onClick={async () => {
+                const close = toast.loading('Sincronizando todas as tabelas...');
+                await forcePull();
+                toast.dismiss(close);
+                toast.success('Sistema sincronizado com sucesso!');
+              }}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" /> Sincronizar Agora
+            </Button>
+            
+
+            <Button 
+              variant="outline"
+              onClick={async () => {
+                const close = toast.loading('Analisando vínculos...');
+                try {
+                  const { data: users } = await supabase.from('usuarios').select('data');
+                  const { data: orcs } = await supabase.from('orcamentos').select('data');
+                  
+                  const userNames = (users || []).map((u: any) => u.data.nome.toLowerCase());
+                  const orcamentos = (orcs || []).map((o: any) => o.data);
+                  
+                  const orphans = orcamentos.filter(o => {
+                    const vend = (o.vendedor || '').toLowerCase();
+                    return vend && !userNames.some((un: string) => un.includes(vend) || vend.includes(un));
+                  });
+
+                  await forcePull();
+                  toast.dismiss(close);
+                  
+                  if (orphans.length > 0) {
+                    toast.warning(`Sincronizado! Encontramos ${orphans.length} orçamentos com nomes de vendedores que não batem com os usuários atuais.`);
+                  } else {
+                    toast.success('Sincronizado! Todos os orçamentos estão vinculados corretamente aos usuários atuais.');
+                  }
+                } catch (e: any) {
+                  toast.error('Erro: ' + e.message);
+                }
+              }}
+              className="gap-2"
+            >
+              Vincular Dados aos Usuários
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

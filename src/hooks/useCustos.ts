@@ -9,11 +9,26 @@ interface ConjuntoRow { id: string; codigo: string; valor: number; imagem: strin
 interface RevestimentoRow { id: string; tipo: string; valor_metro_ou_peca: number; imagem: string | null; }
 interface EncaixeRow { id: string; tipo: string; preco: number; imagem: string | null; }
 
-const toTubo = (r: TuboRow): Tubo => ({ id: r.id, diametro: r.diametro, parede: r.parede, precoBarra6000mm: r.preco_barra_6000mm, imagem: r.imagem || undefined });
-const toEixo = (r: EixoRow): Eixo => ({ id: r.id, diametro: r.diametro, precoBarra6000mm: r.preco_barra_6000mm, imagem: r.imagem || undefined });
-const toConj = (r: ConjuntoRow): Conjunto => ({ id: r.id, codigo: r.codigo, valor: r.valor, imagem: r.imagem || undefined });
-const toRev = (r: RevestimentoRow): Revestimento => ({ id: r.id, tipo: r.tipo, valorMetroOuPeca: r.valor_metro_ou_peca, imagem: r.imagem || undefined });
-const toEnc = (r: EncaixeRow): Encaixe => ({ id: r.id, tipo: r.tipo, preco: r.preco, imagem: r.imagem || undefined });
+const toTubo = (r: any): Tubo => {
+  const d = r.data || r;
+  return { id: r.id, diametro: d.diametro, parede: d.parede, precoBarra6000mm: d.preco_barra_6000mm, imagem: d.imagem || undefined };
+};
+const toEixo = (r: any): Eixo => {
+  const d = r.data || r;
+  return { id: r.id, diametro: d.diametro, precoBarra6000mm: d.preco_barra_6000mm, imagem: d.imagem || undefined };
+};
+const toConj = (r: any): Conjunto => {
+  const d = r.data || r;
+  return { id: r.id, codigo: d.codigo, valor: d.valor, imagem: d.imagem || undefined };
+};
+const toRev = (r: any): Revestimento => {
+  const d = r.data || r;
+  return { id: r.id, tipo: d.tipo, valorMetroOuPeca: d.valor_metro_ou_peca, imagem: d.imagem || undefined };
+};
+const toEnc = (r: any): Encaixe => {
+  const d = r.data || r;
+  return { id: r.id, tipo: d.tipo, preco: d.preco, imagem: d.imagem || undefined };
+};
 
 export function useCustos() {
   const [tubos, setTubos] = useState<Tubo[]>([]);
@@ -25,11 +40,11 @@ export function useCustos() {
 
   const loadAll = useCallback(async () => {
     const [t, e, c, r, enc] = await Promise.all([
-      supabase.from('custos_tubos' as any).select('*').order('diametro'),
-      supabase.from('custos_eixos' as any).select('*').order('diametro'),
-      supabase.from('custos_conjuntos' as any).select('*').order('codigo'),
-      supabase.from('custos_revestimentos' as any).select('*').order('tipo'),
-      supabase.from('custos_encaixes' as any).select('*').order('tipo'),
+      supabase.from('custos_tubos' as any).select('id, data'),
+      supabase.from('custos_eixos' as any).select('id, data'),
+      supabase.from('custos_conjuntos' as any).select('id, data'),
+      supabase.from('custos_revestimentos' as any).select('id, data'),
+      supabase.from('custos_encaixes' as any).select('id, data'),
     ]);
     if (t.data) setTubos((t.data as any[]).map(toTubo));
     if (e.data) setEixos((e.data as any[]).map(toEixo));
@@ -43,7 +58,7 @@ export function useCustos() {
 
   // CRUD operations
   const saveTubo = async (t: Tubo) => {
-    const row = { diametro: t.diametro, parede: t.parede, preco_barra_6000mm: t.precoBarra6000mm, imagem: t.imagem || null };
+    const row = { data: { diametro: t.diametro, parede: t.parede, preco_barra_6000mm: t.precoBarra6000mm, imagem: t.imagem || null } };
     if (t.id && !t.id.startsWith('new_')) {
       await supabase.from('custos_tubos' as any).update(row).eq('id', t.id);
     } else {
@@ -52,7 +67,7 @@ export function useCustos() {
   };
 
   const saveEixo = async (e: Eixo) => {
-    const row = { diametro: e.diametro, preco_barra_6000mm: e.precoBarra6000mm, imagem: e.imagem || null };
+    const row = { data: { diametro: e.diametro, preco_barra_6000mm: e.precoBarra6000mm, imagem: e.imagem || null } };
     if (e.id && !e.id.startsWith('new_')) {
       await supabase.from('custos_eixos' as any).update(row).eq('id', e.id);
     } else {
@@ -61,7 +76,7 @@ export function useCustos() {
   };
 
   const saveConjunto = async (c: Conjunto) => {
-    const row = { codigo: c.codigo, valor: c.valor, imagem: c.imagem || null };
+    const row = { data: { codigo: c.codigo, valor: c.valor, imagem: c.imagem || null } };
     if (c.id && !c.id.startsWith('new_')) {
       await supabase.from('custos_conjuntos' as any).update(row).eq('id', c.id);
     } else {
@@ -70,7 +85,7 @@ export function useCustos() {
   };
 
   const saveRevestimento = async (r: Revestimento) => {
-    const row = { tipo: r.tipo, valor_metro_ou_peca: r.valorMetroOuPeca, imagem: r.imagem || null };
+    const row = { data: { tipo: r.tipo, valor_metro_ou_peca: r.valorMetroOuPeca, imagem: r.imagem || null } };
     if (r.id && !r.id.startsWith('new_')) {
       await supabase.from('custos_revestimentos' as any).update(row).eq('id', r.id);
     } else {
@@ -79,7 +94,7 @@ export function useCustos() {
   };
 
   const saveEncaixe = async (e: Encaixe) => {
-    const row = { tipo: e.tipo, preco: e.preco, imagem: e.imagem || null };
+    const row = { data: { tipo: e.tipo, preco: e.preco, imagem: e.imagem || null } };
     if (e.id && !e.id.startsWith('new_')) {
       await supabase.from('custos_encaixes' as any).update(row).eq('id', e.id);
     } else {
