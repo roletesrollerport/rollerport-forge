@@ -37,9 +37,8 @@ async function pushToDb(key: string) {
   const config = SYNC_MAP[key];
   if (!config) return;
 
-  // For usuarios, we skip background push to avoid overwriting with plain text passwords.
-  // User creation/updates happen via edge functions in useUsuarios.
-  if (key === 'rp_usuarios') return;
+  // Tabela de usuários é sincronizada apenas via fluxos dedicados (edge functions/useUsuarios)
+  // para evitar exposição de credenciais e estouro de armazenamento local.
 
   const localData = getLocalData(key);
   
