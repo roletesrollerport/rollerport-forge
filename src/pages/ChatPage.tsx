@@ -99,20 +99,11 @@ export default function ChatPage() {
 
   useEffect(() => { loadMessages(); }, [loadMessages]);
 
-  // Realtime subscription
+  // Poll for new messages (replaces realtime since direct SELECT is blocked)
   useEffect(() => {
     if (!selectedUser || !currentUser) return;
-    const channel = supabase
-      .channel(`chat-${[currentUser.id, selectedUser.id].sort().join('-')}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'chat_messages',
-      }, () => {
-        loadMessages();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(() => { loadMessages(); }, 3000);
+    return () => clearInterval(interval);
   }, [selectedUser, currentUser, loadMessages]);
 
   useEffect(() => {
