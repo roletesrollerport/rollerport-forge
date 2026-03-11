@@ -13,7 +13,8 @@ const SYNC_MAP: Record<string, { table: string; idField: string; isFlat?: boolea
   rp_produtos: { table: 'produtos', idField: 'id' },
   rp_estoque: { table: 'estoque', idField: 'id' },
   rp_metas: { table: 'metas_vendedores', idField: 'vendedor' },
-  rp_usuarios: { table: 'usuarios', idField: 'id', isFlat: true },
+  // rp_usuarios removed: passwords were being synced to localStorage via select('*')
+  // User data is fetched securely via useUsuarios hook with explicit column selection
 };
 
 const SYNCED_KEYS = Object.keys(SYNC_MAP);
