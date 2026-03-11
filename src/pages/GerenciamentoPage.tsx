@@ -6,42 +6,28 @@ import { Download, Upload, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-r
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const TABLES_TO_BACKUP = [
-  'usuarios',
-  'clientes',
-  'custos_tubos',
-  'custos_eixos',
-  'custos_conjuntos',
-  'custos_encaixes',
-  'custos_revestimentos',
-  'estoque',
-  'fornecedores',
-  'metas_vendedores',
-  'produtos',
-  'orcamentos',
-  'pedidos',
-  'ordens_servico',
-  'chat_messages',
-  'sessions'
-];
-
 export default function GerenciamentoPage() {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<{ table: string; status: 'pending' | 'loading' | 'done' | 'error' }[]>([]);
 
   const handleExport = async () => {
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) {
+      toast.error('Sessão não encontrada. Faça login novamente.');
+      return;
+    }
+
     setExporting(true);
     try {
-      const backupData: Record<string, any[]> = {};
-      
-      for (const table of TABLES_TO_BACKUP) {
-        const { data, error } = await supabase.from(table as any).select('*');
-        if (error) throw error;
-        backupData[table] = data || [];
-      }
+      const { data, error } = await supabase.functions.invoke('user-api', {
+        body: { action: 'export_backup', sessionToken },
+      });
 
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -54,7 +40,7 @@ export default function GerenciamentoPage() {
       toast.success('Backup exportado com sucesso!');
     } catch (error: any) {
       console.error('Erro no backup:', error);
-      toast.error('Erro ao exportar backup: ' + error.message);
+      toast.error('Erro ao exportar backup: ' + (error.message || 'Erro interno'));
     } finally {
       setExporting(false);
     }
@@ -64,37 +50,38 @@ export default function GerenciamentoPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!confirm('AVISO CRÍTICO: Esta operação irá sobrescrever dados existentes com o mesmo ID. Deseja continuar?')) {
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) {
+      toast.error('Sessão não encontrada.');
+      return;
+    }
+
+    if (!confirm('AVISO CRÍTICO: Esta operação irá sobrescrever dados existentes com o mesmo ID em TODAS as tabelas. Deseja continuar?')) {
       event.target.value = '';
       return;
     }
 
     setImporting(true);
-    setProgress(TABLES_TO_BACKUP.map(t => ({ table: t, status: 'pending' })));
-
+    // Since the Edge Function handles everything in one call for reliability, 
+    // we show a global progress instead of per-table live updates unless we split the calls.
+    // Splitting calls is safer for timeouts, but one call is easier for atomicity.
+    // Let's stick to one call for now as the data isn't huge.
+    
     try {
       const text = await file.text();
       const backupData = JSON.parse(text);
 
-      for (const table of TABLES_TO_BACKUP) {
-        setProgress(prev => prev.map(p => p.table === table ? { ...p, status: 'loading' } : p));
-        
-        const data = backupData[table];
-        if (data && data.length > 0) {
-          const { error } = await supabase.from(table as any).upsert(data);
-          if (error) {
-            setProgress(prev => prev.map(p => p.table === table ? { ...p, status: 'error' } : p));
-            throw new Error(`Erro na tabela ${table}: ${error.message}`);
-          }
-        }
-        
-        setProgress(prev => prev.map(p => p.table === table ? { ...p, status: 'done' } : p));
-      }
+      const { data, error } = await supabase.functions.invoke('user-api', {
+        body: { action: 'import_backup', sessionToken, backupData },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
       toast.success('Restauração concluída com sucesso!');
     } catch (error: any) {
       console.error('Erro na restauração:', error);
-      toast.error('Erro ao restaurar dados: ' + error.message);
+      toast.error('Erro ao restaurar dados: ' + (error.message || 'Erro interno'));
     } finally {
       setImporting(false);
       event.target.value = '';
@@ -105,7 +92,7 @@ export default function GerenciamentoPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Gerenciamento de Dados</h1>
-        <p className="text-muted-foreground">Exporte ou restaure todos os dados do sistema.</p>
+        <p className="text-muted-foreground">Exporte ou restaure todos os dados do sistema com segurança via API Master.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -128,7 +115,7 @@ export default function GerenciamentoPage() {
               {exporting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Gerando arquivo...
+                  Processando no Servidor...
                 </>
               ) : (
                 'Exportar Backup Completo'
@@ -150,7 +137,7 @@ export default function GerenciamentoPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm">
               <AlertTriangle className="h-5 w-5 shrink-0" />
-              <p>Esta ação é irreversível se feita em um banco com dados reais.</p>
+              <p>Esta ação é irreversível e utiliza permissões de Service Role para processar os dados.</p>
             </div>
             
             <div className="grid w-full items-center gap-1.5">
@@ -164,17 +151,11 @@ export default function GerenciamentoPage() {
             </div>
 
             {importing && (
-              <div className="mt-4 space-y-2 border rounded-md p-3 bg-muted/50 max-h-48 overflow-y-auto">
-                <p className="text-xs font-semibold uppercase text-muted-foreground px-1">Progresso da Restauração:</p>
-                {progress.map((p) => (
-                  <div key={p.table} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-muted">
-                    <span className="capitalize">{p.table.replace('_', ' ')}</span>
-                    {p.status === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                    {p.status === 'done' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                    {p.status === 'error' && <AlertTriangle className="h-4 w-4 text-destructive" />}
-                    {p.status === 'pending' && <div className="h-2 w-2 rounded-full bg-slate-200" />}
-                  </div>
-                ))}
+              <div className="flex items-center justify-center p-8">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Restaurando tabelas e chaves estrangeiras...</p>
+                </div>
               </div>
             )}
           </CardContent>
