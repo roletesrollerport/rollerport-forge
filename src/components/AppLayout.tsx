@@ -85,47 +85,8 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   }, [location.pathname, chatOpen, currentUser?.id]);
 
   // Realtime subscription for new messages - with toast notifications
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    const channel = supabase
-      .channel('chat-notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-      }, (payload: any) => {
-        const msg = payload.new;
-        if (msg?.sender_id !== currentUser.id && location.pathname !== '/chat') {
-          if (!chatOpen) {
-            setUnreadChatCount(prev => prev + 1);
-          }
-          // Show toast notification with sender info
-          const sender = allUsuarios.find(u => u.id === msg.sender_id);
-          if (sender) {
-            const preview = msg.message_type === 'text'
-              ? (msg.content?.substring(0, 60) + (msg.content?.length > 60 ? '...' : ''))
-              : msg.message_type === 'audio' ? '🎤 Mensagem de áudio' : `📎 ${msg.file_name || 'Arquivo'}`;
-            toast(
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => {
-                setChatInitialUserId(msg.sender_id);
-                setChatOpen(true);
-              }}>
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {sender.foto ? <img src={sender.foto} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-primary" />}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold">{sender.nome}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{preview}</p>
-                </div>
-              </div>,
-              { duration: 5000 }
-            );
-          }
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
+  // Realtime removed: chat_messages SELECT is now blocked for security.
+  // Unread count is handled by polling via checkUnreadMessages above.
 
   const isMaster = currentUser.nivel === 'master';
   const allModulos: PermissaoModulo[] = ['inicio', 'custos', 'clientes', 'produtos', 'orcamentos', 'pedidos', 'producao', 'estoque', 'chat', 'usuarios'];
