@@ -4,10 +4,11 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import {
-  ArrowLeft, Printer, FileText, ShoppingCart, Factory,
-  Save, Edit, ChevronLeft, ChevronRight, Calendar
+  ArrowLeft, Printer, FileText, ShoppingCart, Factory, Brain,
+  Loader2, Save, Edit, Sparkles, ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
 import { store } from '@/lib/store';
+import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
 /* ── helpers ─────────────────────────────────────────────────────── */
@@ -79,6 +80,8 @@ function statusColor(status: string) {
   }
 }
 
+const statusLabel = (s: string) => s?.replace(/_/g, ' ') || '-';
+
 /* ── types ───────────────────────────────────────────────────────── */
 interface VendorReportViewProps {
   vendorName: string;
@@ -94,7 +97,14 @@ interface VendorReportViewProps {
   onSaveMasterPrompt?: (prompt: string) => void;
 }
 
-const statusLabel = (s: string) => s?.replace(/_/g, ' ') || '-';
+const DEFAULT_AI_PROMPT = `Você é um consultor de vendas sênior da Rollerport. Analise o relatório do vendedor e:
+1. Avalie o desempenho geral (bateu a meta? por quê?)
+2. Identifique padrões de cancelamentos e dê dicas para evitar perdas
+3. Dê dicas motivacionais personalizadas
+4. Sugira como melhorar os textos de e-mail/orçamento para fechar mais vendas
+5. Busque na internet e sugira 3 potenciais clientes que consomem roletes para correias transportadoras (inclua nome da empresa, telefone e e-mail se possível)
+6. Se o vendedor bateu a meta, parabenize com entusiasmo mas incentive a ir mais alto
+Responda em português do Brasil, de forma clara e motivadora.`;
 
 /* ── calendar component ──────────────────────────────────────────── */
 interface CalendarGridProps {
@@ -238,14 +248,14 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }:
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-2 print:w-12">Nº</th>
+              <th className="text-left p-2">Nº</th>
               <th className="text-left p-2">Cliente{!isOrc && !isPed ? '/Empresa' : ''}</th>
-              {!isOrc && !isPed && <th className="text-left p-2 print:w-16">Pedido</th>}
-              <th className="text-left p-2 print:w-20">Data</th>
-              {(isOrc || isPed) && <th className="text-right p-2 print:w-20 whitespace-nowrap">Valor</th>}
-              <th className="text-left p-2 print:hidden">Status</th>
-              <th className="text-left p-2 print:hidden">Tempo</th>
-              <th className="text-left p-2 print:hidden">Motivo</th>
+              {!isOrc && !isPed && <th className="text-left p-2">Pedido</th>}
+              <th className="text-left p-2">Data</th>
+              {(isOrc || isPed) && <th className="text-right p-2">Valor</th>}
+              <th className="text-left p-2">Status</th>
+              <th className="text-left p-2">Tempo</th>
+              <th className="text-left p-2">Motivo</th>
             </tr>
           </thead>
           <tbody>
@@ -263,14 +273,14 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }:
                   <td className="p-2">{isOrc || isPed ? d.clienteNome : d.empresa}</td>
                   {!isOrc && !isPed && <td className="p-2 font-mono">{d.pedidoNumero}</td>}
                   <td className="p-2">{dateRaw}</td>
-                  {(isOrc || isPed) && <td className="p-2 text-right font-mono whitespace-nowrap">{fmt(d.valorTotal || 0)}</td>}
-                  <td className="p-2 print:hidden">
+                  {(isOrc || isPed) && <td className="p-2 text-right font-mono">{fmt(d.valorTotal || 0)}</td>}
+                  <td className="p-2">
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${statusColor(d.status)}`}>
                       {statusLabel(d.status)}
                     </span>
                   </td>
-                  <td className="p-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap print:hidden">{elapsedTime(dateRaw)}</td>
-                  <td className="p-2 text-[10px] max-w-[150px] truncate text-muted-foreground print:hidden"
+                  <td className="p-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{elapsedTime(dateRaw)}</td>
+                  <td className="p-2 text-[10px] max-w-[150px] truncate text-muted-foreground"
                     title={d.motivoCancelamento || ''}>
                     {d.motivoCancelamento ? d.motivoCancelamento : '-'}
                   </td>
@@ -303,6 +313,13 @@ export default function VendorReportView({
 
   /* Doc Detail state */
   const [selectedDocDetail, setSelectedDocDetail] = useState<{ doc: any; type: 'orcamento' | 'pedido' | 'os' } | null>(null);
+
+  /* AI state */
+  const [aiResponse, setAiResponse] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState(false);
+  const [promptText, setPromptText] = useState(masterPrompt || DEFAULT_AI_PROMPT);
+  const abortRef = useRef<AbortController | null>(null);
 
   /* ── year list (from earliest doc date to now+1) ── */
   const years = useMemo(() => {
@@ -366,8 +383,111 @@ export default function VendorReportView({
   /* ── summary stats for selected period ── */
   const meta = metas.find(m => m.vendedor === vendorName);
   const totalVendido = displayPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
-  const metaPct = meta && meta.metaMensal > 0 ? (totalVendido / meta.metaMensal) * 100 : 0;
+  const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
   const bateuMeta = meta && meta.metaMensal > 0 && totalVendido >= meta.metaMensal;
+
+  /* ── AI report builder ── */
+  const buildReportText = () => {
+    const period = selectedDay
+      ? `Dia ${formatDayKey(selectedDay)}`
+      : `${MONTHS[selectedMonth]}/${selectedYear}`;
+    let text = `## Relatório do Vendedor: ${vendorName}\n`;
+    text += `**Período:** ${period}\n`;
+    text += `**Meta Mensal:** ${meta ? fmt(meta.metaMensal) : 'Não definida'}\n`;
+    text += `**Total Vendido no período:** ${fmt(totalVendido)}\n`;
+    text += `**Atingimento:** ${metaPct.toFixed(1)}%\n`;
+    text += `**Bateu a meta:** ${bateuMeta ? 'SIM ✅' : 'NÃO ❌'}\n\n`;
+
+    text += `### Orçamentos (${displayOrcs.length})\n`;
+    displayOrcs.forEach(o => {
+      text += `- Nº ${o.numero} | ${o.clienteNome} | ${fmt(o.valorTotal || 0)} | Status: ${o.status} | Tempo: ${elapsedTime(o.dataOrcamento || o.createdAt)}`;
+      if (o.status === 'REPROVADO' && o.motivoCancelamento) text += ` | Motivo: ${o.motivoCancelamento}`;
+      text += '\n';
+    });
+
+    text += `\n### Pedidos (${displayPeds.length})\n`;
+    displayPeds.forEach(p => {
+      text += `- Nº ${p.numero} | ${p.clienteNome} | ${fmt(p.valorTotal || 0)} | Status: ${p.status} | Tempo: ${elapsedTime(p.createdAt)}`;
+      if (p.motivoCancelamento) text += ` | Motivo: ${p.motivoCancelamento}`;
+      text += '\n';
+    });
+
+    text += `\n### Ordens de Serviço (${displayOS.length})\n`;
+    displayOS.forEach(os => {
+      text += `- O.S. ${os.numero} | ${os.empresa} | Pedido: ${os.pedidoNumero} | Status: ${os.status} | Tempo: ${elapsedTime(os.createdAt)}`;
+      if (os.motivoCancelamento) text += ` | Motivo: ${os.motivoCancelamento}`;
+      text += '\n';
+    });
+
+    return text;
+  };
+
+  const runAiAnalysis = async () => {
+    setAiLoading(true);
+    setAiResponse('');
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) { toast.error('Sessão expirada'); setAiLoading(false); return; }
+
+    try {
+      abortRef.current = new AbortController();
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: `${promptText}\n\n---\n\n${buildReportText()}` }],
+          mode: 'ia',
+          sessionToken,
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!resp.ok || !resp.body) {
+        if (resp.status === 429) toast.error('Limite de requisições. Tente novamente em instantes.');
+        else if (resp.status === 402) toast.error('Créditos insuficientes.');
+        else toast.error('Erro ao analisar relatório.');
+        setAiLoading(false);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) { full += content; setAiResponse(full); }
+          } catch { /* partial chunk */ }
+        }
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') { toast.error('Erro na análise de IA.'); console.error(e); }
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleSavePrompt = () => {
+    setEditingPrompt(false);
+    onSaveMasterPrompt?.(promptText);
+    toast.success('Prompt da IA salvo!');
+  };
 
   const periodLabel = selectedDay
     ? formatDayKey(selectedDay)
@@ -447,7 +567,78 @@ export default function VendorReportView({
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* AI button (right-aligned) */}
+        {isMaster ? (
+          <Button
+            variant="outline"
+            onClick={() => setEditingPrompt(!editingPrompt)}
+            className="gap-2 ml-auto border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <Edit className="h-4 w-4" />
+            {editingPrompt ? 'Fechar Editor IA' : 'Editar Prompt IA'}
+          </Button>
+        ) : (
+          <Button
+            onClick={runAiAnalysis}
+            disabled={aiLoading}
+            className="gap-2 ml-auto bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90"
+          >
+            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {aiLoading ? 'Analisando...' : 'Análise IA'}
+          </Button>
+        )}
       </div>
+
+      {/* ── master prompt editor ── */}
+      {isMaster && editingPrompt && (
+        <Card className="print:hidden">
+          <CardHeader className="pb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary" /> Prompt de Treinamento da IA
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Edite o texto abaixo para treinar como a IA avalia e motiva os vendedores.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              value={promptText}
+              onChange={e => setPromptText(e.target.value)}
+              rows={10}
+              className="text-xs font-mono"
+            />
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" onClick={handleSavePrompt} className="gap-1.5">
+                <Save className="h-3.5 w-3.5" /> Salvar Prompt
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPromptText(DEFAULT_AI_PROMPT)} className="gap-1.5">
+                Restaurar Padrão
+              </Button>
+              <Button size="sm" variant="secondary" onClick={runAiAnalysis} disabled={aiLoading} className="gap-1.5 ml-auto">
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Testar Análise
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── AI response ── */}
+      {aiResponse && (
+        <Card className="border-primary/30 print:hidden">
+          <CardHeader className="pb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> Análise da IA — {periodLabel}
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
+              <ReactMarkdown>{aiResponse}</ReactMarkdown>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── report layout ── */}
       <div className="grid grid-cols-1 gap-4">
@@ -455,7 +646,7 @@ export default function VendorReportView({
         <div className="col-span-1">
           <div className="bg-card border rounded-lg p-5 space-y-6 print:border-0 print:shadow-none print:p-0 max-w-6xl mx-auto">
             {/* header */}
-            <div className="print:border-b print:pb-4">
+            <div>
               <h2 className="text-lg font-bold">{vendorName}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {selectedDay ? `Relatório do dia ${formatDayKey(selectedDay)}` : `Relatório de ${MONTHS[selectedMonth]}/${selectedYear}`}
@@ -479,43 +670,40 @@ export default function VendorReportView({
               <div className="border rounded p-3 text-center">
                 <p className="text-[11px] text-muted-foreground">Meta {MONTHS[selectedMonth]}</p>
                 <p className={`text-xl font-bold ${bateuMeta ? 'text-success' : metaPct > 0 ? 'text-secondary' : 'text-muted-foreground'}`}>
-                  {metaPct.toFixed(1)}%
+                  {metaPct.toFixed(0)}%
                 </p>
               </div>
             </div>
 
-            {/* Tables Container */}
-            <div className="space-y-6 print:space-y-0 print:grid print:grid-cols-3 print:gap-4 print:items-start">
-              {/* Orçamentos */}
-              <DocTable
-                title="Orçamentos"
-                icon={FileText}
-                iconColor="text-primary"
-                docs={displayOrcs}
-                emptyMsg="Nenhum orçamento no período."
-                onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
-              />
+            {/* Orçamentos */}
+            <DocTable
+              title="Orçamentos"
+              icon={FileText}
+              iconColor="text-primary"
+              docs={displayOrcs}
+              emptyMsg="Nenhum orçamento no período."
+              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
+            />
 
-              {/* Pedidos */}
-              <DocTable
-                title="Pedidos"
-                icon={ShoppingCart}
-                iconColor="text-secondary"
-                docs={displayPeds}
-                emptyMsg="Nenhum pedido no período."
-                onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
-              />
+            {/* Pedidos */}
+            <DocTable
+              title="Pedidos"
+              icon={ShoppingCart}
+              iconColor="text-secondary"
+              docs={displayPeds}
+              emptyMsg="Nenhum pedido no período."
+              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
+            />
 
-              {/* Ordens de Serviço */}
-              <DocTable
-                title="Ordens de Serviço"
-                icon={Factory}
-                iconColor="text-accent"
-                docs={displayOS}
-                emptyMsg="Nenhuma O.S. no período."
-                onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
-              />
-            </div>
+            {/* Ordens de Serviço */}
+            <DocTable
+              title="Ordens de Serviço"
+              icon={Factory}
+              iconColor="text-accent"
+              docs={displayOS}
+              emptyMsg="Nenhuma O.S. no período."
+              onItemClick={(doc, type) => setSelectedDocDetail({ doc, type })}
+            />
           </div>
         </div>
       </div>
@@ -690,38 +878,8 @@ export default function VendorReportView({
         </DialogContent>
       </Dialog>
 
-      {/* ── Motivos Detailing (Print Only, Separate Page) ── */}
-      {(() => {
-        const allWithMotivo = [
-          ...displayOrcs.filter(o => o.motivoCancelamento).map(o => ({ ...o, type: 'Orçamento' })),
-          ...displayPeds.filter(p => p.motivoCancelamento).map(p => ({ ...p, type: 'Pedido' })),
-          ...displayOS.filter(os => os.motivoCancelamento).map(os => ({ ...os, type: 'O.S.' }))
-        ];
-
-        if (allWithMotivo.length === 0) return null;
-
-        return (
-          <div className="hidden print:block [break-before:page] mt-10">
-            <h2 className="text-lg font-bold border-b pb-2 mb-4">Detalhamento de Motivos</h2>
-            <div className="space-y-3">
-              {allWithMotivo.map((item, idx) => (
-                <div key={idx} className="border-b border-dashed pb-2">
-                  <div className="flex justify-between items-center text-xs font-bold mb-1">
-                    <span>{item.type} #{item.numero || item.id}</span>
-                    <span className="text-muted-foreground font-normal">{item.clienteNome || item.empresa}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic">
-                    Motivo: {item.motivoCancelamento}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
       {isPrint && (
-        <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } .\\[break-before\\:page\\] { break-before: page !important; } }`}</style>
+        <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
       )}
     </div>
   );
