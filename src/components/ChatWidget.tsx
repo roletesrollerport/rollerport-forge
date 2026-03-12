@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios, type UsuarioDB } from '@/hooks/useUsuarios';
+import { useCurrentUserId } from '@/hooks/useCurrentUserId';
+import { getAuthHeaders } from '@/lib/auth';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
