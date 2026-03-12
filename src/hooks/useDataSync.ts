@@ -217,7 +217,7 @@ export function useDataSync() {
     initializedRef.current = true;
 
     // Do initial sync
-    initialSync();
+    initialSync().catch((err) => console.warn('[DataSync] Initial sync failed:', err));
 
     // Listen for store save events
     window.addEventListener('rp-store-save', handleStoreSave);
