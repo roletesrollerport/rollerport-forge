@@ -125,9 +125,11 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   }, [messages]);
 
   const sendTextMessage = async () => {
-    if (!input.trim() || !selectedUser || !currentUser || !sessionToken) return;
+    if (!input.trim() || !selectedUser || !currentUser) return;
+    const headers = await getAuthHeaders();
     const { error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'send_message', sessionToken, receiver_id: selectedUser.id, content: input.trim(), message_type: 'text' },
+      body: { action: 'send_message', receiver_id: selectedUser.id, content: input.trim(), message_type: 'text' },
+      headers,
     });
     if (error) { toast.error('Erro ao enviar mensagem'); return; }
     setInput('');
