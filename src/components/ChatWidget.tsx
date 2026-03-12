@@ -140,20 +140,23 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   const sanitizeFilename = (name: string): string => name.replace(/[^a-zA-Z0-9._\-\s]/g, '_').substring(0, 255);
 
   const sendFile = async (file: globalThis.File) => {
-    if (!selectedUser || !currentUser || !sessionToken) return;
+    if (!selectedUser || !currentUser) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) { toast.error('Tipo de arquivo não permitido'); return; }
     if (file.size > MAX_FILE_SIZE) { toast.error('Arquivo muito grande (máx 10MB)'); return; }
     const path = `${currentUser.id}/${Date.now()}.${ext}`;
     toast.info(`Enviando ${sanitizeFilename(file.name)}...`);
+    const headers = await getAuthHeaders();
     const arrayBuffer = await file.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     const { error: uploadError } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'upload_file', sessionToken, file_base64: base64, file_path: path, content_type: file.type },
+      body: { action: 'upload_file', file_base64: base64, file_path: path, content_type: file.type },
+      headers,
     });
     if (uploadError) { toast.error('Erro ao enviar arquivo'); return; }
     const { error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'send_message', sessionToken, receiver_id: selectedUser.id, message_type: 'file', file_url: path, file_name: sanitizeFilename(file.name), file_size: file.size },
+      body: { action: 'send_message', receiver_id: selectedUser.id, message_type: 'file', file_url: path, file_name: sanitizeFilename(file.name), file_size: file.size },
+      headers,
     });
     if (error) { toast.error('Erro ao registrar arquivo'); return; }
     toast.success('Arquivo enviado!');
