@@ -43,20 +43,21 @@ export function useUsuarios() {
   const [loading, setLoading] = useState(true);
 
   const fetchUsuarios = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id');
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*');
 
-    if (error) {
-      console.error('[useUsuarios] Erro ao carregar usuários:', error);
+      if (error) {
+        console.error('[useUsuarios] Erro ao carregar usuários:', error);
+      } else if (data) {
+        setUsuarios(data.map(parseUsuario));
+      }
+    } catch (err) {
+      console.error('[useUsuarios] Exception:', err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if (data) {
-      setUsuarios(data.map(parseUsuario));
-    }
-    setLoading(false);
   }, []);
 
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
@@ -119,7 +120,7 @@ export function useUsuarios() {
     try {
       const { data: userRow, error: lookupError } = await supabase
         .from('usuarios')
-        .select('login, auth_id')
+        .select('*')
         .eq('login', loginStr.trim())
         .maybeSingle();
 
@@ -142,7 +143,7 @@ export function useUsuarios() {
 
       const { data: profile } = await supabase
         .from('usuarios')
-        .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+        .select('*')
         .eq('auth_id', authData.user.id)
         .maybeSingle();
 
@@ -162,7 +163,7 @@ export function useUsuarios() {
   const getById = async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+      .select('*')
       .eq('id', id)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
@@ -171,7 +172,7 @@ export function useUsuarios() {
   const getByAuthId = async (authId: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+      .select('*')
       .eq('auth_id', authId)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
