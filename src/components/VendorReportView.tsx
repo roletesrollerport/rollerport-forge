@@ -522,7 +522,7 @@ export default function VendorReportView({
               <div className="border rounded p-3 text-center">
                 <p className="text-[11px] text-muted-foreground">Meta {MONTHS[selectedMonth]}</p>
                 <p className={`text-xl font-bold ${bateuMeta ? 'text-success' : metaPct > 0 ? 'text-secondary' : 'text-muted-foreground'}`}>
-                  {metaPct.toFixed(0)}%
+                  {metaPctLabel}
                 </p>
               </div>
             </div>

@@ -746,7 +746,7 @@ export default function DashboardPage() {
                 <>
                   <div className="flex items-center gap-2">
                     <Progress value={metaPct} className="h-2 flex-1" />
-                    <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
+                    <span className="text-[11px] font-mono font-medium">{metaPctLabel}</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
                 </>
