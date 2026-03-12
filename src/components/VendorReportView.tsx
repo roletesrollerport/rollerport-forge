@@ -370,7 +370,8 @@ export default function VendorReportView({
   const displayOS   = useMemo(() => filterByDay(monthOS, 'emissao'),           [monthOS, selectedDay]);
 
   /* ── summary stats for selected period ── */
-  const meta = metas.find(m => m.vendedor === vendorName);
+  const nameMatch = (a: string, b: string) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
+  const meta = metas.find(m => nameMatch(m.vendedor, vendorName));
   const totalVendido = displayPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
   const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
   const bateuMeta = meta && meta.metaMensal > 0 && totalVendido >= meta.metaMensal;
