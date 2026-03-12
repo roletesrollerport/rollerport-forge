@@ -49,8 +49,7 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
-  const loggedUserId = localStorage.getItem('rp_logged_user');
-  const sessionToken = localStorage.getItem('rp_session_token');
+  const loggedUserId = useCurrentUserId();
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
   const isMaster = currentUser?.nivel === 'master';
   const otherUsers = dbUsuarios.filter(u => u.id !== loggedUserId);
