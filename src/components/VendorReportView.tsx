@@ -17,6 +17,13 @@ const fmt = (v: number) =>
 
 const fmtDate = (d: Date) => d.toLocaleDateString('pt-BR');
 
+const formatPercent = (value: number): string => {
+  if (!Number.isFinite(value) || value <= 0) return '0%';
+  if (value < 1) return `${value.toFixed(2)}%`;
+  if (value < 10) return `${value.toFixed(1)}%`;
+  return `${value.toFixed(0)}%`;
+};
+
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',

@@ -27,6 +27,13 @@ const formatCurrencyInput = (value: number): string => {
   return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
 };
 
+const formatPercent = (value: number): string => {
+  if (!Number.isFinite(value) || value <= 0) return '0%';
+  if (value < 1) return `${value.toFixed(2)}%`;
+  if (value < 10) return `${value.toFixed(1)}%`;
+  return `${value.toFixed(0)}%`;
+};
+
 /* ------------------------------------------------------------------ */
 /*  Clickable status chip                                              */
 /* ------------------------------------------------------------------ */
