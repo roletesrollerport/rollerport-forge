@@ -19,6 +19,9 @@ export interface UsuarioDB {
   auth_id?: string;
 }
 
+const USERS_TABLE_READ = 'usuarios_public';
+const USERS_TABLE_WRITE = 'usuarios';
+
 function parseUsuario(row: any): UsuarioDB {
   return {
     id: row.id,
