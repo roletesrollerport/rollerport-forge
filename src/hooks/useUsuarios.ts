@@ -86,7 +86,7 @@ export function useUsuarios() {
 
       if (u.id) {
         const { error } = await supabase
-          .from('usuarios')
+          .from(USERS_TABLE_WRITE as any)
           .update(userData)
           .eq('id', u.id);
         if (error) throw error;
