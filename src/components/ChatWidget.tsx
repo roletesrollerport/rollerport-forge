@@ -177,14 +177,17 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         if (blob.size < 1000) return;
         const path = `${currentUser!.id}/audio_${Date.now()}.webm`;
+        const headers = await getAuthHeaders();
         const arrayBuffer = await blob.arrayBuffer();
         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
         const { error: uploadError } = await supabase.functions.invoke('chat-api', {
-          body: { action: 'upload_file', sessionToken, file_base64: base64, file_path: path, content_type: 'audio/webm' },
+          body: { action: 'upload_file', file_base64: base64, file_path: path, content_type: 'audio/webm' },
+          headers,
         });
         if (uploadError) { toast.error('Erro ao enviar áudio'); return; }
         await supabase.functions.invoke('chat-api', {
-          body: { action: 'send_message', sessionToken, receiver_id: selectedUser!.id, message_type: 'audio', file_url: path, audio_duration: recordingTime },
+          body: { action: 'send_message', receiver_id: selectedUser!.id, message_type: 'audio', file_url: path, audio_duration: recordingTime },
+          headers,
         });
       };
       mediaRecorder.start();
