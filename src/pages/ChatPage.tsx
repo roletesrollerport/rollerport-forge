@@ -91,24 +91,11 @@ export default function ChatPage() {
     if (!selectedUser || !currentUser) return;
     const { data, error } = await supabase
       .from('chat_messages' as any)
-      .select('id, data, created_at')
-      .filter('data->>sender_id', 'in', `(${[currentUser.id, selectedUser.id].join(',')})`)
-      .filter('data->>receiver_id', 'in', `(${[currentUser.id, selectedUser.id].join(',')})`)
+      .select('*')
+      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${currentUser.id})`)
       .order('created_at', { ascending: true });
-    
     if (!error && data) {
-      const msgs = (data as any[]).map(r => ({
-        id: r.id,
-        created_at: r.created_at,
-        ...(r.data || {})
-      })) as ChatMessage[];
-      
-      // Filter manually to ensure it's specifically between these two (PostgREST in filter is OR-like for members)
-      const filtered = msgs.filter(m => 
-        (m.sender_id === currentUser.id && m.receiver_id === selectedUser.id) ||
-        (m.sender_id === selectedUser.id && m.receiver_id === currentUser.id)
-      );
-      setMessages(filtered);
+      setMessages(data as unknown as ChatMessage[]);
     }
   }, [selectedUser, currentUser]);
 
@@ -136,41 +123,18 @@ export default function ChatPage() {
 
   // Send text message (via edge function - server enforces sender_id)
   const sendTextMessage = async () => {
-    if (!input.trim() || !selectedUser || !currentUser) return;
-    
-    const messageData = {
-      sender_id: currentUser.id,
-      receiver_id: selectedUser.id,
-      content: input.trim(),
-      message_type: 'text',
-      created_at: new Date().toISOString()
-    };
-
-    try {
-      // Try Edge Function first
-      if (sessionToken) {
-        const { error } = await supabase.functions.invoke('chat-api', {
-          body: {
-            action: 'send_message',
-            sessionToken,
-            receiver_id: selectedUser.id,
-            content: input.trim(),
-            message_type: 'text',
-          },
-        });
-        if (!error) { setInput(''); return; }
-      }
-      
-      // Fallback: Direct DB insert
-      const { error } = await supabase.from('chat_messages' as any).insert({ 
-        data: messageData 
-      });
-      if (error) throw error;
-      setInput('');
-    } catch (err) {
-      console.error('Error sending message:', err);
-      toast.error('Erro ao enviar mensagem');
-    }
+    if (!input.trim() || !selectedUser || !currentUser || !sessionToken) return;
+    const { error } = await supabase.functions.invoke('chat-api', {
+      body: {
+        action: 'send_message',
+        sessionToken,
+        receiver_id: selectedUser.id,
+        content: input.trim(),
+        message_type: 'text',
+      },
+    });
+    if (error) { toast.error('Erro ao enviar mensagem'); return; }
+    setInput('');
   };
 
   // Send file
@@ -182,7 +146,7 @@ export default function ChatPage() {
   };
 
   const sendFile = async (file: globalThis.File) => {
-    if (!selectedUser || !currentUser) return;
+    if (!selectedUser || !currentUser || !sessionToken) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
       toast.error('Tipo de arquivo não permitido');
@@ -193,66 +157,37 @@ export default function ChatPage() {
       return;
     }
     const safeName = sanitizeFilename(file.name);
-    const path = `${currentUser.id}/${Date.now()}_${safeName}`;
+    const path = `${currentUser.id}/${Date.now()}.${ext}`;
     toast.info(`Enviando ${safeName}...`);
 
-    try {
-      // Try upload via edge function
-      if (sessionToken) {
-        const arrayBuffer = await file.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        const { error: uploadError } = await supabase.functions.invoke('chat-api', {
-          body: {
-            action: 'upload_file',
-            sessionToken,
-            file_base64: base64,
-            file_path: path,
-            content_type: file.type,
-          },
-        });
-        
-        if (!uploadError) {
-          // Send message record via edge function
-          const { error } = await supabase.functions.invoke('chat-api', {
-            body: {
-              action: 'send_message',
-              sessionToken,
-              receiver_id: selectedUser.id,
-              message_type: 'file',
-              file_url: path,
-              file_name: safeName,
-              file_size: file.size,
-            },
-          });
-          if (!error) { toast.success('Arquivo enviado!'); return; }
-        }
-      }
+    // Convert file to base64 for edge function upload
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
-      // Fallback: Direct Storage and DB
-      const { error: directUploadError } = await supabase.storage
-        .from('chat-files')
-        .upload(path, file);
-      
-      if (directUploadError) throw directUploadError;
-
-      const { error: directInsertError } = await supabase.from('chat_messages' as any).insert({
-        data: {
-          sender_id: currentUser.id,
-          receiver_id: selectedUser.id,
-          message_type: 'file',
-          file_url: path,
-          file_name: safeName,
-          file_size: file.size,
-          created_at: new Date().toISOString()
-        }
-      });
-      
-      if (directInsertError) throw directInsertError;
-      toast.success('Arquivo enviado!');
-    } catch (err) {
-      console.error('File upload error:', err);
-      toast.error('Erro ao enviar arquivo');
-    }
+    const { error: uploadError } = await supabase.functions.invoke('chat-api', {
+      body: {
+        action: 'upload_file',
+        sessionToken,
+        file_base64: base64,
+        file_path: path,
+        content_type: file.type,
+      },
+    });
+    if (uploadError) { toast.error('Erro ao enviar arquivo'); return; }
+    // Use edge function for insert (server enforces sender_id)
+    const { error } = await supabase.functions.invoke('chat-api', {
+      body: {
+        action: 'send_message',
+        sessionToken,
+        receiver_id: selectedUser.id,
+        message_type: 'file',
+        file_url: path,
+        file_name: sanitizeFilename(file.name),
+        file_size: file.size,
+      },
+    });
+    if (error) { toast.error('Erro ao registrar arquivo'); return; }
+    toast.success('Arquivo enviado!');
   };
 
   // Audio recording
@@ -328,26 +263,12 @@ export default function ChatPage() {
   const masterViewConversation = async (u1: UsuarioDB, u2: UsuarioDB) => {
     const { data } = await supabase
       .from('chat_messages' as any)
-      .select('id, data, created_at')
-      .filter('data->>sender_id', 'in', `(${[u1.id, u2.id].join(',')})`)
-      .filter('data->>receiver_id', 'in', `(${[u1.id, u2.id].join(',')})`)
+      .select('*')
+      .or(`and(sender_id.eq.${u1.id},receiver_id.eq.${u2.id}),and(sender_id.eq.${u2.id},receiver_id.eq.${u1.id})`)
       .order('created_at', { ascending: true });
-
-    if (data) {
-      const msgs = (data as any[]).map(r => ({
-        id: r.id,
-        created_at: r.created_at,
-        ...(r.data || {})
-      })) as ChatMessage[];
-      
-      const filtered = msgs.filter(m => 
-        (m.sender_id === u1.id && m.receiver_id === u2.id) ||
-        (m.sender_id === u2.id && m.receiver_id === u1.id)
-      );
-      setMasterMessages(filtered);
-      setMasterViewUsers({ u1, u2 });
-      setMasterViewDialog(true);
-    }
+    setMasterMessages((data as unknown as ChatMessage[]) || []);
+    setMasterViewUsers({ u1, u2 });
+    setMasterViewDialog(true);
   };
 
   // Audio playback

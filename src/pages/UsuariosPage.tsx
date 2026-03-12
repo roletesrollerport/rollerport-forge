@@ -144,22 +144,12 @@ export default function UsuariosPage() {
     }
   };
 
-
-  const handleDelete = async (id: string, name?: string) => {
-    if (id === loggedUserId) {
-      toast.error('Você não pode excluir a si mesmo!');
-      return;
-    }
-    
-    if (!confirm(`Tem certeza que deseja excluir permanentemente o usuário ${name || ''}? Esta ação não pode ser desfeita.`)) return;
-    
-    try {
-      await deleteUsuario(id);
-      toast.success('Usuário removido com sucesso!');
-      if (open) setOpen(false);
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao excluir usuário');
-    }
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+    const u = usuarios.find(x => x.id === id);
+    if (u?.nivel === 'master') { toast.error('Não é possível excluir o usuário Master!'); return; }
+    await deleteUsuario(id);
+    toast.success('Usuário removido!');
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,7 +178,7 @@ export default function UsuariosPage() {
     setOpeningEdit(true);
     let currentPass = '';
     try {
-      if (isMaster) {
+      if (isMaster && u.nivel !== 'master') {
         const data = await getUserCredentials(u.id);
         currentPass = data.isPlain ? data.password : '';
       }
@@ -346,21 +336,10 @@ export default function UsuariosPage() {
                   </div>
                 )}
               </div>
-
-              <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                {editing.id ? (
-                  <Button 
-                    variant="ghost" 
-                    className="text-destructive hover:bg-destructive/10 gap-2" 
-                    onClick={() => handleDelete(editing.id!, editing.nome)}
-                  >
-                    <Trash2 className="h-4 w-4" /> Excluir Usuário
-                  </Button>
-                ) : <div />}
-                
-                <Button onClick={handleSave} disabled={saving} className="gap-2 px-8">
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  {editing.id ? 'Atualizar' : 'Salvar'}
+              <div className="flex justify-end mt-4">
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Salvar
                 </Button>
               </div>
             </DialogContent>
@@ -369,114 +348,104 @@ export default function UsuariosPage() {
         )}
       </div>
 
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {[...usuarios].sort((a, b) => (a.nivel === 'master' ? -1 : b.nivel === 'master' ? 1 : 0)).map(u => (
-          <div key={u.id} className="bg-card border rounded-xl p-5 hover:shadow-lg transition-all duration-300 flex flex-col h-full relative overflow-hidden group">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-primary/20 shadow-inner">
+          <div key={u.id} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-primary/20">
                 {u.foto ? (
-                  <img src={u.foto} alt={u.nome} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                  <img src={u.foto} alt={u.nome} className="h-full w-full object-cover" />
                 ) : (
                   <User className="h-7 w-7 text-muted-foreground" />
                 )}
               </div>
-              <div className="min-w-0 flex-1 flex flex-col justify-center h-14">
-                <h3 className="font-bold text-sm truncate leading-tight mb-0.5" title={u.nome}>{u.nome || 'Sem nome'}</h3>
-                <p className="text-[11px] text-muted-foreground font-mono truncate" title={u.login}>{u.login}</p>
-                
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider border border-primary/5">{u.nivel}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${u.ativo ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/30' : 'bg-muted text-muted-foreground border-transparent'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-sm truncate">{u.nome || 'Sem nome'}</h3>
+                <p className="text-xs text-muted-foreground font-mono">{u.login}</p>
+                {isMaster && (
+                  <div className="flex items-center gap-1">
+                    <p className="text-[10px] text-muted-foreground/60 font-mono">
+                      Senha: {cardPassVisible[u.id] ? cardPassVisible[u.id] : '•'.repeat(u.senha?.length || 8)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (cardPassVisible[u.id]) {
+                          setCardPassVisible(prev => ({ ...prev, [u.id]: null }));
+                        } else {
+                          try {
+                            const data = await getUserCredentials(u.id);
+                            setCardPassVisible(prev => ({ ...prev, [u.id]: data.password }));
+                          } catch {
+                            toast.error('Erro ao buscar senha');
+                          }
+                        }
+                      }}
+                      className="text-muted-foreground/60 hover:text-muted-foreground"
+                    >
+                      {cardPassVisible[u.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary capitalize">{u.nivel}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span>
                 </div>
               </div>
             </div>
 
-            {isMaster && (
-              <div className="flex items-center gap-1.5 mb-3 px-2 py-1 bg-muted/30 rounded-lg w-fit max-w-full">
-                <p className="text-[10px] text-muted-foreground font-mono truncate">
-                  Senha: {cardPassVisible[u.id] ? cardPassVisible[u.id] : '•'.repeat(Math.min(u.senha?.length || 8, 8))}
-                </p>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (cardPassVisible[u.id]) {
-                      setCardPassVisible(prev => ({ ...prev, [u.id]: null }));
-                    } else {
-                      try {
-                        const data = await getUserCredentials(u.id);
-                        setCardPassVisible(prev => ({ ...prev, [u.id]: data.password }));
-                      } catch {
-                        toast.error('Erro ao buscar senha');
-                      }
-                    }
-                  }}
-                  className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0"
-                >
-                  {cardPassVisible[u.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                </button>
-              </div>
-            )}
-
             {viewingPass?.id === u.id && (
-              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] space-y-2 animate-in fade-in slide-in-from-top-2">
+              <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-[10px] space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-amber-800 dark:text-amber-400 uppercase tracking-tighter">Credenciais:</span>
-                  <button onClick={() => setViewingPass(null)} className="text-amber-800 dark:text-amber-400 hover:underline font-bold">FECHAR</button>
+                  <span className="font-semibold text-amber-800 dark:text-amber-400">Credenciais:</span>
+                  <button onClick={() => setViewingPass(null)} className="text-amber-800 dark:text-amber-400 hover:underline">Fechar</button>
                 </div>
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1 mt-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono bg-white dark:bg-black/40 px-2 py-1 rounded border border-amber-200 dark:border-amber-800 text-xs shadow-sm">
+                    <span className="font-mono bg-white dark:bg-black/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-xs">
                       {viewingPass.pass}
                     </span>
-                    {viewingPass.isPlain && <span className="text-green-600 font-bold whitespace-nowrap text-[9px] uppercase">Senha Original</span>}
+                    {viewingPass.isPlain && <span className="text-green-600 font-medium whitespace-nowrap">Senha Original</span>}
                   </div>
                   {!viewingPass.isPlain && (
                      <p className="text-muted-foreground/80 italic text-[9px] leading-tight">
-                       Por segurança, esta senha foi <b>criptografada</b> e é irreversível.
+                       Por segurança, esta senha foi <b>criptografada (hashed)</b> e é irreversível.
+                       <br />Não é possível ver o texto original. Use "Gerar Senha Temporária" se precisar recuperar o acesso.
                      </p>
                   )}
                 </div>
               </div>
             )}
 
-            <div className="mt-auto space-y-2 text-xs border-t pt-4">
-              <div className="flex items-center gap-2.5 text-muted-foreground group/info" title={u.email || 'Nenhum email'}>
-                <div className="p-1 px-1.5 rounded bg-muted/50 group-hover/info:bg-primary/10 group-hover/info:text-primary transition-colors">
-                  <Mail className="h-3.5 w-3.5" />
-                </div>
-                <span className="truncate font-medium">{u.email || '-'}</span>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Mail className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{u.email || '-'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-muted-foreground group/info" title={u.telefone || 'Nenhum telefone'}>
-                <div className="p-1 px-1.5 rounded bg-muted/50 group-hover/info:bg-primary/10 group-hover/info:text-primary transition-colors">
-                  <Phone className="h-3.5 w-3.5" />
-                </div>
-                <span className="truncate font-medium">{u.telefone || '-'}</span>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Phone className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{u.telefone || '-'}</span>
               </div>
               {u.whatsapp && (
-                <div className="flex items-center gap-2.5 text-muted-foreground group/info" title={u.whatsapp}>
-                  <div className="p-1 px-1.5 rounded bg-muted/50 group-hover/info:bg-green-500/10 group-hover/info:text-green-600 transition-colors">
-                    <CheckCircle className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="truncate font-medium">Whats: {u.whatsapp}</span>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Phone className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">WhatsApp: {u.whatsapp}</span>
                 </div>
               )}
             </div>
 
-
             {isMaster && (
-              <div className="mt-4 pt-3 border-t-2 border-dashed flex gap-1 justify-start flex-wrap">
-                <button onClick={() => openEdit(u)} disabled={openingEdit} className="flex-1 min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary transition-colors disabled:opacity-50" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
-
-                {true && (
+              <div className="mt-4 pt-3 border-t flex gap-1 justify-start flex-wrap">
+                <button onClick={() => openEdit(u)} disabled={openingEdit} className="p-1.5 rounded bg-muted/50 hover:bg-muted text-primary disabled:opacity-50" title="Editar"><Edit className="h-4 w-4" /></button>
+                {u.nivel !== 'master' && (
                   <>
-                    <button onClick={() => handleGenTempPass(u.id)} className="flex-1 min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 transition-colors" title="Senha Temp"><Lock className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => handleToggleActive(u)} className={`flex-1 min-w-[32px] flex items-center justify-center p-1.5 rounded-lg transition-colors ${u.ativo ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:hover:bg-orange-900/40' : 'bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
-                      {u.ativo ? <ShieldAlert className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                    <button onClick={() => handleViewPass(u.id)} className="p-1.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40" title="Ver Senha"><Eye className="h-4 w-4" /></button>
+                    <button onClick={() => handleGenTempPass(u.id)} className="p-1.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40" title="Gerar Senha Temporária"><Lock className="h-4 w-4" /></button>
+                    <button onClick={() => handleToggleActive(u)} className={`p-1.5 rounded ${u.ativo ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:hover:bg-orange-900/40' : 'bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
+                      {u.ativo ? <ShieldAlert className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
                     </button>
-                    <button onClick={() => handleLogoutUser(u.id)} className="flex-1 min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors" title="Logout"><LogOut className="h-3.5 w-3.5" /></button>
-
-                    <button onClick={() => handleDelete(u.id, u.nome)} className="flex-1 min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-destructive/5 hover:bg-destructive/10 text-destructive transition-colors" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => handleLogoutUser(u.id)} className="p-1.5 rounded bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40" title="Forçar Logout"><LogOut className="h-4 w-4" /></button>
+                    <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                   </>
                 )}
               </div>

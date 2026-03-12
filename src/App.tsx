@@ -90,29 +90,11 @@ function AppContent() {
 
   useEffect(() => {
     if (loggedUserId && sessionToken) {
-      const isLocalSession = sessionToken.startsWith('local_');
-
-      const validate = async () => {
-        if (!isLocalSession) {
-          try {
-            const { data, error } = await supabase.functions.invoke('chat-api', {
-              body: { action: 'validate_session', sessionToken },
-            });
-            if (!error && data?.valid && data?.user_id === loggedUserId) {
-              return true;
-            }
-          } catch (e) {
-            console.warn('[App] chat-api not available for validation, falling back to local check');
-          }
-        }
-        
-        // Fallback or explicit local session: check if user exists in DB
-        const user = await getById(loggedUserId);
-        return !!user;
-      };
-
-      validate().then(isValid => {
-        if (!isValid) {
+      // Validate session server-side
+      supabase.functions.invoke('chat-api', {
+        body: { action: 'validate_session', sessionToken },
+      }).then(({ data, error }) => {
+        if (error || !data?.valid || data?.user_id !== loggedUserId) {
           localStorage.removeItem('rp_logged_user');
           localStorage.removeItem('rp_session_token');
           setLoggedUserId(null);
@@ -120,14 +102,25 @@ function AppContent() {
           setChecking(false);
           return;
         }
-
         getById(loggedUserId).then(user => {
           if (user) {
             setCurrentUser(user);
+          } else {
+            localStorage.removeItem('rp_logged_user');
+            localStorage.removeItem('rp_session_token');
+            setLoggedUserId(null);
+            setSessionToken(null);
           }
+          setChecking(false);
+        }).catch(() => {
           setChecking(false);
         });
       }).catch(() => {
+        // Session invalid or network error - show login
+        localStorage.removeItem('rp_logged_user');
+        localStorage.removeItem('rp_session_token');
+        setLoggedUserId(null);
+        setSessionToken(null);
         setChecking(false);
       });
     } else {
@@ -137,7 +130,7 @@ function AppContent() {
 
   // Heartbeat: update last_seen every 60s while logged in (via edge function)
   useEffect(() => {
-    if (!loggedUserId || !sessionToken || sessionToken.startsWith('local_')) return;
+    if (!loggedUserId || !sessionToken) return;
     const updateLastSeen = () => {
       supabase.functions.invoke('chat-api', {
         body: { action: 'heartbeat', sessionToken },

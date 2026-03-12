@@ -148,6 +148,7 @@ export default function DashboardPage() {
   const [dashView, setDashView] = useState<DashView>('main');
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
+  const [masterAiPrompt, setMasterAiPrompt] = useState<string>(() => localStorage.getItem('rp_master_ai_prompt') || '');
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -432,6 +433,10 @@ export default function DashboardPage() {
     const userPeds = getUserPeds(selectedVendor);
     const userOS = getUserOS(selectedVendor);
 
+    const handleSaveMasterPrompt = (prompt: string) => {
+      setMasterAiPrompt(prompt);
+      localStorage.setItem('rp_master_ai_prompt', prompt);
+    };
 
     return (
       <VendorReportView
@@ -444,6 +449,8 @@ export default function DashboardPage() {
         isPrint={dashView === 'vendor-print'}
         onBack={() => { setDashView('main'); setSelectedVendor(null); }}
         onPrint={() => dashView === 'vendor-detail' ? setDashView('vendor-print') : window.print()}
+        masterPrompt={masterAiPrompt || undefined}
+        onSaveMasterPrompt={handleSaveMasterPrompt}
       />
     );
   }
@@ -482,7 +489,6 @@ export default function DashboardPage() {
                 <thead><tr className="border-b bg-muted/50">
                   <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th><th className="text-left p-2">Vendedor</th>
                   <th className="text-left p-2">Data</th><th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
-                  <th className="text-left p-2">Motivo</th>
                 </tr></thead>
                 <tbody>
                   {reportOrcs.map((o: any) => (
@@ -491,7 +497,6 @@ export default function DashboardPage() {
                       <td className="p-2">{o.dataOrcamento || o.createdAt}</td>
                       <td className="p-2 text-right font-mono">{fmt(o.valorTotal)}</td>
                       <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.status === 'APROVADO' ? 'bg-success/10 text-success' : o.status === 'REPROVADO' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{o.status}</span></td>
-                      <td className="p-2 text-[10px] text-muted-foreground truncate max-w-[100px]" title={o.motivoCancelamento || ''}>{o.motivoCancelamento || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -506,7 +511,6 @@ export default function DashboardPage() {
                 <thead><tr className="border-b bg-muted/50">
                   <th className="text-left p-2">Nº</th><th className="text-left p-2">Cliente</th>
                   <th className="text-left p-2">Entrega</th><th className="text-right p-2">Valor</th><th className="text-left p-2">Status</th>
-                  <th className="text-left p-2">Motivo</th>
                 </tr></thead>
                 <tbody>
                   {reportPeds.map((p: any) => (
@@ -515,7 +519,6 @@ export default function DashboardPage() {
                       <td className="p-2">{p.dataEntrega}</td>
                       <td className="p-2 text-right font-mono">{fmt(p.valorTotal)}</td>
                       <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'ENTREGUE' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{p.status}</span></td>
-                      <td className="p-2 text-[10px] text-muted-foreground truncate max-w-[100px]" title={p.motivoCancelamento || ''}>{p.motivoCancelamento || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -530,14 +533,12 @@ export default function DashboardPage() {
                 <thead><tr className="border-b bg-muted/50">
                   <th className="text-left p-2">O.S.</th><th className="text-left p-2">Empresa</th><th className="text-left p-2">Pedido</th>
                   <th className="text-left p-2">Status</th>
-                  <th className="text-left p-2">Motivo</th>
                 </tr></thead>
                 <tbody>
                   {reportOS.map((os: any) => (
                     <tr key={os.id} className="border-b hover:bg-muted/30">
                       <td className="p-2 font-mono">{os.numero}</td><td className="p-2">{os.empresa}</td><td className="p-2">{os.pedidoNumero}</td>
                       <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${os.status === 'CONCLUIDA' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{os.status?.replace('_', ' ')}</span></td>
-                      <td className="p-2 text-[10px] text-muted-foreground truncate max-w-[100px]" title={os.motivoCancelamento || ''}>{os.motivoCancelamento || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -560,7 +561,7 @@ export default function DashboardPage() {
     const convData = vendedores.map(v => {
       const orcV = getUserOrcs(v.nome);
       const pedV = getUserPeds(v.nome);
-      const totalVendido = pedV.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
+      const totalVendido = pedV.reduce((s: number, p: any) => s + p.valorTotal, 0);
       const conv = orcV.length > 0 ? ((orcV.filter((o: any) => o.status === 'APROVADO').length / orcV.length) * 100) : 0;
       return {
         nome: v.nome, orcTotal: orcV.length,
@@ -637,25 +638,7 @@ export default function DashboardPage() {
   const renderUserCard = (usuario: any, fullWidth = false) => {
     const isOnline = onlineUserIds.has(usuario.id);
     const userPeds = getUserPeds(usuario.nome);
-    
-    // Filter orders by current month for the "Meta do Mês" using robust string parsing
-    const now = new Date();
-    const currentMonthPeds = userPeds.filter(p => {
-      const dateStr = p.createdAt || p.created_at;
-      if (!dateStr) return false;
-      
-      // If it's a full ISO string or YYYY-MM-DD
-      const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-      if (!datePart.includes('-')) return false; // Fail safe for unexpected formats
-      
-      const [y, m] = datePart.split('-').map(Number);
-      return y === now.getFullYear() && (m - 1) === now.getMonth();
-    });
-
-    const totalVendido = currentMonthPeds.reduce((s: number, p: any) => {
-      const val = typeof p.valorTotal === 'number' ? p.valorTotal : parseFloat(p.valorTotal || '0');
-      return s + (isNaN(val) ? 0 : val);
-    }, 0);
+    const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
     const meta = metas.find(m => m.vendedor === usuario.nome);
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
 

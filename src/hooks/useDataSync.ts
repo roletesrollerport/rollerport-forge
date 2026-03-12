@@ -129,20 +129,6 @@ async function pullFromDb(key: string): Promise<boolean> {
   return false;
 }
 
-
-/**
- * Force pulling all data from DB to localStorage.
- * Useful after a manual import in GerenciamentoPage.
- */
-export async function forcePull() {
-  console.log('[DataSync] Forcing pull of all tables...');
-  for (const key of SYNCED_KEYS) {
-    await pullFromDb(key);
-  }
-  window.dispatchEvent(new CustomEvent('rp-data-synced'));
-  console.log('[DataSync] Force pull complete');
-}
-
 /**
  * Initial sync: for each key, check if DB has data.
  * If DB has data → pull to localStorage.
