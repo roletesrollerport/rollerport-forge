@@ -45,8 +45,7 @@ export default function ChatPage() {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
-  const loggedUserId = localStorage.getItem('rp_logged_user');
-  const sessionToken = localStorage.getItem('rp_session_token');
+  const loggedUserId = useCurrentUserId();
 
   const usuarios = dbUsuarios;
 
