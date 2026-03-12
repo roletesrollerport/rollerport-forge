@@ -25,13 +25,13 @@ function parseUsuario(row: any): UsuarioDB {
     email: row.email || '',
     telefone: row.telefone || '',
     whatsapp: row.whatsapp || '',
-    login: row.login || '',
-    senha: '••••••',
+    login: row.login,
+    senha: row.senha || '••••••',
     nivel: row.nivel as NivelAcesso,
     genero: row.genero as Genero | undefined,
-    ativo: row.ativo !== undefined ? row.ativo : true,
+    ativo: row.ativo,
     foto: row.foto || undefined,
-    permissoes: row.permissoes || { ver: [], editar: [] },
+    permissoes: (row.permissoes as any) || { ver: [], editar: [] },
     created_at: row.created_at,
   };
 }
@@ -43,15 +43,9 @@ export function useUsuarios() {
   const fetchUsuarios = useCallback(async () => {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at');
-
-    if (error) {
-      console.error('[useUsuarios] Erro ao carregar usuários:', error);
-      setLoading(false);
-      return;
-    }
-
-    if (data) {
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (!error && data) {
       setUsuarios(data.map(parseUsuario));
     }
     setLoading(false);
@@ -60,76 +54,58 @@ export function useUsuarios() {
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
 
   const saveUsuario = async (u: Partial<UsuarioDB> & { id?: string }) => {
-    try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
 
-      const userData: any = {
-        nome: u.nome,
-        email: u.email,
-        telefone: u.telefone,
-        whatsapp: u.whatsapp,
-        login: u.login,
-        nivel: u.nivel,
-        genero: u.genero || null,
-        ativo: u.ativo,
-        foto: u.foto || null,
-        permissoes: u.permissoes,
-      };
+    const userData: any = {
+      id: u.id || undefined,
+      nome: u.nome,
+      email: u.email,
+      telefone: u.telefone,
+      whatsapp: u.whatsapp,
+      login: u.login,
+      nivel: u.nivel,
+      genero: u.genero || null,
+      ativo: u.ativo,
+      foto: u.foto || null,
+      permissoes: u.permissoes,
+    };
 
-      if (u.senha && u.senha.trim() !== '' && u.senha !== '••••••') {
-        userData.senha = u.senha.trim();
-      }
-
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'save_user', sessionToken, userData: { ...userData, id: u.id } },
-      });
-
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to save user');
-      }
-
-      await fetchUsuarios();
-    } catch (err: any) {
-      console.error('[useUsuarios] Error saving user:', err);
-      throw err;
+    if (u.senha && u.senha.trim() !== '') {
+      userData.senha = u.senha.trim();
     }
+
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'save_user', sessionToken, userData },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+
+    await fetchUsuarios();
   };
 
   const deleteUsuario = async (id: string) => {
-    try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'delete_user', sessionToken, userId: id },
-      });
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'delete_user', sessionToken, userId: id },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to delete user');
-      }
-
-      await fetchUsuarios();
-    } catch (err: any) {
-      console.error('[useUsuarios] Error deleting user:', err);
-      throw err;
-    }
+    await fetchUsuarios();
   };
 
   const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; sessionToken: string } | null> => {
     try {
+      // Use server-side login via edge function (password never compared client-side)
       const { data, error } = await supabase.functions.invoke('hash-password', {
         body: { action: 'login', loginStr: loginStr.trim(), password: senha },
       });
-
-      if (!error && data?.user && data?.sessionToken) {
-        return { user: parseUsuario(data.user), sessionToken: data.sessionToken };
-      }
-
-      console.warn('[useUsuarios] Login failed:', error || data?.error);
-      return null;
-    } catch (err) {
-      console.error('[useUsuarios] Login error:', err);
+      if (error || !data?.user || !data?.sessionToken) return null;
+      return { user: parseUsuario(data.user), sessionToken: data.sessionToken };
+    } catch {
       return null;
     }
   };
@@ -168,60 +144,57 @@ export function useUsuarios() {
   };
 
   const getUserCredentials = async (userId: string) => {
-    try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'get_user_credentials', sessionToken, userId },
-      });
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'get_user_credentials', sessionToken, userId },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to get credentials');
-      }
-
-      return { password: data.password, isPlain: data.isPlain };
-    } catch (err: any) {
-      console.error('[useUsuarios] Error fetching credentials:', err);
-      throw err;
-    }
+    return {
+      password: data.password,
+      isPlain: data.isPlain
+    };
   };
 
   const generateTempPassword = async (userId: string) => {
-    try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'generate_temp_password', sessionToken, userId },
-      });
+    const { data, error } = await supabase.functions.invoke('user-api', {
+      body: { action: 'generate_temp_password', sessionToken, userId },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to generate temp password');
-      }
-
-      return { tempPassword: data.tempPassword };
-    } catch (err: any) {
-      console.error('[useUsuarios] Error generating temp pass:', err);
-      throw err;
-    }
+    return { tempPassword: data.tempPassword };
   };
 
   const logoutUser = async (userId: string) => {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'delete_user', sessionToken, userId },
-    });
-    // Use edge function for session deletion too
+    const { error } = await supabase.from('sessions').delete().eq('user_id', userId);
+    if (error) throw error;
+
     return { success: true };
   };
 
   const logoutAllCommonUsers = async () => {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
-    // This needs the edge function since we can't access sessions table directly
+
+    const { data: users, error: selectError } = await supabase.from('usuarios').select('id').neq('nivel', 'master');
+    if (selectError) throw selectError;
+
+    if (!users || users.length === 0) return { success: true };
+
+    const userIds = users.map(u => u.id);
+    const { error } = await supabase.from('sessions').delete().in('user_id', userIds);
+    if (error) throw error;
+
     return { success: true };
   };
 

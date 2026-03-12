@@ -177,66 +177,6 @@ serve(async (req) => {
       });
     }
 
-    if (action === "export_backup") {
-      const TABLES = [
-        "usuarios", "clientes", "custos_tubos", "custos_eixos", "custos_conjuntos", 
-        "custos_encaixes", "custos_revestimentos", "estoque", "fornecedores", 
-        "metas_vendedores", "produtos", "orcamentos", "pedidos", "ordens_servico", 
-        "chat_messages", "sessions"
-      ];
-      
-      const backupData: Record<string, any[]> = {};
-      for (const table of TABLES) {
-        const { data, error } = await supabaseAdmin.from(table).select("*");
-        if (error) {
-          return new Response(JSON.stringify({ error: `Failed to export ${table}: ${error.message}` }), {
-            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        backupData[table] = data || [];
-      }
-
-      return new Response(JSON.stringify({ backupData }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "import_backup") {
-      const { backupData } = params;
-      if (!backupData) {
-        return new Response(JSON.stringify({ error: "Missing backupData" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const TABLES = [
-        "usuarios", "clientes", "custos_tubos", "custos_eixos", "custos_conjuntos", 
-        "custos_encaixes", "custos_revestimentos", "estoque", "fornecedores", 
-        "metas_vendedores", "produtos", "orcamentos", "pedidos", "ordens_servico", 
-        "chat_messages", "sessions"
-      ];
-
-      const results: Record<string, string> = {};
-      for (const table of TABLES) {
-        const data = backupData[table];
-        if (data && data.length > 0) {
-          const { error } = await supabaseAdmin.from(table).upsert(data);
-          if (error) {
-            return new Response(JSON.stringify({ error: `Failed to import ${table}: ${error.message}` }), {
-              status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-          results[table] = `Successfully imported ${data.length} rows`;
-        } else {
-          results[table] = "No data to import";
-        }
-      }
-
-      return new Response(JSON.stringify({ success: true, results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     if (action === "delete_user") {
       const { userId: targetId } = params;
       if (!targetId) {

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, LogOut, User, Eye, Trash2, RefreshCw, Database
+  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,8 +25,8 @@ const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo 
   { to: '/producao', label: 'Produção', icon: Factory, modulo: 'producao' },
   { to: '/estoque', label: 'Estoque', icon: Warehouse, modulo: 'estoque' },
   { to: '/chat', label: 'Bate-Papo', icon: MessageSquare, modulo: 'chat' },
+  { to: '/ia', label: 'IA', icon: Bot, modulo: 'ia' },
   { to: '/usuarios', label: 'Usuários', icon: UserCog, modulo: 'usuarios' },
-  { to: '/gerenciamento', label: 'Gerenciamento', icon: Database, modulo: 'usuarios' },
 ];
 
 export default function AppLayout({ children, currentUser, onLogout }: { children: React.ReactNode; currentUser: Usuario; onLogout: () => void }) {
@@ -131,16 +131,16 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
 
   const isMaster = currentUser.nivel === 'master';
-  const allModulos: PermissaoModulo[] = ['inicio', 'custos', 'clientes', 'produtos', 'orcamentos', 'pedidos', 'producao', 'estoque', 'chat', 'usuarios'];
+  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios'];
   const userPerms = currentUser.permissoes?.ver || allModulos;
 
   const visibleNavItems = isMaster
     ? navItems
     : navItems.filter(item => {
-      if (item.modulo === 'chat') return true;
-      if (item.modulo === 'usuarios') return false;
-      return userPerms.includes(item.modulo);
-    });
+        if (item.modulo === 'chat') return true;
+        if (item.modulo === 'usuarios') return false;
+        return userPerms.includes(item.modulo);
+      });
 
   // Generate birthday notifications
   useEffect(() => {
@@ -237,7 +237,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         <nav className="flex-1 overflow-y-auto py-2">
           {visibleNavItems.map(item => {
             const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
-
+            
             if (item.modulo === 'chat') {
               return (
                 <button
@@ -297,9 +297,9 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           <div className="flex-1" />
 
           <div className="relative flex items-center gap-1">
-            <button
+            <button 
               onClick={() => {
-                if (confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
+                if(confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
                   localStorage.removeItem('rp_orcamentos');
                   localStorage.removeItem('rp_pedidos');
                   localStorage.removeItem('rp_clientes');
@@ -309,8 +309,8 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                   localStorage.removeItem('rp_metas');
                   window.location.reload();
                 }
-              }}
-              className="relative p-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
+              }} 
+              className="relative p-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary" 
               title="Forçar Sincronização com Banco de Dados"
             >
               <RefreshCw className="h-4 w-4" />

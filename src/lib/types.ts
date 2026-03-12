@@ -35,25 +35,6 @@ export interface Encaixe {
   imagem?: string;
 }
 
-export type RegimeTributario = 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real' | 'Isento';
-
-export interface EmpresaEmissora {
-  id: string;
-  nome: string;
-  razaoSocial: string;
-  cnpj: string;
-  ie: string;
-  endereco: string;
-  cidade: string;
-  estado: string;
-  cep: string;
-  telefone: string;
-  email: string;
-  regimeTributario: RegimeTributario;
-  bairro: string;
-  logo?: string;
-}
-
 // ======= CLIENTES =======
 export interface Comprador {
   nome: string;
@@ -72,18 +53,12 @@ export interface Cliente {
   telefone: string;
   whatsapp: string;
   endereco: string;
-  bairro?: string;
   cidade: string;
   estado: string;
-  cep?: string;
   contato: string;
   compradores: Comprador[];
-  regimeTributario: RegimeTributario;
-  inscricaoEstadual?: string;
-  inscricaoMunicipal?: string;
   aniversarioEmpresa?: string;
   redesSociais?: string;
-  usuarioCriador?: string;
   createdAt: string;
 }
 
@@ -104,7 +79,6 @@ export interface Produto {
   descricao: string;
   miniDescricao?: string;
   valor: number;
-  tempo_fabricacao_minutos?: number;
   createdAt: string;
 }
 
@@ -183,10 +157,7 @@ export interface Orcamento {
   itensRolete: ItemOrcamento[];
   itensProduto: ItemProdutoOrcamento[];
   status: StatusOrcamento;
-  empresaEmissoraId: string;
   valorTotal: number;
-  data_entrega_prevista?: string;
-  ultima_interacao?: string;
   createdAt: string;
   dataAprovacao?: string;
 }
@@ -195,7 +166,6 @@ export interface Orcamento {
 export type StatusPedido = 'PENDENTE' | 'CONFIRMADO' | 'EM_PRODUCAO' | 'CONCLUIDO' | 'ENTREGUE';
 
 export interface Pedido {
-  vendedor?: string;
   id: string;
   numero: string;
   orcamentoId: string;
@@ -204,8 +174,6 @@ export interface Pedido {
   dataEntrega: string;
   status: StatusPedido;
   valorTotal: number;
-  data_entrega_prevista?: string;
-  ultima_interacao?: string;
   createdAt: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;
@@ -251,8 +219,6 @@ export interface OrdemServico {
   diasPropostos: number;
   status: StatusOS;
   itens: ItemOS[];
-  data_entrega_prevista?: string;
-  ultima_interacao?: string;
   createdAt: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;
@@ -276,7 +242,7 @@ export interface ItemEstoque {
 export type NivelAcesso = 'master' | 'admin' | 'SEO' | 'Administrador' | 'Vendas' | 'Estoque' | 'Produção';
 export type Genero = 'M' | 'F';
 
-export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'usuarios' | 'ia';
+export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'ia' | 'usuarios';
 
 export interface PermissoesUsuario {
   ver: PermissaoModulo[];

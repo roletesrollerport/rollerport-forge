@@ -16,13 +16,11 @@ import ProducaoPage from "./pages/ProducaoPage";
 import EstoquePage from "./pages/EstoquePage";
 import UsuariosPage from "./pages/UsuariosPage";
 import ChatPage from "./pages/ChatPage";
-import GerenciamentoPage from "./pages/GerenciamentoPage";
+import IAPage from "./pages/IAPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import { useUsuarios, type UsuarioDB } from "./hooks/useUsuarios";
 import { useDataSync } from "./hooks/useDataSync";
-import { store } from "./lib/store";
-import { formatCPForCNPJ, formatTelefone } from "./lib/formatters";
 
 const queryClient = new QueryClient();
 
@@ -32,87 +30,17 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState<UsuarioDB | null>(null);
   const [checking, setChecking] = useState(true);
   const { getById } = useUsuarios();
-
+  
   // Initialize bidirectional data sync with database
   useDataSync();
 
-  // One-time data migration for formatting
-  useEffect(() => {
-    const hasMigrated = localStorage.getItem('rp_format_migration_v1');
-    if (!hasMigrated) {
-      console.log('Running format migration...');
-      try {
-        // Formatar Clientes
-        const clientes = store.getClientes();
-        let changedClientes = false;
-        const newClientes = clientes.map(c => {
-          let cChanged = false;
-          const newC = { ...c };
-          if (c.cnpj && c.cnpj !== formatCPForCNPJ(c.cnpj)) { newC.cnpj = formatCPForCNPJ(c.cnpj); cChanged = true; }
-          if (c.telefone && c.telefone !== formatTelefone(c.telefone)) { newC.telefone = formatTelefone(c.telefone); cChanged = true; }
-          if (c.whatsapp && c.whatsapp !== formatTelefone(c.whatsapp)) { newC.whatsapp = formatTelefone(c.whatsapp); cChanged = true; }
-          
-          if (c.compradores) {
-            newC.compradores = c.compradores.map(comp => {
-              const newComp = { ...comp };
-              if (comp.telefone && comp.telefone !== formatTelefone(comp.telefone)) { newComp.telefone = formatTelefone(comp.telefone); cChanged = true; }
-              if (comp.whatsapp && comp.whatsapp !== formatTelefone(comp.whatsapp)) { newComp.whatsapp = formatTelefone(comp.whatsapp); cChanged = true; }
-              return newComp;
-            });
-          }
-          if (cChanged) changedClientes = true;
-          return newC;
-        });
-        if (changedClientes) store.saveClientes(newClientes);
-
-        // Formatar Orcamentos (dados do cliente/comprador gravados neles)
-        const orcamentos = store.getOrcamentos();
-        let changedOrcs = false;
-        const newOrcs = orcamentos.map(o => {
-          let oChanged = false;
-          // Cast to any since we might be operating on older untyped shapes matching runtime
-          const newO: any = { ...o };
-          if (newO.clienteCnpj && newO.clienteCnpj !== formatCPForCNPJ(newO.clienteCnpj)) { newO.clienteCnpj = formatCPForCNPJ(newO.clienteCnpj); oChanged = true; }
-          if (newO.clienteTelefone && newO.clienteTelefone !== formatTelefone(newO.clienteTelefone)) { newO.clienteTelefone = formatTelefone(newO.clienteTelefone); oChanged = true; }
-          if (newO.compradorTelefone && newO.compradorTelefone !== formatTelefone(newO.compradorTelefone)) { newO.compradorTelefone = formatTelefone(newO.compradorTelefone); oChanged = true; }
-          if (oChanged) changedOrcs = true;
-          return newO;
-        });
-        if (changedOrcs) store.saveOrcamentos(newOrcs);
-
-        localStorage.setItem('rp_format_migration_v1', 'true');
-        console.log('Format migration complete.');
-      } catch (e) {
-        console.error('Migration failed', e);
-      }
-    }
-  }, []);
-
   useEffect(() => {
     if (loggedUserId && sessionToken) {
-      const isLocalSession = sessionToken.startsWith('local_');
-
-      const validate = async () => {
-        if (!isLocalSession) {
-          try {
-            const { data, error } = await supabase.functions.invoke('chat-api', {
-              body: { action: 'validate_session', sessionToken },
-            });
-            if (!error && data?.valid && data?.user_id === loggedUserId) {
-              return true;
-            }
-          } catch (e) {
-            console.warn('[App] chat-api not available for validation, falling back to local check');
-          }
-        }
-        
-        // Fallback or explicit local session: check if user exists in DB
-        const user = await getById(loggedUserId);
-        return !!user;
-      };
-
-      validate().then(isValid => {
-        if (!isValid) {
+      // Validate session server-side
+      supabase.functions.invoke('chat-api', {
+        body: { action: 'validate_session', sessionToken },
+      }).then(({ data, error }) => {
+        if (error || !data?.valid || data?.user_id !== loggedUserId) {
           localStorage.removeItem('rp_logged_user');
           localStorage.removeItem('rp_session_token');
           setLoggedUserId(null);
@@ -120,14 +48,25 @@ function AppContent() {
           setChecking(false);
           return;
         }
-
         getById(loggedUserId).then(user => {
           if (user) {
             setCurrentUser(user);
+          } else {
+            localStorage.removeItem('rp_logged_user');
+            localStorage.removeItem('rp_session_token');
+            setLoggedUserId(null);
+            setSessionToken(null);
           }
+          setChecking(false);
+        }).catch(() => {
           setChecking(false);
         });
       }).catch(() => {
+        // Session invalid or network error - show login
+        localStorage.removeItem('rp_logged_user');
+        localStorage.removeItem('rp_session_token');
+        setLoggedUserId(null);
+        setSessionToken(null);
         setChecking(false);
       });
     } else {
@@ -137,11 +76,11 @@ function AppContent() {
 
   // Heartbeat: update last_seen every 60s while logged in (via edge function)
   useEffect(() => {
-    if (!loggedUserId || !sessionToken || sessionToken.startsWith('local_')) return;
+    if (!loggedUserId || !sessionToken) return;
     const updateLastSeen = () => {
       supabase.functions.invoke('chat-api', {
         body: { action: 'heartbeat', sessionToken },
-      }).catch(() => { });
+      }).catch(() => {});
     };
     updateLastSeen();
     const interval = setInterval(updateLastSeen, 60000);
@@ -180,7 +119,7 @@ function AppContent() {
     if (token) {
       await supabase.functions.invoke('hash-password', {
         body: { action: 'logout', sessionToken: token },
-      }).catch(() => { });
+      }).catch(() => {});
     }
     localStorage.removeItem('rp_logged_user');
     localStorage.removeItem('rp_session_token');
@@ -227,8 +166,8 @@ function AppContent() {
           <Route path="/producao" element={<ProducaoPage />} />
           <Route path="/estoque" element={<EstoquePage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/ia" element={<IAPage />} />
           <Route path="/usuarios" element={<UsuariosPage />} />
-          <Route path="/gerenciamento" element={<GerenciamentoPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>

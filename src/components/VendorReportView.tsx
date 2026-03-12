@@ -1,28 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import {
-  ArrowLeft, Printer, FileText, ShoppingCart, Factory,
-  ChevronLeft, ChevronRight, Calendar
+  ArrowLeft, Printer, FileText, ShoppingCart, Factory, Brain,
+  Loader2, Save, Edit, Sparkles, ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { store } from '@/lib/store';
+import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 const fmt = (v: number) =>
   `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
-
-const fmtDate = (d: Date) => d.toLocaleDateString('pt-BR');
-
-const formatPercent = (value: number): string => {
-  if (!Number.isFinite(value) || value <= 0) return '0%';
-  if (value < 1) return `${value.toFixed(2)}%`;
-  if (value < 10) return `${value.toFixed(1)}%`;
-  return `${value.toFixed(0)}%`;
-};
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -102,8 +93,18 @@ interface VendorReportViewProps {
   isPrint?: boolean;
   onBack: () => void;
   onPrint: () => void;
+  masterPrompt?: string;
+  onSaveMasterPrompt?: (prompt: string) => void;
 }
 
+const DEFAULT_AI_PROMPT = `Você é um consultor de vendas sênior da Rollerport. Analise o relatório do vendedor e:
+1. Avalie o desempenho geral (bateu a meta? por quê?)
+2. Identifique padrões de cancelamentos e dê dicas para evitar perdas
+3. Dê dicas motivacionais personalizadas
+4. Sugira como melhorar os textos de e-mail/orçamento para fechar mais vendas
+5. Busque na internet e sugira 3 potenciais clientes que consomem roletes para correias transportadoras (inclua nome da empresa, telefone e e-mail se possível)
+6. Se o vendedor bateu a meta, parabenize com entusiasmo mas incentive a ir mais alto
+Responda em português do Brasil, de forma clara e motivadora.`;
 
 /* ── calendar component ──────────────────────────────────────────── */
 interface CalendarGridProps {
@@ -134,26 +135,25 @@ function CalendarGrid({ year, month, dayActivity, selectedDay, onDayClick, onPre
 
   return (
     <Card>
-      <CardHeader className="pb-4 border-b">
-        <div className="flex items-center justify-between px-1">
-          {/* Controle de Mês */}
-          <div className="flex items-center bg-muted/40 border border-border/50 rounded-lg p-0.5">
-            <Button variant="ghost" size="sm" onClick={onPrevMonth} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
+      <CardHeader className="pb-3 border-b">
+        <div className="flex items-center justify-between px-2">
+          {/* Mês */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onPrevMonth} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="w-24 text-center text-[13px] font-semibold tracking-wide uppercase text-primary">{MONTHS[month]}</span>
-            <Button variant="ghost" size="sm" onClick={onNextMonth} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
+            <span className="w-20 text-center text-sm font-semibold">{MONTHS[month]}</span>
+            <Button variant="ghost" size="sm" onClick={onNextMonth} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          
-          {/* Controle de Ano */}
-          <div className="flex items-center bg-muted/40 border border-border/50 rounded-lg p-0.5">
-            <Button variant="ghost" size="sm" onClick={onPrevYear} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
+          {/* Ano */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onPrevYear} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="w-14 text-center text-[13px] font-bold text-foreground">{year}</span>
-            <Button variant="ghost" size="sm" onClick={onNextYear} className="h-7 w-7 p-0 rounded-md hover:bg-background hover:shadow-sm transition-all text-muted-foreground hover:text-foreground">
+            <span className="w-12 text-center text-sm font-semibold">{year}</span>
+            <Button variant="ghost" size="sm" onClick={onNextYear} className="h-7 w-7 p-0 rounded-full hover:bg-muted">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -281,11 +281,7 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }:
                   <td className="p-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{elapsedTime(dateRaw)}</td>
                   <td className="p-2 text-[10px] max-w-[150px] truncate text-muted-foreground"
                     title={d.motivoCancelamento || ''}>
-                    {d.motivoCancelamento ? (
-                      <span className="text-destructive font-semibold">
-                        {d.motivoCancelamento}
-                      </span>
-                    ) : '-'}
+                    {d.motivoCancelamento ? d.motivoCancelamento : '-'}
                   </td>
                 </tr>
               );
@@ -300,9 +296,10 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }:
   );
 }
 
+/* ── main component ──────────────────────────────────────────────── */
 export default function VendorReportView({
   vendorName, orcamentos, pedidos, ordensServico, metas,
-  isMaster, isPrint, onBack, onPrint,
+  isMaster, isPrint, onBack, onPrint, masterPrompt, onSaveMasterPrompt,
 }: VendorReportViewProps) {
   const now = new Date();
 
@@ -316,6 +313,12 @@ export default function VendorReportView({
   /* Doc Detail state */
   const [selectedDocDetail, setSelectedDocDetail] = useState<{ doc: any; type: 'orcamento' | 'pedido' | 'os' } | null>(null);
 
+  /* AI state */
+  const [aiResponse, setAiResponse] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState(false);
+  const [promptText, setPromptText] = useState(masterPrompt || DEFAULT_AI_PROMPT);
+  const abortRef = useRef<AbortController | null>(null);
 
   /* ── year list (from earliest doc date to now+1) ── */
   const years = useMemo(() => {
@@ -377,22 +380,117 @@ export default function VendorReportView({
   const displayOS   = useMemo(() => filterByDay(monthOS, 'emissao'),           [monthOS, selectedDay]);
 
   /* ── summary stats for selected period ── */
-  const nameMatch = (a: string, b: string) => {
-    const left = (a || '').trim().toLowerCase();
-    const right = (b || '').trim().toLowerCase();
-    if (!left || !right) return false;
-    return left === right || left.includes(right) || right.includes(left) || left.split(' ')[0] === right.split(' ')[0];
-  };
-  const meta = metas.find(m => nameMatch(m.vendedor, vendorName));
-  const totalVendido = displayPeds.reduce((s: number, p: any) => {
-    const val = typeof p.valorTotal === 'number' ? p.valorTotal : parseFloat(p.valorTotal || '0');
-    return s + (Number.isNaN(val) ? 0 : val);
-  }, 0);
+  const meta = metas.find(m => m.vendedor === vendorName);
+  const totalVendido = displayPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
   const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
-  const metaPctLabel = formatPercent(metaPct);
   const bateuMeta = meta && meta.metaMensal > 0 && totalVendido >= meta.metaMensal;
 
+  /* ── AI report builder ── */
+  const buildReportText = () => {
+    const period = selectedDay
+      ? `Dia ${formatDayKey(selectedDay)}`
+      : `${MONTHS[selectedMonth]}/${selectedYear}`;
+    let text = `## Relatório do Vendedor: ${vendorName}\n`;
+    text += `**Período:** ${period}\n`;
+    text += `**Meta Mensal:** ${meta ? fmt(meta.metaMensal) : 'Não definida'}\n`;
+    text += `**Total Vendido no período:** ${fmt(totalVendido)}\n`;
+    text += `**Atingimento:** ${metaPct.toFixed(1)}%\n`;
+    text += `**Bateu a meta:** ${bateuMeta ? 'SIM ✅' : 'NÃO ❌'}\n\n`;
 
+    text += `### Orçamentos (${displayOrcs.length})\n`;
+    displayOrcs.forEach(o => {
+      text += `- Nº ${o.numero} | ${o.clienteNome} | ${fmt(o.valorTotal || 0)} | Status: ${o.status} | Tempo: ${elapsedTime(o.dataOrcamento || o.createdAt)}`;
+      if (o.status === 'REPROVADO' && o.motivoCancelamento) text += ` | Motivo: ${o.motivoCancelamento}`;
+      text += '\n';
+    });
+
+    text += `\n### Pedidos (${displayPeds.length})\n`;
+    displayPeds.forEach(p => {
+      text += `- Nº ${p.numero} | ${p.clienteNome} | ${fmt(p.valorTotal || 0)} | Status: ${p.status} | Tempo: ${elapsedTime(p.createdAt)}`;
+      if (p.motivoCancelamento) text += ` | Motivo: ${p.motivoCancelamento}`;
+      text += '\n';
+    });
+
+    text += `\n### Ordens de Serviço (${displayOS.length})\n`;
+    displayOS.forEach(os => {
+      text += `- O.S. ${os.numero} | ${os.empresa} | Pedido: ${os.pedidoNumero} | Status: ${os.status} | Tempo: ${elapsedTime(os.createdAt)}`;
+      if (os.motivoCancelamento) text += ` | Motivo: ${os.motivoCancelamento}`;
+      text += '\n';
+    });
+
+    return text;
+  };
+
+  const runAiAnalysis = async () => {
+    setAiLoading(true);
+    setAiResponse('');
+    const sessionToken = localStorage.getItem('rp_session_token');
+    if (!sessionToken) { toast.error('Sessão expirada'); setAiLoading(false); return; }
+
+    try {
+      abortRef.current = new AbortController();
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: `${promptText}\n\n---\n\n${buildReportText()}` }],
+          mode: 'ia',
+          sessionToken,
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!resp.ok || !resp.body) {
+        if (resp.status === 429) toast.error('Limite de requisições. Tente novamente em instantes.');
+        else if (resp.status === 402) toast.error('Créditos insuficientes.');
+        else toast.error('Erro ao analisar relatório.');
+        setAiLoading(false);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) { full += content; setAiResponse(full); }
+          } catch { /* partial chunk */ }
+        }
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') { toast.error('Erro na análise de IA.'); console.error(e); }
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleSavePrompt = () => {
+    setEditingPrompt(false);
+    onSaveMasterPrompt?.(promptText);
+    toast.success('Prompt da IA salvo!');
+  };
+
+  const periodLabel = selectedDay
+    ? formatDayKey(selectedDay)
+    : `${MONTHS[selectedMonth]}/${selectedYear}`;
 
   const handlePrevMonth = () => {
     if (selectedMonth === 0) {
@@ -469,40 +567,89 @@ export default function VendorReportView({
           </Dialog>
         </div>
 
+        {/* AI button (right-aligned) */}
+        {isMaster ? (
+          <Button
+            variant="outline"
+            onClick={() => setEditingPrompt(!editingPrompt)}
+            className="gap-2 ml-auto border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <Edit className="h-4 w-4" />
+            {editingPrompt ? 'Fechar Editor IA' : 'Editar Prompt IA'}
+          </Button>
+        ) : (
+          <Button
+            onClick={runAiAnalysis}
+            disabled={aiLoading}
+            className="gap-2 ml-auto bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90"
+          >
+            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {aiLoading ? 'Analisando...' : 'Análise IA'}
+          </Button>
+        )}
       </div>
 
+      {/* ── master prompt editor ── */}
+      {isMaster && editingPrompt && (
+        <Card className="print:hidden">
+          <CardHeader className="pb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary" /> Prompt de Treinamento da IA
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Edite o texto abaixo para treinar como a IA avalia e motiva os vendedores.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              value={promptText}
+              onChange={e => setPromptText(e.target.value)}
+              rows={10}
+              className="text-xs font-mono"
+            />
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" onClick={handleSavePrompt} className="gap-1.5">
+                <Save className="h-3.5 w-3.5" /> Salvar Prompt
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPromptText(DEFAULT_AI_PROMPT)} className="gap-1.5">
+                Restaurar Padrão
+              </Button>
+              <Button size="sm" variant="secondary" onClick={runAiAnalysis} disabled={aiLoading} className="gap-1.5 ml-auto">
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Testar Análise
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
+      {/* ── AI response ── */}
+      {aiResponse && (
+        <Card className="border-primary/30 print:hidden">
+          <CardHeader className="pb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> Análise da IA — {periodLabel}
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
+              <ReactMarkdown>{aiResponse}</ReactMarkdown>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── report layout ── */}
       <div className="grid grid-cols-1 gap-4">
         {/* ── report tables ── */}
         <div className="col-span-1">
           <div className="bg-card border rounded-lg p-5 space-y-6 print:border-0 print:shadow-none print:p-0 max-w-6xl mx-auto">
-            {/* Professional Print Header */}
-            <div className="hidden print:flex flex-col border-b-2 border-primary pb-4 mb-6">
-              <div className="flex justify-between items-end">
-                <div>
-                  <h1 className="text-2xl font-bold text-primary">Rollerport Industrial</h1>
-                  <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Relatório de Desempenho Profissional</p>
-                </div>
-                <div className="text-right text-xs text-muted-foreground">
-                  <p>Emitido em: {fmtDate(new Date())}</p>
-                  <p>Sistema Rollerport Forge</p>
-                </div>
-              </div>
-            </div>
-
             {/* header */}
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">{vendorName}</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {selectedDay ? `Atividade do dia ${formatDayKey(selectedDay)}` : `Referência: ${MONTHS[selectedMonth]} de ${selectedYear}`}
-                </p>
-              </div>
-              <div className="hidden print:block text-right">
-                <Badge variant="outline" className="text-[10px] h-5">{bateuMeta ? 'META ATINGIDA' : 'META EM ANDAMENTO'}</Badge>
-              </div>
+            <div>
+              <h2 className="text-lg font-bold">{vendorName}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {selectedDay ? `Relatório do dia ${formatDayKey(selectedDay)}` : `Relatório de ${MONTHS[selectedMonth]}/${selectedYear}`}
+              </p>
             </div>
 
             {/* summary cards */}
@@ -522,7 +669,7 @@ export default function VendorReportView({
               <div className="border rounded p-3 text-center">
                 <p className="text-[11px] text-muted-foreground">Meta {MONTHS[selectedMonth]}</p>
                 <p className={`text-xl font-bold ${bateuMeta ? 'text-success' : metaPct > 0 ? 'text-secondary' : 'text-muted-foreground'}`}>
-                  {metaPctLabel}
+                  {metaPct.toFixed(0)}%
                 </p>
               </div>
             </div>
@@ -731,54 +878,7 @@ export default function VendorReportView({
       </Dialog>
 
       {isPrint && (
-        <style>{`
-          @media print {
-            @page { 
-              margin: 1.5cm; 
-              size: auto;
-            }
-            body { 
-              -webkit-print-color-adjust: exact; 
-              background: white !important;
-              color: black !important;
-            }
-            .print\\:hidden { 
-              display: none !important; 
-            }
-            .print\\:block {
-              display: block !important;
-            }
-            .print\\:flex {
-              display: flex !important;
-            }
-            .bg-card {
-              border: none !important;
-              padding: 0 !important;
-            }
-            table {
-              width: 100% !important;
-              border-collapse: collapse !important;
-            }
-            th, td {
-              border: 1px solid #e2e8f0 !important;
-            }
-            th {
-              background-color: #f8fafc !important;
-              color: #1e293b !important;
-              font-weight: 700 !important;
-            }
-            .rounded-lg {
-              border-radius: 0 !important;
-            }
-            .shadow-none {
-              box-shadow: none !important;
-            }
-            /* Garantir que as cores de status apareçam */
-            .bg-success\\/10 { background-color: rgba(34, 197, 94, 0.1) !important; color: #15803d !important; }
-            .bg-destructive\\/10 { background-color: rgba(239, 68, 68, 0.1) !important; color: #b91c1c !important; }
-            .bg-secondary\\/10 { background-color: rgba(249, 115, 22, 0.1) !important; color: #c2410c !important; }
-          }
-        `}</style>
+        <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
       )}
     </div>
   );

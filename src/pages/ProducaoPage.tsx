@@ -9,7 +9,6 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import logo from '@/assets/logo.png';
 
 const daysSince = (dateStr: string): number => {
@@ -33,10 +32,6 @@ export default function ProducaoPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
-  
-  // Modals de Confirmação
-  const [confirmDeleteOS, setConfirmDeleteOS] = useState<string | null>(null);
-
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
 
@@ -74,10 +69,7 @@ export default function ProducaoPage() {
     toast.success('O.S. cancelada. Pedido voltou para pendente.'); navigate('/pedidos');
   };
 
-  const deleteOS = (id: string) => { 
-    saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); 
-    setConfirmDeleteOS(null);
-  };
+  const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
 
   const openView = (os: OrdemServico) => { setCurrent(os); setView('view'); };
   const openEdit = (os: OrdemServico) => { setCurrent(os); setEditItems([...os.itens]); setView('edit'); };
@@ -94,44 +86,6 @@ export default function ProducaoPage() {
   };
   const updateItemField = (idx: number, field: string, value: any) => {
     const items = [...editItems]; items[idx] = { ...items[idx], [field]: value }; setEditItems(items);
-  };
-
-  const triggerEtapaUpdate = (osId: string, itemIdx: number, etapa: string) => {
-    const osList = [...ordens];
-    const osIndex = osList.findIndex(o => o.id === osId);
-    if (osIndex === -1) return;
-    
-    const os = osList[osIndex];
-    const newItems = [...os.itens];
-    newItems[itemIdx] = { ...newItems[itemIdx], [etapa]: !(newItems[itemIdx] as any)[etapa] };
-    
-    // Evaluate status
-    const etapas = ['corte', 'torno', 'fresa', 'solda', 'pintura', 'montagem'];
-    let allTicked = true;
-    let anyTicked = false;
-    for (const item of newItems) {
-      for (const e of etapas) {
-        if ((item as any)[e]) anyTicked = true;
-        else allTicked = false;
-      }
-    }
-    
-    let novoStatus: StatusOS = os.status;
-    if (allTicked) novoStatus = 'CONCLUIDA';
-    else if (anyTicked) novoStatus = 'EM_ANDAMENTO';
-    else novoStatus = 'ABERTA';
-
-    const history = os.status !== novoStatus ? [...(os.statusHistory || []), { status: novoStatus, date: new Date().toISOString() }] : os.statusHistory;
-
-    const updatedOS = { ...os, itens: newItems, status: novoStatus, statusHistory: history };
-    osList[osIndex] = updatedOS;
-    
-    saveOrdens(osList);
-    toast.success(`Etapa ${etapa} ${newItems[itemIdx][etapa as keyof ItemOS] ? 'concluída' : 'desmarcada'}!`);
-    
-    if (current && current.id === osId) {
-      setCurrent(updatedOS);
-    }
   };
 
   // Comprehensive search
@@ -195,25 +149,22 @@ export default function ProducaoPage() {
     </div>
   );
 
-  const EtapasSection = ({ items, editable, osId }: { items: ItemOS[], editable?: boolean, osId?: string }) => (
+  const EtapasSection = ({ items, editable }: { items: ItemOS[], editable?: boolean }) => (
     <div className="mt-4 border-t pt-3">
       <h3 className="font-bold text-xs mb-2">ETAPAS DE PRODUÇÃO</h3>
       <div className="space-y-2">
         {items.map((item, itemIdx) => (
-          <div key={itemIdx} className="flex items-center gap-4 border rounded p-2 bg-muted/20 overflow-x-auto">
+          <div key={itemIdx} className="flex items-center gap-4 border rounded p-2 bg-muted/20">
             <span className="text-xs font-semibold min-w-[60px]">Item {item.item}</span>
             {etapas.map(etapa => (
-              <label key={etapa} className="flex items-center gap-1.5 text-xs cursor-pointer">
+              <label key={etapa} className="flex items-center gap-1.5 text-xs">
                 <input type="checkbox"
                   checked={(item as any)[etapa] || false}
-                  onChange={() => {
-                    if (editable) toggleEtapa(itemIdx, etapa);
-                    else if (osId) triggerEtapaUpdate(osId, itemIdx, etapa);
-                  }}
-                  disabled={!editable && !osId}
+                  onChange={() => editable && toggleEtapa(itemIdx, etapa)}
+                  readOnly={!editable}
                   className="h-4 w-4 rounded border-primary text-primary accent-primary"
                 />
-                <span className="font-medium uppercase select-none">{etapa}</span>
+                <span className="font-medium uppercase">{etapa}</span>
               </label>
             ))}
           </div>
@@ -317,7 +268,7 @@ export default function ProducaoPage() {
             <div><span className="text-muted-foreground">Status:</span> <strong>{current.status}</strong></div>
           </div>
           <OSTable items={current.itens} />
-          <EtapasSection items={current.itens} osId={current.id} />
+          <EtapasSection items={current.itens} />
           <MateriaisSection editable />
         </div>
       </div>
@@ -371,10 +322,7 @@ export default function ProducaoPage() {
           </tr></thead>
           <tbody>
             {filteredOrdens.map(os => {
-              const totalSteps = os.itens.length * etapas.length;
-              const tickedSteps = os.itens.reduce((acc, it) => acc + etapas.filter(e => (it as any)[e]).length, 0);
-              const pct = totalSteps > 0 ? Math.round((tickedSteps / totalSteps) * 100) : statusProgress[os.status] || 0;
-              
+              const pct = statusProgress[os.status] || 0;
               const days = daysSince(os.createdAt);
               const lastStatusChange = os.statusHistory?.length ? os.statusHistory[os.statusHistory.length - 1] : null;
               const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
@@ -386,12 +334,9 @@ export default function ProducaoPage() {
                   <td className="p-3 hidden md:table-cell">{os.emissao}</td>
                   <td className="p-3 hidden lg:table-cell">{os.entrega}</td>
                   <td className="p-3">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <Progress value={pct} className="h-2 flex-1" />
-                        <span className="text-[10px] font-bold">{pct}%</span>
-                      </div>
-                      <span className={`text-xs text-center font-medium whitespace-nowrap ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>{os.status.replace('_', ' ')}</span>
+                    <div className="flex items-center gap-2">
+                      <Progress value={pct} className="h-2 flex-1" />
+                      <span className={`text-xs font-medium whitespace-nowrap ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>{os.status.replace('_', ' ')}</span>
                     </div>
                   </td>
                   <td className="p-3 hidden md:table-cell">
@@ -408,7 +353,7 @@ export default function ProducaoPage() {
                       {os.status === 'ABERTA' && <button onClick={() => updateStatus(os.id, 'EM_ANDAMENTO')} className="p-1.5 rounded hover:bg-muted text-primary" title="Aprovar"><CheckCircle className="h-4 w-4" /></button>}
                       {os.status === 'EM_ANDAMENTO' && <button onClick={() => updateStatus(os.id, 'CONCLUIDA')} className="p-1.5 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-4 w-4" /></button>}
                       <button onClick={() => cancelarOS(os)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
-                      <button onClick={() => setConfirmDeleteOS(os.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => deleteOS(os.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -438,15 +383,6 @@ export default function ProducaoPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Confirmações */}
-      <ConfirmDialog
-        open={!!confirmDeleteOS}
-        onOpenChange={(open) => !open && setConfirmDeleteOS(null)}
-        title="Excluir O.S."
-        description="Tem certeza que deseja excluir permanentemente esta O.S.?"
-        onConfirm={() => confirmDeleteOS && deleteOS(confirmDeleteOS)}
-      />
     </div>
   );
 }
