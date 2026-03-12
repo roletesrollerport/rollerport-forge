@@ -136,9 +136,7 @@ async function pullFromDb(key: string): Promise<boolean> {
  */
 export async function forcePull() {
   console.log('[DataSync] Forcing pull of all tables...');
-  for (const key of SYNCED_KEYS) {
-    await pullFromDb(key);
-  }
+  await Promise.allSettled(SYNCED_KEYS.map((key) => pullFromDb(key)));
   window.dispatchEvent(new CustomEvent('rp-data-synced'));
   console.log('[DataSync] Force pull complete');
 }
