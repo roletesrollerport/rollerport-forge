@@ -93,7 +93,7 @@ export function useUsuarios() {
       } else {
         if (!userData.senha) throw new Error('Senha é obrigatória para novo usuário');
         const { error } = await supabase
-          .from('usuarios')
+          .from(USERS_TABLE_WRITE as any)
           .insert(userData);
         if (error) throw error;
       }
