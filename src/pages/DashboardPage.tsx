@@ -27,6 +27,13 @@ const formatCurrencyInput = (value: number): string => {
   return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
 };
 
+const formatPercent = (value: number): string => {
+  if (!Number.isFinite(value) || value <= 0) return '0%';
+  if (value < 1) return `${value.toFixed(2)}%`;
+  if (value < 10) return `${value.toFixed(1)}%`;
+  return `${value.toFixed(0)}%`;
+};
+
 /* ------------------------------------------------------------------ */
 /*  Clickable status chip                                              */
 /* ------------------------------------------------------------------ */
@@ -675,6 +682,7 @@ export default function DashboardPage() {
     // Robust matching for metas: use nameMatch for seller name
     const meta = metas.find(m => nameMatch(m.vendedor, usuario.nome));
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    const metaPctLabel = formatPercent(metaPct);
 
     return (
       <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
@@ -738,7 +746,7 @@ export default function DashboardPage() {
                 <>
                   <div className="flex items-center gap-2">
                     <Progress value={metaPct} className="h-2 flex-1" />
-                    <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
+                    <span className="text-[11px] font-mono font-medium">{metaPctLabel}</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
                 </>

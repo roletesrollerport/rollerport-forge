@@ -17,6 +17,13 @@ const fmt = (v: number) =>
 
 const fmtDate = (d: Date) => d.toLocaleDateString('pt-BR');
 
+const formatPercent = (value: number): string => {
+  if (!Number.isFinite(value) || value <= 0) return '0%';
+  if (value < 1) return `${value.toFixed(2)}%`;
+  if (value < 10) return `${value.toFixed(1)}%`;
+  return `${value.toFixed(0)}%`;
+};
+
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -370,10 +377,19 @@ export default function VendorReportView({
   const displayOS   = useMemo(() => filterByDay(monthOS, 'emissao'),           [monthOS, selectedDay]);
 
   /* ── summary stats for selected period ── */
-  const nameMatch = (a: string, b: string) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
+  const nameMatch = (a: string, b: string) => {
+    const left = (a || '').trim().toLowerCase();
+    const right = (b || '').trim().toLowerCase();
+    if (!left || !right) return false;
+    return left === right || left.includes(right) || right.includes(left) || left.split(' ')[0] === right.split(' ')[0];
+  };
   const meta = metas.find(m => nameMatch(m.vendedor, vendorName));
-  const totalVendido = displayPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
+  const totalVendido = displayPeds.reduce((s: number, p: any) => {
+    const val = typeof p.valorTotal === 'number' ? p.valorTotal : parseFloat(p.valorTotal || '0');
+    return s + (Number.isNaN(val) ? 0 : val);
+  }, 0);
   const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+  const metaPctLabel = formatPercent(metaPct);
   const bateuMeta = meta && meta.metaMensal > 0 && totalVendido >= meta.metaMensal;
 
 
@@ -506,7 +522,7 @@ export default function VendorReportView({
               <div className="border rounded p-3 text-center">
                 <p className="text-[11px] text-muted-foreground">Meta {MONTHS[selectedMonth]}</p>
                 <p className={`text-xl font-bold ${bateuMeta ? 'text-success' : metaPct > 0 ? 'text-secondary' : 'text-muted-foreground'}`}>
-                  {metaPct.toFixed(0)}%
+                  {metaPctLabel}
                 </p>
               </div>
             </div>
