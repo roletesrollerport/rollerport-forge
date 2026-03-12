@@ -16,7 +16,7 @@ export function useCurrentUserId() {
         return;
       }
       const { data } = await supabase
-        .from('usuarios')
+        .from('usuarios_public' as any)
         .select('id')
         .eq('auth_id', session.user.id)
         .maybeSingle();

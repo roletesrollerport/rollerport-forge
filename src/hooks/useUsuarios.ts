@@ -108,7 +108,7 @@ export function useUsuarios() {
   const deleteUsuario = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('usuarios')
+        .from(USERS_TABLE_WRITE as any)
         .delete()
         .eq('id', id);
       if (error) throw error;
