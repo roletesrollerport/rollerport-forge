@@ -340,6 +340,7 @@ export default function DashboardPage() {
   };
   const getUserOrcs = (nome: string) => data.orcamentos.filter((o: any) => nameMatch(o.vendedor, nome));
   const getUserPeds = (nome: string) => data.pedidos.filter((p: any) => {
+    if (p.vendedor && nameMatch(p.vendedor, nome)) return true;
     const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
     return nameMatch((orc as any)?.vendedor, nome);
   });
@@ -641,22 +642,38 @@ export default function DashboardPage() {
     // Filter orders by current month for the "Meta do Mês" using robust string parsing
     const now = new Date();
     const currentMonthPeds = userPeds.filter(p => {
-      const dateStr = p.createdAt || p.created_at;
+      const dateStr = p.createdAt || p.created_at || (p as any).data;
       if (!dateStr) return false;
       
-      // If it's a full ISO string or YYYY-MM-DD
-      const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-      if (!datePart.includes('-')) return false; // Fail safe for unexpected formats
-      
-      const [y, m] = datePart.split('-').map(Number);
-      return y === now.getFullYear() && (m - 1) === now.getMonth();
+      // Robust date parsing (handles YYYY-MM-DD, DD/MM/YYYY, ISO strings)
+      let d: Date;
+      if (dateStr.includes('T')) {
+        d = new Date(dateStr);
+      } else if (dateStr.includes('/')) {
+        const [day, mon, yr] = dateStr.split('/').map(Number);
+        d = new Date(yr, mon - 1, day);
+      } else if (dateStr.includes('-')) {
+        const parts = dateStr.split('-').map(Number);
+        if (parts[0] > 1000) { // YYYY-MM-DD
+          d = new Date(parts[0], parts[1] - 1, parts[2]);
+        } else { // DD-MM-YYYY
+          d = new Date(parts[2], parts[1] - 1, parts[0]);
+        }
+      } else {
+        d = new Date(dateStr);
+      }
+
+      if (isNaN(d.getTime())) return false;
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     });
 
     const totalVendido = currentMonthPeds.reduce((s: number, p: any) => {
       const val = typeof p.valorTotal === 'number' ? p.valorTotal : parseFloat(p.valorTotal || '0');
       return s + (isNaN(val) ? 0 : val);
     }, 0);
-    const meta = metas.find(m => m.vendedor === usuario.nome);
+
+    // Robust matching for metas: use nameMatch for seller name
+    const meta = metas.find(m => nameMatch(m.vendedor, usuario.nome));
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
 
     return (

@@ -195,6 +195,7 @@ export interface Orcamento {
 export type StatusPedido = 'PENDENTE' | 'CONFIRMADO' | 'EM_PRODUCAO' | 'CONCLUIDO' | 'ENTREGUE';
 
 export interface Pedido {
+  vendedor?: string;
   id: string;
   numero: string;
   orcamentoId: string;
