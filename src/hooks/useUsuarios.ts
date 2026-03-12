@@ -143,7 +143,7 @@ export function useUsuarios() {
 
       const { data: profile } = await supabase
         .from('usuarios')
-        .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+        .select('*')
         .eq('auth_id', authData.user.id)
         .maybeSingle();
 
