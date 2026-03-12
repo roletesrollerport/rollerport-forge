@@ -377,10 +377,19 @@ export default function VendorReportView({
   const displayOS   = useMemo(() => filterByDay(monthOS, 'emissao'),           [monthOS, selectedDay]);
 
   /* ── summary stats for selected period ── */
-  const nameMatch = (a: string, b: string) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
+  const nameMatch = (a: string, b: string) => {
+    const left = (a || '').trim().toLowerCase();
+    const right = (b || '').trim().toLowerCase();
+    if (!left || !right) return false;
+    return left === right || left.includes(right) || right.includes(left) || left.split(' ')[0] === right.split(' ')[0];
+  };
   const meta = metas.find(m => nameMatch(m.vendedor, vendorName));
-  const totalVendido = displayPeds.reduce((s: number, p: any) => s + (p.valorTotal || 0), 0);
+  const totalVendido = displayPeds.reduce((s: number, p: any) => {
+    const val = typeof p.valorTotal === 'number' ? p.valorTotal : parseFloat(p.valorTotal || '0');
+    return s + (Number.isNaN(val) ? 0 : val);
+  }, 0);
   const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+  const metaPctLabel = formatPercent(metaPct);
   const bateuMeta = meta && meta.metaMensal > 0 && totalVendido >= meta.metaMensal;
 
 
