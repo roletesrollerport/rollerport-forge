@@ -171,8 +171,8 @@ export function useUsuarios() {
   };
 
   const getById = async (id: string): Promise<UsuarioDB | null> => {
-    const { data } = await supabase
-      .from('usuarios')
+    const { data } = await (supabase as any)
+      .from(USERS_TABLE_READ)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -180,8 +180,8 @@ export function useUsuarios() {
   };
 
   const getByAuthId = async (authId: string): Promise<UsuarioDB | null> => {
-    const { data } = await supabase
-      .from('usuarios')
+    const { data } = await (supabase as any)
+      .from(USERS_TABLE_READ)
       .select('*')
       .eq('auth_id', authId)
       .maybeSingle();
