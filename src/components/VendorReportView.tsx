@@ -7,6 +7,7 @@ import {
   ArrowLeft, Printer, FileText, ShoppingCart, Factory, Brain,
   Loader2, Save, Edit, Sparkles, ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { store } from '@/lib/store';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -14,6 +15,8 @@ import { toast } from 'sonner';
 /* ── helpers ─────────────────────────────────────────────────────── */
 const fmt = (v: number) =>
   `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
+
+const fmtDate = (d: Date) => d.toLocaleDateString('pt-BR');
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -282,7 +285,11 @@ function DocTable({ title, icon: Icon, iconColor, docs, emptyMsg, onItemClick }:
                   <td className="p-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{elapsedTime(dateRaw)}</td>
                   <td className="p-2 text-[10px] max-w-[150px] truncate text-muted-foreground"
                     title={d.motivoCancelamento || ''}>
-                    {d.motivoCancelamento ? d.motivoCancelamento : '-'}
+                    {d.motivoCancelamento ? (
+                      <span className="text-destructive font-semibold">
+                        {d.motivoCancelamento}
+                      </span>
+                    ) : '-'}
                   </td>
                 </tr>
               );
@@ -645,12 +652,31 @@ export default function VendorReportView({
         {/* ── report tables ── */}
         <div className="col-span-1">
           <div className="bg-card border rounded-lg p-5 space-y-6 print:border-0 print:shadow-none print:p-0 max-w-6xl mx-auto">
+            {/* Professional Print Header */}
+            <div className="hidden print:flex flex-col border-b-2 border-primary pb-4 mb-6">
+              <div className="flex justify-between items-end">
+                <div>
+                  <h1 className="text-2xl font-bold text-primary">Rollerport Industrial</h1>
+                  <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Relatório de Desempenho Profissional</p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <p>Emitido em: {fmtDate(new Date())}</p>
+                  <p>Sistema Rollerport Forge</p>
+                </div>
+              </div>
+            </div>
+
             {/* header */}
-            <div>
-              <h2 className="text-lg font-bold">{vendorName}</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {selectedDay ? `Relatório do dia ${formatDayKey(selectedDay)}` : `Relatório de ${MONTHS[selectedMonth]}/${selectedYear}`}
-              </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">{vendorName}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {selectedDay ? `Atividade do dia ${formatDayKey(selectedDay)}` : `Referência: ${MONTHS[selectedMonth]} de ${selectedYear}`}
+                </p>
+              </div>
+              <div className="hidden print:block text-right">
+                <Badge variant="outline" className="text-[10px] h-5">{bateuMeta ? 'META ATINGIDA' : 'META EM ANDAMENTO'}</Badge>
+              </div>
             </div>
 
             {/* summary cards */}
@@ -879,7 +905,54 @@ export default function VendorReportView({
       </Dialog>
 
       {isPrint && (
-        <style>{`@media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+        <style>{`
+          @media print {
+            @page { 
+              margin: 1.5cm; 
+              size: auto;
+            }
+            body { 
+              -webkit-print-color-adjust: exact; 
+              background: white !important;
+              color: black !important;
+            }
+            .print\\:hidden { 
+              display: none !important; 
+            }
+            .print\\:block {
+              display: block !important;
+            }
+            .print\\:flex {
+              display: flex !important;
+            }
+            .bg-card {
+              border: none !important;
+              padding: 0 !important;
+            }
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+            }
+            th, td {
+              border: 1px solid #e2e8f0 !important;
+            }
+            th {
+              background-color: #f8fafc !important;
+              color: #1e293b !important;
+              font-weight: 700 !important;
+            }
+            .rounded-lg {
+              border-radius: 0 !important;
+            }
+            .shadow-none {
+              box-shadow: none !important;
+            }
+            /* Garantir que as cores de status apareçam */
+            .bg-success\\/10 { background-color: rgba(34, 197, 94, 0.1) !important; color: #15803d !important; }
+            .bg-destructive\\/10 { background-color: rgba(239, 68, 68, 0.1) !important; color: #b91c1c !important; }
+            .bg-secondary\\/10 { background-color: rgba(249, 115, 22, 0.1) !important; color: #c2410c !important; }
+          }
+        `}</style>
       )}
     </div>
   );
