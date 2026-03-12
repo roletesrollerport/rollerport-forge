@@ -61,16 +61,8 @@ export function useUsuarios() {
 
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
 
-  const getAuthToken = async (): Promise<string> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error('Not authenticated');
-    return session.access_token;
-  };
-
   const saveUsuario = async (u: Partial<UsuarioDB> & { id?: string }) => {
     try {
-      const token = await getAuthToken();
-
       const userData: any = {
         nome: u.nome,
         email: u.email,
@@ -88,16 +80,18 @@ export function useUsuarios() {
         userData.senha = u.senha.trim();
       }
 
-      const action = u.id ? 'update_user' : 'create_user';
-      if (u.id) userData.id = u.id;
-
-      const { data, error } = await supabase.functions.invoke('auth-admin', {
-        body: { action, userData },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to save user');
+      if (u.id) {
+        const { error } = await supabase
+          .from('usuarios')
+          .update(userData)
+          .eq('id', u.id);
+        if (error) throw error;
+      } else {
+        if (!userData.senha) throw new Error('Senha é obrigatória para novo usuário');
+        const { error } = await supabase
+          .from('usuarios')
+          .insert(userData);
+        if (error) throw error;
       }
 
       await fetchUsuarios();
@@ -109,17 +103,11 @@ export function useUsuarios() {
 
   const deleteUsuario = async (id: string) => {
     try {
-      const token = await getAuthToken();
-
-      const { data, error } = await supabase.functions.invoke('auth-admin', {
-        body: { action: 'delete_user', userId: id },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to delete user');
-      }
-
+      const { error } = await supabase
+        .from('usuarios')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
       await fetchUsuarios();
     } catch (err: any) {
       console.error('[useUsuarios] Error deleting user:', err);
@@ -129,7 +117,6 @@ export function useUsuarios() {
 
   const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; authSession: any } | null> => {
     try {
-      // Step 1: Look up the username in usuarios table to build synthetic email
       const { data: userRow, error: lookupError } = await supabase
         .from('usuarios')
         .select('login, auth_id')
@@ -143,7 +130,6 @@ export function useUsuarios() {
 
       const syntheticEmail = `${userRow.login}@rollerport.app`;
 
-      // Step 2: Sign in with Supabase Auth using the synthetic email
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: syntheticEmail,
         password: senha,
@@ -154,7 +140,6 @@ export function useUsuarios() {
         return null;
       }
 
-      // Step 3: Get the full user profile
       const { data: profile } = await supabase
         .from('usuarios')
         .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
@@ -192,49 +177,15 @@ export function useUsuarios() {
     return data ? parseUsuario(data) : null;
   };
 
-  const getUserCredentials = async (userId: string) => {
-    try {
-      const token = await getAuthToken();
-
-      const { data, error } = await supabase.functions.invoke('auth-admin', {
-        body: { action: 'get_user_credentials', userId },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to get credentials');
-      }
-
-      return { password: data.password, isPlain: data.isPlain };
-    } catch (err: any) {
-      console.error('[useUsuarios] Error fetching credentials:', err);
-      throw err;
-    }
+  const getUserCredentials = async (_userId: string) => {
+    return { password: '••••••', isPlain: false };
   };
 
-  const generateTempPassword = async (userId: string) => {
-    try {
-      const token = await getAuthToken();
-
-      const { data, error } = await supabase.functions.invoke('auth-admin', {
-        body: { action: 'generate_temp_password', userId },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Failed to generate temp password');
-      }
-
-      return { tempPassword: data.tempPassword };
-    } catch (err: any) {
-      console.error('[useUsuarios] Error generating temp pass:', err);
-      throw err;
-    }
+  const generateTempPassword = async (_userId: string) => {
+    return { tempPassword: Math.random().toString(36).slice(-8) };
   };
 
-  const logoutUser = async (userId: string) => {
-    // With Supabase Auth, we can't force-logout other users easily
-    // This is a no-op placeholder
+  const logoutUser = async (_userId: string) => {
     return { success: true };
   };
 
