@@ -42,7 +42,7 @@ export function useUsuarios() {
 
   const fetchUsuarios = useCallback(async () => {
     const { data, error } = await supabase
-      .from('usuarios')
+      .from('usuarios_public')
       .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .order('created_at', { ascending: true });
 
