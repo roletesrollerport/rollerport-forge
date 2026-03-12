@@ -192,9 +192,11 @@ export function useDataSync() {
     if (SYNC_MAP[key]) {
       // Suppress pull for this table briefly to avoid echo
       suppressPullRef.current.add(key);
-      pushToDb(key).then(() => {
-        setTimeout(() => suppressPullRef.current.delete(key), 2000);
-      });
+      pushToDb(key)
+        .catch((err) => console.warn(`[DataSync] Push failed for ${key}:`, err))
+        .finally(() => {
+          setTimeout(() => suppressPullRef.current.delete(key), 2000);
+        });
     }
   }, []);
 
