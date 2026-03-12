@@ -198,9 +198,11 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   const stopRecording = () => { mediaRecorderRef.current?.stop(); setIsRecording(false); };
 
   const deleteMessage = async (msg: ChatMessage, forAll: boolean) => {
-    if (!currentUser || !sessionToken) return;
+    if (!currentUser) return;
+    const headers = await getAuthHeaders();
     const { error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'delete_message', sessionToken, message_id: msg.id, for_all: forAll },
+      body: { action: 'delete_message', message_id: msg.id, for_all: forAll },
+      headers,
     });
     if (error) { toast.error('Erro ao apagar mensagem'); return; }
     loadMessages();
