@@ -326,34 +326,7 @@ serve(async (req) => {
       });
     }
 
-    // ── LOOKUP LOGIN → AUTH EMAIL ──
-    if (action === "lookup_login") {
-      const { loginStr } = params;
-      if (!loginStr) {
-        return new Response(JSON.stringify({ error: "Missing loginStr" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const { data: user } = await supabaseAdmin
-        .from("usuarios")
-        .select("id, login, auth_id, ativo")
-        .ilike("login", loginStr.trim())
-        .eq("ativo", true)
-        .maybeSingle();
-
-      if (!user || !user.auth_id) {
-        return new Response(JSON.stringify({ found: false }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const authEmail = makeAuthEmail(user.login);
-      return new Response(JSON.stringify({ found: true, authEmail, userId: user.id }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // (lookup_login handled above as public action)
 
     // ── EXPORT BACKUP ──
     if (action === "export_backup") {
