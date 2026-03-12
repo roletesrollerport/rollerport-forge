@@ -43,20 +43,21 @@ export function useUsuarios() {
   const [loading, setLoading] = useState(true);
 
   const fetchUsuarios = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id');
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*');
 
-    if (error) {
-      console.error('[useUsuarios] Erro ao carregar usuários:', error);
+      if (error) {
+        console.error('[useUsuarios] Erro ao carregar usuários:', error);
+      } else if (data) {
+        setUsuarios(data.map(parseUsuario));
+      }
+    } catch (err) {
+      console.error('[useUsuarios] Exception:', err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if (data) {
-      setUsuarios(data.map(parseUsuario));
-    }
-    setLoading(false);
   }, []);
 
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
