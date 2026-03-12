@@ -120,7 +120,7 @@ export function useUsuarios() {
 
   const getById = async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
-      .from('usuarios')
+      .from('usuarios_public')
       .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .eq('id', id)
       .maybeSingle();
