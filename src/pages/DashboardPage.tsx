@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios } from '@/hooks/useUsuarios';
-import { useCurrentUserId } from '@/hooks/useCurrentUserId';
 import { usePresenceContext } from '@/contexts/PresenceContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -26,13 +25,6 @@ const fmt = (v: number) => `R$\u2009${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))
 const formatCurrencyInput = (value: number): string => {
   if (!value && value !== 0) return '';
   return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1');
-};
-
-const formatPercent = (value: number): string => {
-  if (!Number.isFinite(value) || value <= 0) return '0%';
-  if (value < 1) return `${value.toFixed(2)}%`;
-  if (value < 10) return `${value.toFixed(1)}%`;
-  return `${value.toFixed(0)}%`;
 };
 
 /* ------------------------------------------------------------------ */
@@ -158,7 +150,7 @@ export default function DashboardPage() {
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
-  const loggedUserId = useCurrentUserId();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';
@@ -226,55 +218,40 @@ export default function DashboardPage() {
   const doLoadFromDb = useCallback(async () => {
     if (loadingRef.current || suppressReloadRef.current) return;
     loadingRef.current = true;
-
-    const fromDbOrFallback = async (table: string, fallback: any[]) => {
-      try {
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout ao carregar ${table}`)), 8000)
-        );
-
-        const queryPromise = supabase.from(table as any).select('data');
-        const result: any = await Promise.race([queryPromise, timeoutPromise]);
-
-        if (result?.error) throw result.error;
-        return (result?.data || []).map((r: any) => r.data);
-      } catch (err) {
-        console.warn(`[Dashboard] Falha ao carregar ${table}, usando cache local`, err);
-        return fallback;
-      }
-    };
-
     try {
-      const [orcData, pedData, cliData, osData, metData, prodData] = await Promise.all([
-        fromDbOrFallback('orcamentos', store.getOrcamentos()),
-        fromDbOrFallback('pedidos', store.getPedidos()),
-        fromDbOrFallback('clientes', store.getClientes()),
-        fromDbOrFallback('ordens_servico', store.getOrdensServico()),
-        fromDbOrFallback('metas_vendedores', store.getMetas()),
-        fromDbOrFallback('produtos', store.getProdutos()),
+      const [orcRes, pedRes, cliRes, osRes, metRes, prodRes] = await Promise.all([
+        supabase.from('orcamentos').select('data'),
+        supabase.from('pedidos').select('data'),
+        supabase.from('clientes').select('data'),
+        supabase.from('ordens_servico').select('data'),
+        supabase.from('metas_vendedores').select('data'),
+        supabase.from('produtos').select('data'),
       ]);
+
+      const orcData = (orcRes.data || []).map((r: any) => r.data);
+      const pedData = (pedRes.data || []).map((r: any) => r.data);
+      const cliData = (cliRes.data || []).map((r: any) => r.data);
+      const osData = (osRes.data || []).map((r: any) => r.data);
+      const metData = (metRes.data || []).map((r: any) => r.data);
+      const prodData = (prodRes.data || []).map((r: any) => r.data);
+
+      // Set direct from DB (DO NOT FALLBACK TO LOCAL STORAGE SEEDS unless strictly empty!)
+      const parsedCliData = cliData.length > 0 ? cliData : (store.getClientes().length > 0 ? store.getClientes() : []);
 
       setData({
         orcamentos: orcData,
         pedidos: pedData,
-        clientes: cliData,
+        clientes: parsedCliData,
         os: osData,
         produtos: prodData,
       });
       setMetas(metData);
+      setDataLoaded(true);
     } catch (err) {
       console.error('[Dashboard] DB load error:', err);
-      setData({
-        orcamentos: store.getOrcamentos(),
-        pedidos: store.getPedidos(),
-        clientes: store.getClientes(),
-        os: store.getOrdensServico(),
-        produtos: store.getProdutos(),
-      });
-      setMetas(store.getMetas());
-      toast.error('Falha ao carregar do banco, exibindo cache local.');
-    } finally {
+      toast.error('Ocorreu um erro ao carregar os dados reais do sistema.');
       setDataLoaded(true);
+    } finally {
       loadingRef.current = false;
     }
   }, []);
@@ -363,7 +340,6 @@ export default function DashboardPage() {
   };
   const getUserOrcs = (nome: string) => data.orcamentos.filter((o: any) => nameMatch(o.vendedor, nome));
   const getUserPeds = (nome: string) => data.pedidos.filter((p: any) => {
-    if (p.vendedor && nameMatch(p.vendedor, nome)) return true;
     const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
     return nameMatch((orc as any)?.vendedor, nome);
   });
@@ -665,40 +641,23 @@ export default function DashboardPage() {
     // Filter orders by current month for the "Meta do Mês" using robust string parsing
     const now = new Date();
     const currentMonthPeds = userPeds.filter(p => {
-      const dateStr = p.createdAt || p.created_at || (p as any).data;
+      const dateStr = p.createdAt || p.created_at;
       if (!dateStr) return false;
       
-      // Robust date parsing (handles YYYY-MM-DD, DD/MM/YYYY, ISO strings)
-      let d: Date;
-      if (dateStr.includes('T')) {
-        d = new Date(dateStr);
-      } else if (dateStr.includes('/')) {
-        const [day, mon, yr] = dateStr.split('/').map(Number);
-        d = new Date(yr, mon - 1, day);
-      } else if (dateStr.includes('-')) {
-        const parts = dateStr.split('-').map(Number);
-        if (parts[0] > 1000) { // YYYY-MM-DD
-          d = new Date(parts[0], parts[1] - 1, parts[2]);
-        } else { // DD-MM-YYYY
-          d = new Date(parts[2], parts[1] - 1, parts[0]);
-        }
-      } else {
-        d = new Date(dateStr);
-      }
-
-      if (isNaN(d.getTime())) return false;
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      // If it's a full ISO string or YYYY-MM-DD
+      const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+      if (!datePart.includes('-')) return false; // Fail safe for unexpected formats
+      
+      const [y, m] = datePart.split('-').map(Number);
+      return y === now.getFullYear() && (m - 1) === now.getMonth();
     });
 
     const totalVendido = currentMonthPeds.reduce((s: number, p: any) => {
       const val = typeof p.valorTotal === 'number' ? p.valorTotal : parseFloat(p.valorTotal || '0');
       return s + (isNaN(val) ? 0 : val);
     }, 0);
-
-    // Robust matching for metas: use nameMatch for seller name
-    const meta = metas.find(m => nameMatch(m.vendedor, usuario.nome));
+    const meta = metas.find(m => m.vendedor === usuario.nome);
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
-    const metaPctLabel = formatPercent(metaPct);
 
     return (
       <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
@@ -762,7 +721,7 @@ export default function DashboardPage() {
                 <>
                   <div className="flex items-center gap-2">
                     <Progress value={metaPct} className="h-2 flex-1" />
-                    <span className="text-[11px] font-mono font-medium">{metaPctLabel}</span>
+                    <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
                 </>

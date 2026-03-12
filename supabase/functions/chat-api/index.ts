@@ -6,40 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/**
- * Resolve the caller's profile ID from Supabase Auth JWT or legacy session token.
- */
-async function resolveUserId(req: Request, supabaseAdmin: any, body: any): Promise<string | null> {
-  // Try Supabase Auth JWT from Authorization header
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-    if (user) {
-      const { data: profile } = await supabaseAdmin
-        .from("usuarios")
-        .select("id")
-        .eq("auth_id", user.id)
-        .eq("ativo", true)
-        .maybeSingle();
-      if (profile) return profile.id;
-    }
+async function validateSession(supabaseAdmin: any, sessionToken: string): Promise<string | null> {
+  if (!sessionToken) return null;
+  const { data, error } = await supabaseAdmin
+    .from("sessions")
+    .select("user_id, expires_at")
+    .eq("token", sessionToken)
+    .maybeSingle();
+  if (error || !data) return null;
+  if (new Date(data.expires_at) < new Date()) {
+    // Expired - clean up
+    await supabaseAdmin.from("sessions").delete().eq("token", sessionToken);
+    return null;
   }
-
-  // Fallback: legacy custom session token from body
-  const { sessionToken } = body;
-  if (sessionToken) {
-    const { data } = await supabaseAdmin
-      .from("sessions")
-      .select("user_id, expires_at")
-      .eq("token", sessionToken)
-      .maybeSingle();
-    if (data && new Date(data.expires_at) > new Date()) {
-      return data.user_id;
-    }
-  }
-
-  return null;
+  return data.user_id;
 }
 
 serve(async (req) => {
@@ -47,14 +27,21 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, ...params } = body;
+    const { action, sessionToken, ...params } = body;
+
+    if (!sessionToken) {
+      return new Response(JSON.stringify({ error: "Missing session token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const userId = await resolveUserId(req, supabaseAdmin, body);
+    const userId = await validateSession(supabaseAdmin, sessionToken);
     if (!userId) {
       return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
         status: 401,
@@ -87,8 +74,9 @@ serve(async (req) => {
         });
       }
 
+      // Server enforces sender_id = authenticated user (prevents spoofing)
       const { data, error } = await supabaseAdmin.from("chat_messages").insert({
-        sender_id: userId,
+        sender_id: userId, // Always use the authenticated user's ID
         receiver_id,
         content: content || null,
         message_type,
@@ -120,6 +108,7 @@ serve(async (req) => {
         });
       }
 
+      // Verify the user owns the message (or is sender for "delete for all")
       const { data: msg } = await supabaseAdmin
         .from("chat_messages")
         .select("sender_id, receiver_id")
@@ -133,6 +122,7 @@ serve(async (req) => {
         });
       }
 
+      // User must be sender or receiver of this message
       if (msg.sender_id !== userId && msg.receiver_id !== userId) {
         return new Response(JSON.stringify({ error: "Not authorized" }), {
           status: 403,
@@ -169,6 +159,7 @@ serve(async (req) => {
     }
 
     if (action === "validate_session") {
+      // Also update last_seen on session validation
       await supabaseAdmin.from("usuarios").update({ last_seen: new Date().toISOString() }).eq("id", userId);
       return new Response(JSON.stringify({ user_id: userId, valid: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -190,6 +181,7 @@ serve(async (req) => {
         });
       }
 
+      // Enforce user can only upload to their own folder
       if (!file_path.startsWith(`${userId}/`)) {
         return new Response(JSON.stringify({ error: "Cannot upload to other user's folder" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -226,7 +218,7 @@ serve(async (req) => {
 
       const { data: signedData, error: signedError } = await supabaseAdmin.storage
         .from("chat-files")
-        .createSignedUrl(file_path, 3600);
+        .createSignedUrl(file_path, 3600); // 1 hour expiry
 
       if (signedError) {
         return new Response(JSON.stringify({ error: "Failed to generate URL" }), {

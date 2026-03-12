@@ -8,7 +8,6 @@ import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail, Loader2,
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatTelefone } from '@/lib/formatters';
-import { useCurrentUserId } from '@/hooks/useCurrentUserId';
 
 const niveis: { value: NivelAcesso; label: string }[] = [
   { value: 'master', label: 'Master' },
@@ -110,7 +109,7 @@ export default function UsuariosPage() {
     }
   };
 
-  const loggedUserId = useCurrentUserId();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
   const loggedUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = loggedUser?.nivel === 'master';
 

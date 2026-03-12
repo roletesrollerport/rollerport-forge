@@ -540,7 +540,6 @@ export default function OrcamentosPage() {
       dataEntrega: orc.previsaoEntrega || orc.dataEntrega,
       status: 'PENDENTE' as const,
       valorTotal: orc.valorTotal,
-      vendedor: orc.vendedor,
       createdAt: new Date().toISOString().split('T')[0],
     };
     store.savePedidos([...pedidos, pedido]);

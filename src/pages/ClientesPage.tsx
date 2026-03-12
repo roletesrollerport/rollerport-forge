@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store, Upload, Download, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
-import { useCurrentUserId } from '@/hooks/useCurrentUserId';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { formatCPForCNPJ, formatTelefone, formatDateBR } from '@/lib/formatters';
 import { fetchCNPJ } from '@/lib/utils';
@@ -37,7 +36,7 @@ export default function ClientesPage() {
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<string | null>(null);
 
   const { usuarios: dbUsuarios } = useUsuarios();
-  const loggedUserId = useCurrentUserId();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const currentUserName = currentUser?.nome || 'Sistema';
   const isMaster = currentUser?.nivel === 'master';

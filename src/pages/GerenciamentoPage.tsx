@@ -206,10 +206,10 @@ export default function GerenciamentoPage() {
               onClick={async () => {
                 const close = toast.loading('Analisando vínculos...');
                 try {
-                  const { data: users } = await supabase.from('usuarios_public' as any).select('nome');
+                  const { data: users } = await supabase.from('usuarios').select('data');
                   const { data: orcs } = await supabase.from('orcamentos').select('data');
                   
-                  const userNames = (users || []).map((u: any) => (u.nome || '').toLowerCase());
+                  const userNames = (users || []).map((u: any) => u.data.nome.toLowerCase());
                   const orcamentos = (orcs || []).map((o: any) => o.data);
                   
                   const orphans = orcamentos.filter(o => {

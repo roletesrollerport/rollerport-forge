@@ -27,9 +27,11 @@ import { formatCPForCNPJ, formatTelefone } from "./lib/formatters";
 const queryClient = new QueryClient();
 
 function AppContent() {
+  const [loggedUserId, setLoggedUserId] = useState<string | null>(() => localStorage.getItem('rp_logged_user'));
+  const [sessionToken, setSessionToken] = useState<string | null>(() => localStorage.getItem('rp_session_token'));
   const [currentUser, setCurrentUser] = useState<UsuarioDB | null>(null);
   const [checking, setChecking] = useState(true);
-  const { getByAuthId } = useUsuarios();
+  const { getById } = useUsuarios();
 
   // Initialize bidirectional data sync with database
   useDataSync();
@@ -40,6 +42,7 @@ function AppContent() {
     if (!hasMigrated) {
       console.log('Running format migration...');
       try {
+        // Formatar Clientes
         const clientes = store.getClientes();
         let changedClientes = false;
         const newClientes = clientes.map(c => {
@@ -48,6 +51,7 @@ function AppContent() {
           if (c.cnpj && c.cnpj !== formatCPForCNPJ(c.cnpj)) { newC.cnpj = formatCPForCNPJ(c.cnpj); cChanged = true; }
           if (c.telefone && c.telefone !== formatTelefone(c.telefone)) { newC.telefone = formatTelefone(c.telefone); cChanged = true; }
           if (c.whatsapp && c.whatsapp !== formatTelefone(c.whatsapp)) { newC.whatsapp = formatTelefone(c.whatsapp); cChanged = true; }
+          
           if (c.compradores) {
             newC.compradores = c.compradores.map(comp => {
               const newComp = { ...comp };
@@ -61,10 +65,12 @@ function AppContent() {
         });
         if (changedClientes) store.saveClientes(newClientes);
 
+        // Formatar Orcamentos (dados do cliente/comprador gravados neles)
         const orcamentos = store.getOrcamentos();
         let changedOrcs = false;
         const newOrcs = orcamentos.map(o => {
           let oChanged = false;
+          // Cast to any since we might be operating on older untyped shapes matching runtime
           const newO: any = { ...o };
           if (newO.clienteCnpj && newO.clienteCnpj !== formatCPForCNPJ(newO.clienteCnpj)) { newO.clienteCnpj = formatCPForCNPJ(newO.clienteCnpj); oChanged = true; }
           if (newO.clienteTelefone && newO.clienteTelefone !== formatTelefone(newO.clienteTelefone)) { newO.clienteTelefone = formatTelefone(newO.clienteTelefone); oChanged = true; }
@@ -82,66 +88,104 @@ function AppContent() {
     }
   }, []);
 
-  // Supabase Auth listener
   useEffect(() => {
-    // Safety timeout — never stay stuck on "Carregando" for more than 5s
-    const timeout = setTimeout(() => {
-      if (checking) {
-        console.warn('[App] Auth check timed out, proceeding without user');
+    if (loggedUserId && sessionToken) {
+      const isLocalSession = sessionToken.startsWith('local_');
+
+      const validate = async () => {
+        if (!isLocalSession) {
+          try {
+            const { data, error } = await supabase.functions.invoke('chat-api', {
+              body: { action: 'validate_session', sessionToken },
+            });
+            if (!error && data?.valid && data?.user_id === loggedUserId) {
+              return true;
+            }
+          } catch (e) {
+            console.warn('[App] chat-api not available for validation, falling back to local check');
+          }
+        }
+        
+        // Fallback or explicit local session: check if user exists in DB
+        const user = await getById(loggedUserId);
+        return !!user;
+      };
+
+      validate().then(isValid => {
+        if (!isValid) {
+          localStorage.removeItem('rp_logged_user');
+          localStorage.removeItem('rp_session_token');
+          setLoggedUserId(null);
+          setSessionToken(null);
+          setChecking(false);
+          return;
+        }
+
+        getById(loggedUserId).then(user => {
+          if (user) {
+            setCurrentUser(user);
+          }
+          setChecking(false);
+        });
+      }).catch(() => {
         setChecking(false);
-      }
-    }, 5000);
+      });
+    } else {
+      setChecking(false);
+    }
+  }, [loggedUserId]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        try {
-          const profile = await getByAuthId(session.user.id);
-          if (profile) {
-            setCurrentUser(profile);
-          } else {
-            await supabase.auth.signOut();
-            setCurrentUser(null);
-          }
-        } catch (err) {
-          console.error('[App] Error fetching profile:', err);
-          setCurrentUser(null);
-        }
-      } else {
-        setCurrentUser(null);
-      }
-      setChecking(false);
-    });
+  // Heartbeat: update last_seen every 60s while logged in (via edge function)
+  useEffect(() => {
+    if (!loggedUserId || !sessionToken || sessionToken.startsWith('local_')) return;
+    const updateLastSeen = () => {
+      supabase.functions.invoke('chat-api', {
+        body: { action: 'heartbeat', sessionToken },
+      }).catch(() => { });
+    };
+    updateLastSeen();
+    const interval = setInterval(updateLastSeen, 60000);
 
-    // Check existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        try {
-          const profile = await getByAuthId(session.user.id);
-          if (profile) {
-            setCurrentUser(profile);
-          }
-        } catch (err) {
-          console.error('[App] Error fetching profile on init:', err);
-        }
+    // On tab close / navigate away, try to clean up session
+    const handleUnload = () => {
+      const token = localStorage.getItem('rp_session_token');
+      if (token) {
+        const blob = new Blob(
+          [JSON.stringify({ action: 'logout', sessionToken: token })],
+          { type: 'application/json' }
+        );
+        navigator.sendBeacon(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hash-password`,
+          blob
+        );
       }
-      setChecking(false);
-    }).catch(() => {
-      setChecking(false);
-    });
+    };
+    window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      clearTimeout(timeout);
-      subscription.unsubscribe();
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleUnload);
     };
-  }, []);
+  }, [loggedUserId, sessionToken]);
 
-  const handleLogin = (userId: string) => {
-    // Session is already set by supabase.auth.signInWithPassword
-    // The onAuthStateChange listener will pick up the user
+  const handleLogin = (userId: string, token: string) => {
+    localStorage.setItem('rp_logged_user', userId);
+    localStorage.setItem('rp_session_token', token);
+    setLoggedUserId(userId);
+    setSessionToken(token);
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const token = localStorage.getItem('rp_session_token');
+    if (token) {
+      await supabase.functions.invoke('hash-password', {
+        body: { action: 'logout', sessionToken: token },
+      }).catch(() => { });
+    }
+    localStorage.removeItem('rp_logged_user');
+    localStorage.removeItem('rp_session_token');
+    setLoggedUserId(null);
+    setSessionToken(null);
     setCurrentUser(null);
   };
 
@@ -149,10 +193,11 @@ function AppContent() {
     return <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">Carregando...</div>;
   }
 
-  if (!currentUser) {
+  if (!loggedUserId || !currentUser) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
+  // Map UsuarioDB to the shape AppLayout expects
   const userForLayout = {
     id: currentUser.id,
     nome: currentUser.nome,

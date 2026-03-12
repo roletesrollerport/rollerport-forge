@@ -306,9 +306,7 @@ export default function PedidosPage() {
       id: store.nextId('ped'), numero: store.nextNumero('ped'), orcamentoId: orc.id,
       orcamentoNumero: orc.numero, clienteNome: orc.clienteNome,
       dataEntrega: orc.previsaoEntrega || orc.dataEntrega, status: 'PENDENTE',
-      valorTotal: orc.valorTotal,
-      vendedor: orc.vendedor,
-      createdAt: new Date().toISOString().split('T')[0],
+      valorTotal: orc.valorTotal, createdAt: new Date().toISOString().split('T')[0],
       statusHistory: [{ status: 'PENDENTE', date: new Date().toISOString() }],
     };
     const updatedPedidos = [...pedidos, pedido]; store.savePedidos(updatedPedidos); setPedidos(updatedPedidos);

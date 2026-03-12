@@ -136,7 +136,9 @@ async function pullFromDb(key: string): Promise<boolean> {
  */
 export async function forcePull() {
   console.log('[DataSync] Forcing pull of all tables...');
-  await Promise.allSettled(SYNCED_KEYS.map((key) => pullFromDb(key)));
+  for (const key of SYNCED_KEYS) {
+    await pullFromDb(key);
+  }
   window.dispatchEvent(new CustomEvent('rp-data-synced'));
   console.log('[DataSync] Force pull complete');
 }
@@ -149,29 +151,25 @@ export async function forcePull() {
 async function initialSync() {
   console.log('[DataSync] Starting initial sync...');
 
-  const results = await Promise.allSettled(
-    SYNCED_KEYS.map(async (key) => {
-      const config = SYNC_MAP[key];
-      try {
-        const { count } = await supabase
-          .from(config.table as any)
-          .select('*', { count: 'exact', head: true });
+  for (const key of SYNCED_KEYS) {
+    const config = SYNC_MAP[key];
+    const { count } = await supabase
+      .from(config.table as any)
+      .select('*', { count: 'exact', head: true });
 
-        if (count !== null && count > 0) {
-          await pullFromDb(key);
-          console.log(`[DataSync] Pulled ${count} rows for ${config.table}`);
-        } else {
-          const localData = getLocalData(key);
-          if (localData.length > 0) {
-            await pushToDb(key);
-            console.log(`[DataSync] Migrated ${localData.length} items to ${config.table}`);
-          }
-        }
-      } catch (err) {
-        console.warn(`[DataSync] Failed to sync ${config.table}, skipping:`, err);
+    if (count !== null && count > 0) {
+      // ALWAYS prioritize DB over local cache if DB has records
+      await pullFromDb(key);
+      console.log(`[DataSync] Pulled ${count} rows for ${config.table} (Realtime Sync)`);
+    } else {
+      // DB is strictly empty — fallback to push localStorage data to DB (initial setup migration)
+      const localData = getLocalData(key);
+      if (localData.length > 0) {
+        await pushToDb(key);
+        console.log(`[DataSync] Migrated ${localData.length} items to ${config.table}`);
       }
-    })
-  );
+    }
+  }
 
   // Notify all pages that data is ready
   window.dispatchEvent(new CustomEvent('rp-data-synced'));
@@ -192,11 +190,9 @@ export function useDataSync() {
     if (SYNC_MAP[key]) {
       // Suppress pull for this table briefly to avoid echo
       suppressPullRef.current.add(key);
-      pushToDb(key)
-        .catch((err) => console.warn(`[DataSync] Push failed for ${key}:`, err))
-        .finally(() => {
-          setTimeout(() => suppressPullRef.current.delete(key), 2000);
-        });
+      pushToDb(key).then(() => {
+        setTimeout(() => suppressPullRef.current.delete(key), 2000);
+      });
     }
   }, []);
 
@@ -217,7 +213,7 @@ export function useDataSync() {
     initializedRef.current = true;
 
     // Do initial sync
-    initialSync().catch((err) => console.warn('[DataSync] Initial sync failed:', err));
+    initialSync();
 
     // Listen for store save events
     window.addEventListener('rp-store-save', handleStoreSave);
