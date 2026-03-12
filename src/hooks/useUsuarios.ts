@@ -48,7 +48,7 @@ export function useUsuarios() {
   const fetchUsuarios = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('usuarios')
+        .from(USERS_TABLE_READ as any)
         .select('*');
 
       if (error) {
