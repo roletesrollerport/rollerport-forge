@@ -198,35 +198,32 @@ export default function ChatPage() {
     toast.info(`Enviando ${safeName}...`);
 
     try {
-      // Try upload via edge function
-      if (sessionToken) {
-        const arrayBuffer = await file.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        const { error: uploadError } = await supabase.functions.invoke('chat-api', {
+      const headers = await getAuthHeaders();
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const { error: uploadError } = await supabase.functions.invoke('chat-api', {
+        body: {
+          action: 'upload_file',
+          file_base64: base64,
+          file_path: path,
+          content_type: file.type,
+        },
+        headers,
+      });
+      
+      if (!uploadError) {
+        const { error } = await supabase.functions.invoke('chat-api', {
           body: {
-            action: 'upload_file',
-            sessionToken,
-            file_base64: base64,
-            file_path: path,
-            content_type: file.type,
+            action: 'send_message',
+            receiver_id: selectedUser.id,
+            message_type: 'file',
+            file_url: path,
+            file_name: safeName,
+            file_size: file.size,
           },
+          headers,
         });
-        
-        if (!uploadError) {
-          // Send message record via edge function
-          const { error } = await supabase.functions.invoke('chat-api', {
-            body: {
-              action: 'send_message',
-              sessionToken,
-              receiver_id: selectedUser.id,
-              message_type: 'file',
-              file_url: path,
-              file_name: safeName,
-              file_size: file.size,
-            },
-          });
-          if (!error) { toast.success('Arquivo enviado!'); return; }
-        }
+        if (!error) { toast.success('Arquivo enviado!'); return; }
       }
 
       // Fallback: Direct Storage and DB
