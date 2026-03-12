@@ -110,7 +110,7 @@ export default function UsuariosPage() {
     }
   };
 
-  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const loggedUserId = useCurrentUserId();
   const loggedUser = usuarios.find(u => u.id === loggedUserId);
   const isMaster = loggedUser?.nivel === 'master';
 

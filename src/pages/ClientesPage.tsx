@@ -37,7 +37,7 @@ export default function ClientesPage() {
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<string | null>(null);
 
   const { usuarios: dbUsuarios } = useUsuarios();
-  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const loggedUserId = useCurrentUserId();
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const currentUserName = currentUser?.nome || 'Sistema';
   const isMaster = currentUser?.nivel === 'master';

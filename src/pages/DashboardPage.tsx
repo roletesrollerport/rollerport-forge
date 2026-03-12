@@ -158,7 +158,7 @@ export default function DashboardPage() {
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
-  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const loggedUserId = useCurrentUserId();
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';
