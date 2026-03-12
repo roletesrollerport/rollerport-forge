@@ -120,7 +120,7 @@ export function useUsuarios() {
     try {
       const { data: userRow, error: lookupError } = await supabase
         .from('usuarios')
-        .select('login, auth_id')
+        .select('*')
         .eq('login', loginStr.trim())
         .maybeSingle();
 
