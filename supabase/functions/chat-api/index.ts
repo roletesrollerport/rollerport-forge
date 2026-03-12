@@ -8,6 +8,25 @@ const corsHeaders = {
 
 async function validateSession(supabaseAdmin: any, sessionToken: string): Promise<string | null> {
   if (!sessionToken) return null;
+
+  // Support local_ tokens (client-side fallback sessions)
+  if (sessionToken.startsWith("local_")) {
+    const parts = sessionToken.split("_");
+    // Format: local_{userId}_{timestamp}
+    if (parts.length >= 3) {
+      const userId = parts.slice(1, -1).join("_");
+      // Verify user exists and is active
+      const { data: user } = await supabaseAdmin
+        .from("usuarios")
+        .select("id")
+        .eq("id", userId)
+        .eq("ativo", true)
+        .maybeSingle();
+      return user ? user.id : null;
+    }
+    return null;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("sessions")
     .select("user_id, expires_at")
@@ -15,7 +34,6 @@ async function validateSession(supabaseAdmin: any, sessionToken: string): Promis
     .maybeSingle();
   if (error || !data) return null;
   if (new Date(data.expires_at) < new Date()) {
-    // Expired - clean up
     await supabaseAdmin.from("sessions").delete().eq("token", sessionToken);
     return null;
   }
