@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios } from '@/hooks/useUsuarios';
+import { useCurrentUserId } from '@/hooks/useCurrentUserId';
 import { usePresenceContext } from '@/contexts/PresenceContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -157,7 +158,7 @@ export default function DashboardPage() {
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
-  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const loggedUserId = useCurrentUserId();
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
   const isMaster = currentUser?.nivel === 'master';
   const currentUserName = currentUser?.nome || '';

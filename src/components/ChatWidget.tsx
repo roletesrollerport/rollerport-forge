@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios, type UsuarioDB } from '@/hooks/useUsuarios';
+import { useCurrentUserId } from '@/hooks/useCurrentUserId';
+import { getAuthHeaders } from '@/lib/auth';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -47,8 +49,7 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
-  const loggedUserId = localStorage.getItem('rp_logged_user');
-  const sessionToken = localStorage.getItem('rp_session_token');
+  const loggedUserId = useCurrentUserId();
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
   const isMaster = currentUser?.nivel === 'master';
   const otherUsers = dbUsuarios.filter(u => u.id !== loggedUserId);
@@ -69,8 +70,10 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
     if (fileUrl.startsWith('http')) return fileUrl;
     if (signedUrls[fileUrl]) return signedUrls[fileUrl];
     try {
+      const headers = await getAuthHeaders();
       const { data } = await supabase.functions.invoke('chat-api', {
-        body: { action: 'get_signed_url', sessionToken, file_path: fileUrl },
+        body: { action: 'get_signed_url', file_path: fileUrl },
+        headers,
       });
       if (data?.url) {
         setSignedUrls(prev => ({ ...prev, [fileUrl]: data.url }));
@@ -78,7 +81,7 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
       }
     } catch {}
     return fileUrl;
-  }, [sessionToken, signedUrls]);
+  }, [signedUrls]);
 
   useEffect(() => {
     const toResolve = messages.filter(m =>
@@ -122,9 +125,11 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   }, [messages]);
 
   const sendTextMessage = async () => {
-    if (!input.trim() || !selectedUser || !currentUser || !sessionToken) return;
+    if (!input.trim() || !selectedUser || !currentUser) return;
+    const headers = await getAuthHeaders();
     const { error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'send_message', sessionToken, receiver_id: selectedUser.id, content: input.trim(), message_type: 'text' },
+      body: { action: 'send_message', receiver_id: selectedUser.id, content: input.trim(), message_type: 'text' },
+      headers,
     });
     if (error) { toast.error('Erro ao enviar mensagem'); return; }
     setInput('');
@@ -135,20 +140,23 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   const sanitizeFilename = (name: string): string => name.replace(/[^a-zA-Z0-9._\-\s]/g, '_').substring(0, 255);
 
   const sendFile = async (file: globalThis.File) => {
-    if (!selectedUser || !currentUser || !sessionToken) return;
+    if (!selectedUser || !currentUser) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) { toast.error('Tipo de arquivo não permitido'); return; }
     if (file.size > MAX_FILE_SIZE) { toast.error('Arquivo muito grande (máx 10MB)'); return; }
     const path = `${currentUser.id}/${Date.now()}.${ext}`;
     toast.info(`Enviando ${sanitizeFilename(file.name)}...`);
+    const headers = await getAuthHeaders();
     const arrayBuffer = await file.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     const { error: uploadError } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'upload_file', sessionToken, file_base64: base64, file_path: path, content_type: file.type },
+      body: { action: 'upload_file', file_base64: base64, file_path: path, content_type: file.type },
+      headers,
     });
     if (uploadError) { toast.error('Erro ao enviar arquivo'); return; }
     const { error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'send_message', sessionToken, receiver_id: selectedUser.id, message_type: 'file', file_url: path, file_name: sanitizeFilename(file.name), file_size: file.size },
+      body: { action: 'send_message', receiver_id: selectedUser.id, message_type: 'file', file_url: path, file_name: sanitizeFilename(file.name), file_size: file.size },
+      headers,
     });
     if (error) { toast.error('Erro ao registrar arquivo'); return; }
     toast.success('Arquivo enviado!');
@@ -169,14 +177,17 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         if (blob.size < 1000) return;
         const path = `${currentUser!.id}/audio_${Date.now()}.webm`;
+        const headers = await getAuthHeaders();
         const arrayBuffer = await blob.arrayBuffer();
         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
         const { error: uploadError } = await supabase.functions.invoke('chat-api', {
-          body: { action: 'upload_file', sessionToken, file_base64: base64, file_path: path, content_type: 'audio/webm' },
+          body: { action: 'upload_file', file_base64: base64, file_path: path, content_type: 'audio/webm' },
+          headers,
         });
         if (uploadError) { toast.error('Erro ao enviar áudio'); return; }
         await supabase.functions.invoke('chat-api', {
-          body: { action: 'send_message', sessionToken, receiver_id: selectedUser!.id, message_type: 'audio', file_url: path, audio_duration: recordingTime },
+          body: { action: 'send_message', receiver_id: selectedUser!.id, message_type: 'audio', file_url: path, audio_duration: recordingTime },
+          headers,
         });
       };
       mediaRecorder.start();
@@ -187,9 +198,11 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
   const stopRecording = () => { mediaRecorderRef.current?.stop(); setIsRecording(false); };
 
   const deleteMessage = async (msg: ChatMessage, forAll: boolean) => {
-    if (!currentUser || !sessionToken) return;
+    if (!currentUser) return;
+    const headers = await getAuthHeaders();
     const { error } = await supabase.functions.invoke('chat-api', {
-      body: { action: 'delete_message', sessionToken, message_id: msg.id, for_all: forAll },
+      body: { action: 'delete_message', message_id: msg.id, for_all: forAll },
+      headers,
     });
     if (error) { toast.error('Erro ao apagar mensagem'); return; }
     loadMessages();

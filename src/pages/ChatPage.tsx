@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios, type UsuarioDB } from '@/hooks/useUsuarios';
+import { useCurrentUserId } from '@/hooks/useCurrentUserId';
+import { getAuthHeaders } from '@/lib/auth';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -43,8 +45,7 @@ export default function ChatPage() {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
-  const loggedUserId = localStorage.getItem('rp_logged_user');
-  const sessionToken = localStorage.getItem('rp_session_token');
+  const loggedUserId = useCurrentUserId();
 
   const usuarios = dbUsuarios;
 
@@ -60,8 +61,10 @@ export default function ChatPage() {
     if (fileUrl.startsWith('http')) return fileUrl;
     if (signedUrls[fileUrl]) return signedUrls[fileUrl];
     try {
+      const headers = await getAuthHeaders();
       const { data } = await supabase.functions.invoke('chat-api', {
-        body: { action: 'get_signed_url', sessionToken, file_path: fileUrl },
+        body: { action: 'get_signed_url', file_path: fileUrl },
+        headers,
       });
       if (data?.url) {
         setSignedUrls(prev => ({ ...prev, [fileUrl]: data.url }));
@@ -69,7 +72,7 @@ export default function ChatPage() {
       }
     } catch {}
     return fileUrl;
-  }, [sessionToken, signedUrls]);
+  }, [signedUrls]);
 
   // Resolve URLs for visible messages
   useEffect(() => {
@@ -147,25 +150,23 @@ export default function ChatPage() {
     };
 
     try {
-      // Try Edge Function first
-      if (sessionToken) {
-        const { error } = await supabase.functions.invoke('chat-api', {
-          body: {
-            action: 'send_message',
-            sessionToken,
-            receiver_id: selectedUser.id,
-            content: input.trim(),
-            message_type: 'text',
-          },
-        });
-        if (!error) { setInput(''); return; }
-      }
+      const headers = await getAuthHeaders();
+      const { error } = await supabase.functions.invoke('chat-api', {
+        body: {
+          action: 'send_message',
+          receiver_id: selectedUser.id,
+          content: input.trim(),
+          message_type: 'text',
+        },
+        headers,
+      });
+      if (!error) { setInput(''); return; }
       
       // Fallback: Direct DB insert
-      const { error } = await supabase.from('chat_messages' as any).insert({ 
+      const { error: dbError } = await supabase.from('chat_messages' as any).insert({ 
         data: messageData 
       });
-      if (error) throw error;
+      if (dbError) throw dbError;
       setInput('');
     } catch (err) {
       console.error('Error sending message:', err);
@@ -197,35 +198,32 @@ export default function ChatPage() {
     toast.info(`Enviando ${safeName}...`);
 
     try {
-      // Try upload via edge function
-      if (sessionToken) {
-        const arrayBuffer = await file.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        const { error: uploadError } = await supabase.functions.invoke('chat-api', {
+      const headers = await getAuthHeaders();
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const { error: uploadError } = await supabase.functions.invoke('chat-api', {
+        body: {
+          action: 'upload_file',
+          file_base64: base64,
+          file_path: path,
+          content_type: file.type,
+        },
+        headers,
+      });
+      
+      if (!uploadError) {
+        const { error } = await supabase.functions.invoke('chat-api', {
           body: {
-            action: 'upload_file',
-            sessionToken,
-            file_base64: base64,
-            file_path: path,
-            content_type: file.type,
+            action: 'send_message',
+            receiver_id: selectedUser.id,
+            message_type: 'file',
+            file_url: path,
+            file_name: safeName,
+            file_size: file.size,
           },
+          headers,
         });
-        
-        if (!uploadError) {
-          // Send message record via edge function
-          const { error } = await supabase.functions.invoke('chat-api', {
-            body: {
-              action: 'send_message',
-              sessionToken,
-              receiver_id: selectedUser.id,
-              message_type: 'file',
-              file_url: path,
-              file_name: safeName,
-              file_size: file.size,
-            },
-          });
-          if (!error) { toast.success('Arquivo enviado!'); return; }
-        }
+        if (!error) { toast.success('Arquivo enviado!'); return; }
       }
 
       // Fallback: Direct Storage and DB
@@ -275,26 +273,26 @@ export default function ChatPage() {
         // Convert blob to base64 for edge function upload
         const arrayBuffer = await blob.arrayBuffer();
         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const headers = await getAuthHeaders();
         const { error: uploadError } = await supabase.functions.invoke('chat-api', {
           body: {
             action: 'upload_file',
-            sessionToken,
             file_base64: base64,
             file_path: path,
             content_type: 'audio/webm',
           },
+          headers,
         });
         if (uploadError) { toast.error('Erro ao enviar áudio'); return; }
-        // Use edge function for insert (server enforces sender_id)
         await supabase.functions.invoke('chat-api', {
           body: {
             action: 'send_message',
-            sessionToken,
             receiver_id: selectedUser!.id,
             message_type: 'audio',
             file_url: path,
             audio_duration: recordingTime,
           },
+          headers,
         });
       };
       mediaRecorder.start();
@@ -311,14 +309,15 @@ export default function ChatPage() {
 
   // Delete message (via edge function)
   const deleteMessage = async (msg: ChatMessage, forAll: boolean) => {
-    if (!currentUser || !sessionToken) return;
+    if (!currentUser) return;
+    const headers = await getAuthHeaders();
     const { error } = await supabase.functions.invoke('chat-api', {
       body: {
         action: 'delete_message',
-        sessionToken,
         message_id: msg.id,
         for_all: forAll,
       },
+      headers,
     });
     if (error) { toast.error('Erro ao apagar mensagem'); return; }
     loadMessages();

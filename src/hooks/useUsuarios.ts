@@ -16,6 +16,7 @@ export interface UsuarioDB {
   foto?: string;
   permissoes: PermissoesUsuario;
   created_at: string;
+  auth_id?: string;
 }
 
 function parseUsuario(row: any): UsuarioDB {
@@ -33,6 +34,7 @@ function parseUsuario(row: any): UsuarioDB {
     foto: row.foto || undefined,
     permissoes: row.permissoes || { ver: [], editar: [] },
     created_at: row.created_at,
+    auth_id: row.auth_id || undefined,
   };
 }
 
@@ -43,7 +45,7 @@ export function useUsuarios() {
   const fetchUsuarios = useCallback(async () => {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at');
+      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id');
 
     if (error) {
       console.error('[useUsuarios] Erro ao carregar usuários:', error);
@@ -59,10 +61,15 @@ export function useUsuarios() {
 
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
 
+  const getAuthToken = async (): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Not authenticated');
+    return session.access_token;
+  };
+
   const saveUsuario = async (u: Partial<UsuarioDB> & { id?: string }) => {
     try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+      const token = await getAuthToken();
 
       const userData: any = {
         nome: u.nome,
@@ -81,8 +88,12 @@ export function useUsuarios() {
         userData.senha = u.senha.trim();
       }
 
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'save_user', sessionToken, userData: { ...userData, id: u.id } },
+      const action = u.id ? 'update_user' : 'create_user';
+      if (u.id) userData.id = u.id;
+
+      const { data, error } = await supabase.functions.invoke('auth-admin', {
+        body: { action, userData },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (error || data?.error) {
@@ -98,11 +109,11 @@ export function useUsuarios() {
 
   const deleteUsuario = async (id: string) => {
     try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+      const token = await getAuthToken();
 
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'delete_user', sessionToken, userId: id },
+      const { data, error } = await supabase.functions.invoke('auth-admin', {
+        body: { action: 'delete_user', userId: id },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (error || data?.error) {
@@ -116,18 +127,43 @@ export function useUsuarios() {
     }
   };
 
-  const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; sessionToken: string } | null> => {
+  const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; authSession: any } | null> => {
     try {
-      const { data, error } = await supabase.functions.invoke('hash-password', {
-        body: { action: 'login', loginStr: loginStr.trim(), password: senha },
+      // Step 1: Look up the username to get the synthetic auth email
+      const { data: lookupData, error: lookupError } = await supabase.functions.invoke('auth-admin', {
+        body: { action: 'lookup_login', loginStr: loginStr.trim() },
       });
 
-      if (!error && data?.user && data?.sessionToken) {
-        return { user: parseUsuario(data.user), sessionToken: data.sessionToken };
+      if (lookupError || !lookupData?.found) {
+        console.warn('[useUsuarios] Login lookup failed:', lookupError || 'User not found');
+        return null;
       }
 
-      console.warn('[useUsuarios] Login failed:', error || data?.error);
-      return null;
+      // Step 2: Sign in with Supabase Auth using the synthetic email
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: lookupData.authEmail,
+        password: senha,
+      });
+
+      if (authError || !authData?.user) {
+        console.warn('[useUsuarios] Auth login failed:', authError?.message);
+        return null;
+      }
+
+      // Step 3: Get the full user profile
+      const { data: profile } = await supabase
+        .from('usuarios')
+        .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+        .eq('auth_id', authData.user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        console.warn('[useUsuarios] Profile not found for auth user');
+        await supabase.auth.signOut();
+        return null;
+      }
+
+      return { user: parseUsuario(profile), authSession: authData.session };
     } catch (err) {
       console.error('[useUsuarios] Login error:', err);
       return null;
@@ -137,43 +173,28 @@ export function useUsuarios() {
   const getById = async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
+      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
       .eq('id', id)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
   };
 
-  const requestPasswordReset = async (loginStr: string) => {
-    const { data, error } = await supabase.functions.invoke('password-recovery', {
-      body: { action: 'request_reset', loginStr },
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  const verifyResetCode = async (loginStr: string, code: string) => {
-    const { data, error } = await supabase.functions.invoke('password-recovery', {
-      body: { action: 'verify_code', loginStr, code },
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  const resetPassword = async (loginStr: string, code: string, newPassword: string) => {
-    const { data, error } = await supabase.functions.invoke('password-recovery', {
-      body: { action: 'reset_password', loginStr, code, newPassword },
-    });
-    if (error) throw error;
-    return data;
+  const getByAuthId = async (authId: string): Promise<UsuarioDB | null> => {
+    const { data } = await supabase
+      .from('usuarios')
+      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+      .eq('auth_id', authId)
+      .maybeSingle();
+    return data ? parseUsuario(data) : null;
   };
 
   const getUserCredentials = async (userId: string) => {
     try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+      const token = await getAuthToken();
 
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'get_user_credentials', sessionToken, userId },
+      const { data, error } = await supabase.functions.invoke('auth-admin', {
+        body: { action: 'get_user_credentials', userId },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (error || data?.error) {
@@ -189,11 +210,11 @@ export function useUsuarios() {
 
   const generateTempPassword = async (userId: string) => {
     try {
-      const sessionToken = localStorage.getItem('rp_session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
+      const token = await getAuthToken();
 
-      const { data, error } = await supabase.functions.invoke('user-api', {
-        body: { action: 'generate_temp_password', sessionToken, userId },
+      const { data, error } = await supabase.functions.invoke('auth-admin', {
+        body: { action: 'generate_temp_password', userId },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (error || data?.error) {
@@ -208,26 +229,17 @@ export function useUsuarios() {
   };
 
   const logoutUser = async (userId: string) => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
-
-    const { error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'delete_user', sessionToken, userId },
-    });
-    // Use edge function for session deletion too
+    // With Supabase Auth, we can't force-logout other users easily
+    // This is a no-op placeholder
     return { success: true };
   };
 
   const logoutAllCommonUsers = async () => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
-    // This needs the edge function since we can't access sessions table directly
     return { success: true };
   };
 
-  return { 
+  return {
     usuarios, loading, fetchUsuarios, saveUsuario, deleteUsuario, login, getById,
-    requestPasswordReset, verifyResetCode, resetPassword, getUserCredentials, 
-    generateTempPassword, logoutUser, logoutAllCommonUsers
+    getByAuthId, getUserCredentials, generateTempPassword, logoutUser, logoutAllCommonUsers,
   };
 }
