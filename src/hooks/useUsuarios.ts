@@ -42,7 +42,7 @@ export function useUsuarios() {
 
   const fetchUsuarios = useCallback(async () => {
     const { data, error } = await supabase
-      .from('usuarios')
+      .from('usuarios_public')
       .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .order('created_at', { ascending: true });
 
@@ -120,7 +120,7 @@ export function useUsuarios() {
 
   const getById = async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
-      .from('usuarios')
+      .from('usuarios_public')
       .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .eq('id', id)
       .maybeSingle();
@@ -194,7 +194,7 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data: users, error: selectError } = await supabase.from('usuarios').select('id').neq('nivel', 'master');
+    const { data: users, error: selectError } = await supabase.from('usuarios_public').select('id').neq('nivel', 'master');
     if (selectError) throw selectError;
 
     if (!users || users.length === 0) return { success: true };
