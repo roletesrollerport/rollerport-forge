@@ -682,6 +682,7 @@ export default function DashboardPage() {
     // Robust matching for metas: use nameMatch for seller name
     const meta = metas.find(m => nameMatch(m.vendedor, usuario.nome));
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    const metaPctLabel = formatPercent(metaPct);
 
     return (
       <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
