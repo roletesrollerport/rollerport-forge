@@ -150,25 +150,23 @@ export default function ChatPage() {
     };
 
     try {
-      // Try Edge Function first
-      if (sessionToken) {
-        const { error } = await supabase.functions.invoke('chat-api', {
-          body: {
-            action: 'send_message',
-            sessionToken,
-            receiver_id: selectedUser.id,
-            content: input.trim(),
-            message_type: 'text',
-          },
-        });
-        if (!error) { setInput(''); return; }
-      }
+      const headers = await getAuthHeaders();
+      const { error } = await supabase.functions.invoke('chat-api', {
+        body: {
+          action: 'send_message',
+          receiver_id: selectedUser.id,
+          content: input.trim(),
+          message_type: 'text',
+        },
+        headers,
+      });
+      if (!error) { setInput(''); return; }
       
       // Fallback: Direct DB insert
-      const { error } = await supabase.from('chat_messages' as any).insert({ 
+      const { error: dbError } = await supabase.from('chat_messages' as any).insert({ 
         data: messageData 
       });
-      if (error) throw error;
+      if (dbError) throw dbError;
       setInput('');
     } catch (err) {
       console.error('Error sending message:', err);
