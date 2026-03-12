@@ -71,7 +71,6 @@ export default function EstoquePage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este item do estoque?')) return;
     const updated = itens.filter(i => i.id !== id);
     store.saveEstoque(updated);
     setItens(updated);

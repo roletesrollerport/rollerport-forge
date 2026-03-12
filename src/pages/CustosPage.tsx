@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Save, Eye, Edit, X, ImagePlus, Download, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import * as XLSX from 'xlsx';
 
 type CustoTab = 'tubos' | 'eixos' | 'conjuntos' | 'spiraflex' | 'aneis' | 'encaixes';
@@ -20,7 +19,7 @@ const tabs: { key: CustoTab; label: string }[] = [
   { key: 'encaixes', label: 'Encaixes' },
 ];
 
-const fmt = (v: number) => v ? `R$\u2009${v.toFixed(2).replace('.', ',')}` : '';
+const fmt = (v: number) => v ? `R$ ${v.toFixed(2).replace('.', ',')}` : '';
 
 function ImageCell({ src, onUpload, onRemove }: { src?: string; onUpload: (url: string) => void; onRemove: () => void }) {
   const [preview, setPreview] = useState(false);
@@ -55,10 +54,6 @@ export default function CustosPage() {
   const [viewItem, setViewItem] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
-  // Modals de Confirmação
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
-  const [confirmDeleteItem, setConfirmDeleteItem] = useState<{id: string, type: CustoTab} | null>(null);
-
   const custos = useCustos();
   const { tubos, eixos, conjuntos, revestimentos, encaixes, loading,
     setTubos, setEixos, setConjuntos, setRevestimentos, setEncaixes } = custos;
@@ -85,7 +80,8 @@ export default function CustosPage() {
     setSaving(false);
   };
 
-  const performDeleteAll = async () => {
+  const handleDeleteAll = async () => {
+    if (!confirm('Tem certeza que deseja excluir TODOS os itens desta aba?')) return;
     setSaving(true);
     try {
       if (activeTab === 'tubos') { await custos.deleteAllTubos(); setTubos([]); }
@@ -97,10 +93,7 @@ export default function CustosPage() {
       toast.success('Todos os itens foram excluídos!');
     } catch { toast.error('Erro ao excluir'); }
     setSaving(false);
-    setConfirmDeleteAll(false);
   };
-
-  const handleDeleteAll = () => setConfirmDeleteAll(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -194,17 +187,17 @@ export default function CustosPage() {
   const addRevestimento = (isSpiraflex: boolean) => { const id = 'new_' + crypto.randomUUID(); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : 'ABI-', valorMetroOuPeca: '' as any }]); setEditingId(id); };
   const addEncaixe = () => { const id = 'new_' + crypto.randomUUID(); setEncaixes([...encaixes, { id, tipo: '', preco: '' as any }]); setEditingId(id); };
 
-  const handleDeleteTubo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteTubo(id); setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); setConfirmDeleteItem(null); };
-  const handleDeleteEixo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEixo(id); setEixos(eixos.filter(e => e.id !== id)); toast.success('Removido!'); setConfirmDeleteItem(null); };
-  const handleDeleteConjunto = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteConjunto(id); setConjuntos(conjuntos.filter(c => c.id !== id)); toast.success('Removido!'); setConfirmDeleteItem(null); };
-  const handleDeleteRevestimento = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteRevestimento(id); setRevestimentos(revestimentos.filter(r => r.id !== id)); toast.success('Removido!'); setConfirmDeleteItem(null); };
-  const handleDeleteEncaixe = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEncaixe(id); setEncaixes(encaixes.filter(e => e.id !== id)); toast.success('Removido!'); setConfirmDeleteItem(null); };
+  const handleDeleteTubo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteTubo(id); setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); };
+  const handleDeleteEixo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEixo(id); setEixos(eixos.filter(e => e.id !== id)); toast.success('Removido!'); };
+  const handleDeleteConjunto = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteConjunto(id); setConjuntos(conjuntos.filter(c => c.id !== id)); toast.success('Removido!'); };
+  const handleDeleteRevestimento = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteRevestimento(id); setRevestimentos(revestimentos.filter(r => r.id !== id)); toast.success('Removido!'); };
+  const handleDeleteEncaixe = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEncaixe(id); setEncaixes(encaixes.filter(e => e.id !== id)); toast.success('Removido!'); };
 
-  const ActionButtons = ({ id, item, type }: { id: string; item: any; type: CustoTab }) => (
+  const ActionButtons = ({ id, item, onDelete }: { id: string; item: any; onDelete: (id: string) => void }) => (
     <div className="flex gap-1">
       <button onClick={() => setViewItem(item)} className="text-info hover:text-info/80"><Eye className="h-4 w-4" /></button>
       <button onClick={() => setEditingId(editingId === id ? null : id)} className="text-primary hover:text-primary/80"><Edit className="h-4 w-4" /></button>
-      <button onClick={() => setConfirmDeleteItem({ id, type })} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
+      <button onClick={() => onDelete(id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
     </div>
   );
 
@@ -271,7 +264,7 @@ export default function CustosPage() {
                     <td className="p-3">{t.parede || ''}</td>
                     <td className="p-3 font-mono">{fmt(t.precoBarra6000mm)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={t.id} item={t} type="tubos" /></td>
+                  <td className="p-3"><ActionButtons id={t.id} item={t} onDelete={handleDeleteTubo} /></td>
                 </tr>
               ))}
             </tbody>
@@ -297,7 +290,7 @@ export default function CustosPage() {
                     <td className="p-3">{e.diametro}</td>
                     <td className="p-3 font-mono">{fmt(e.precoBarra6000mm)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={e.id} item={e} type="eixos" /></td>
+                  <td className="p-3"><ActionButtons id={e.id} item={e} onDelete={handleDeleteEixo} /></td>
                 </tr>
               ))}
             </tbody>
@@ -323,7 +316,7 @@ export default function CustosPage() {
                     <td className="p-3">{c.codigo}</td>
                     <td className="p-3 font-mono">{fmt(c.valor)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={c.id} item={c} type="conjuntos" /></td>
+                  <td className="p-3"><ActionButtons id={c.id} item={c} onDelete={handleDeleteConjunto} /></td>
                 </tr>
               ))}
             </tbody>
@@ -351,7 +344,7 @@ export default function CustosPage() {
                       <td className="p-3">{r.tipo}</td>
                       <td className="p-3 font-mono">{fmt(r.valorMetroOuPeca)}</td>
                     </>)}
-                    <td className="p-3"><ActionButtons id={r.id} item={r} type="spiraflex" /></td>
+                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} /></td>
                   </tr>
                 );
               })}
@@ -380,7 +373,7 @@ export default function CustosPage() {
                       <td className="p-3">{r.tipo}</td>
                       <td className="p-3 font-mono">{fmt(r.valorMetroOuPeca)}</td>
                     </>)}
-                    <td className="p-3"><ActionButtons id={r.id} item={r} type="aneis" /></td>
+                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} /></td>
                   </tr>
                 );
               })}
@@ -407,7 +400,7 @@ export default function CustosPage() {
                     <td className="p-3">{enc.tipo}</td>
                     <td className="p-3 font-mono">{fmt(enc.preco)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={enc.id} item={enc} type="encaixes" /></td>
+                  <td className="p-3"><ActionButtons id={enc.id} item={enc} onDelete={handleDeleteEncaixe} /></td>
                 </tr>
               ))}
             </tbody>
@@ -437,31 +430,6 @@ export default function CustosPage() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Confirmações */}
-      <ConfirmDialog
-        open={confirmDeleteAll}
-        onOpenChange={(open) => !open && setConfirmDeleteAll(false)}
-        title="Excluir Todos os Itens"
-        description={`Tem certeza que deseja excluir TODOS os itens da aba ${tabs.find(t => t.key === activeTab)?.label}?`}
-        onConfirm={performDeleteAll}
-      />
-
-      <ConfirmDialog
-        open={!!confirmDeleteItem}
-        onOpenChange={(open) => !open && setConfirmDeleteItem(null)}
-        title="Excluir Item de Custo"
-        description={`Tem certeza que deseja excluir este item permanentemente?`}
-        onConfirm={() => {
-          if (!confirmDeleteItem) return;
-          const { id, type } = confirmDeleteItem;
-          if (type === 'tubos') handleDeleteTubo(id);
-          else if (type === 'eixos') handleDeleteEixo(id);
-          else if (type === 'conjuntos') handleDeleteConjunto(id);
-          else if (type === 'spiraflex' || type === 'aneis') handleDeleteRevestimento(id);
-          else if (type === 'encaixes') handleDeleteEncaixe(id);
-        }}
-      />
     </div>
   );
 }

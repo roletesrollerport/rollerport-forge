@@ -1,8 +1,0 @@
-﻿
-E:\SistemaRP\rollerport-forge\src\pages\ClientesPage.tsx
-   79:69   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  173:88   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  261:136  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-
-Ô£û 3 problems (3 errors, 0 warnings)
-

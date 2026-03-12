@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,19 +8,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardContent, CardFooter, CardDescription, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
-  ClipboardList, Play, Check, AlertCircle, Wrench, Plus
+  ClipboardList
 } from 'lucide-react';
-
 import VendorReportView from '@/components/VendorReportView';
 import { toast } from 'sonner';
 
-const fmt = (v: number) => `R$\u2009${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
+const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
 
 const formatCurrencyInput = (value: number): string => {
   if (!value && value !== 0) return '';
@@ -44,56 +43,40 @@ function StatusChip({ label, count, colorClass, onClick }: { label: string; coun
 /* ------------------------------------------------------------------ */
 /*  Top-level stat card (Orçamentos / Pedidos / Clientes / O.S.)       */
 /* ------------------------------------------------------------------ */
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  onClick,
-  items,
-  onViewAll
-}: {
-  icon: any;
-  label: string;
-  value: string | number;
-  color: string;
-  onClick?: () => void;
-  items?: { id: string, label: string, user: string, statusColor?: 'red' | 'yellow' | 'green', onClick?: () => void }[];
+function StatCard({ 
+  icon: Icon, 
+  label, 
+  value, 
+  color, 
+  onClick, 
+  items, 
+  onViewAll 
+}: { 
+  icon: any; 
+  label: string; 
+  value: string | number; 
+  color: string; 
+  onClick?: () => void; 
+  items?: { id: string, label: string, user: string }[];
   onViewAll?: () => void;
 }) {
   return (
     <Card className="flex flex-col h-full hover:shadow-md transition-all">
-      <CardHeader className="flex flex-col gap-2 pb-2">
-        <div className="flex items-center gap-2">
-          <div className={`flex items-center justify-center h-8 w-8 rounded-lg ${color}`}>
-            <Icon className="h-4 w-4" />
-          </div>
-          <span className="text-[13px] font-semibold text-muted-foreground whitespace-nowrap">{label}</span>
+      <CardHeader className="flex flex-row items-center gap-4 pb-2">
+        <div className={`flex items-center justify-center h-12 w-12 rounded-lg ${color}`}>
+          <Icon className="h-6 w-6" />
         </div>
-        <p className="text-2xl font-bold">{value}</p>
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-2xl font-bold">{value}</p>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 pb-2">
         {items && items.length > 0 ? (
           <div className="space-y-1.5 border-t pt-2">
             {items.map((item) => (
-              <div 
-                key={item.id} 
-                className={`flex justify-between items-center text-[11px] gap-2 p-0.5 rounded transition-colors ${item.onClick ? 'hover:bg-muted cursor-pointer' : ''}`}
-                onClick={(e) => {
-                  if (item.onClick) {
-                    e.stopPropagation();
-                    item.onClick();
-                  }
-                }}
-              >
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {item.statusColor && (
-                    <div className={`h-2 w-2 rounded-full ${item.statusColor === 'red' ? 'bg-red-500' :
-                      item.statusColor === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'
-                      }`} title={`Status: ${item.statusColor}`} />
-                  )}
-                  <span className="font-mono text-muted-foreground">{item.label}</span>
-                </div>
+              <div key={item.id} className="flex justify-between items-center text-[11px] gap-2">
+                <span className="font-mono text-muted-foreground shrink-0">{item.label}</span>
                 <span className="font-medium truncate text-right">{item.user}</span>
               </div>
             ))}
@@ -103,9 +86,9 @@ function StatCard({
         )}
       </CardContent>
       <CardFooter className="pt-0">
-        <Button
-          variant="ghost"
-          size="sm"
+        <Button 
+          variant="ghost" 
+          size="sm" 
           className="w-full h-8 text-xs text-muted-foreground hover:bg-red-600 hover:text-white transition-colors"
           onClick={(e) => {
             e.stopPropagation();
@@ -140,7 +123,7 @@ type DashView = 'main' | 'vendor-detail' | 'vendor-print' | 'report-detail' | 'r
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [data, setData] = useState({
-    orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[], produtos: [] as any[]
+    orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[],
   });
   const [dataLoaded, setDataLoaded] = useState(false);
   const [metas, setMetas] = useState(store.getMetas());
@@ -158,59 +141,6 @@ export default function DashboardPage() {
   const { onlineUserIds } = usePresenceContext();
 
   /* ---------------------------------------------------------------- */
-  /*  Industrial Management Logic - Active OS Filter                   */
-  /* ---------------------------------------------------------------- */
-  const activeOS = data.os.filter(os => os.status === 'ABERTA' || os.status === 'EM_ANDAMENTO');
-  /*  Industrial Management Logic - Traffic Lights                     */
-  /* ---------------------------------------------------------------- */
-  // Determine color based on ultima_interacao and data_entrega_prevista
-  const getTrafficLightColor = (item: any): 'red' | 'yellow' | 'green' => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Check delivery date delay
-    if (item.data_entrega_prevista) {
-      const deliveryDate = new Date(item.data_entrega_prevista);
-      if (deliveryDate < today) return 'red';
-    }
-
-    // Check last interaction
-    const lastInteraction = item.ultima_interacao ? new Date(item.ultima_interacao) : new Date(item.createdAt || item.created_at);
-    const diffTime = Math.abs(new Date().getTime() - lastInteraction.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays > 5) return 'red';
-    if (diffDays > 2) return 'yellow';
-    return 'green';
-  };
-
-  /* ---------------------------------------------------------------- */
-  /*  Industrial Management Logic - Delayed OS List                    */
-  /* ---------------------------------------------------------------- */
-  const delayedOSList = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return activeOS.map(os => {
-      const deliveryDateStr = os.data_entrega_prevista || os.entrega;
-      if (!deliveryDateStr) return null;
-
-      const deliveryDate = new Date(deliveryDateStr);
-      if (deliveryDate < today) {
-        const diffTime = Math.abs(today.getTime() - deliveryDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
-        const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
-        const clienteNome = ped?.clienteNome || orc?.clienteNome || 'Desconhecido';
-
-        return { ...os, diffDays, clienteNome };
-      }
-      return null;
-    }).filter(Boolean).sort((a: any, b: any) => b.diffDays - a.diffDays);
-  }, [activeOS, data.pedidos, data.orcamentos]);
-
-  /* ---------------------------------------------------------------- */
   /*  Data loading - Direct from Supabase DB only                      */
   /* ---------------------------------------------------------------- */
   const loadingRef = useRef(false);
@@ -220,13 +150,12 @@ export default function DashboardPage() {
     if (loadingRef.current || suppressReloadRef.current) return;
     loadingRef.current = true;
     try {
-      const [orcRes, pedRes, cliRes, osRes, metRes, prodRes] = await Promise.all([
+      const [orcRes, pedRes, cliRes, osRes, metRes] = await Promise.all([
         supabase.from('orcamentos').select('data'),
         supabase.from('pedidos').select('data'),
         supabase.from('clientes').select('data'),
         supabase.from('ordens_servico').select('data'),
         supabase.from('metas_vendedores').select('data'),
-        supabase.from('produtos').select('data'),
       ]);
 
       const orcData = (orcRes.data || []).map((r: any) => r.data);
@@ -234,17 +163,15 @@ export default function DashboardPage() {
       const cliData = (cliRes.data || []).map((r: any) => r.data);
       const osData = (osRes.data || []).map((r: any) => r.data);
       const metData = (metRes.data || []).map((r: any) => r.data);
-      const prodData = (prodRes.data || []).map((r: any) => r.data);
 
       // Set direct from DB (DO NOT FALLBACK TO LOCAL STORAGE SEEDS unless strictly empty!)
       const parsedCliData = cliData.length > 0 ? cliData : (store.getClientes().length > 0 ? store.getClientes() : []);
-
+      
       setData({
         orcamentos: orcData,
         pedidos: pedData,
         clientes: parsedCliData,
         os: osData,
-        produtos: prodData,
       });
       setMetas(metData);
       setDataLoaded(true);
@@ -281,7 +208,6 @@ export default function DashboardPage() {
         pedidos: store.getPedidos(),
         clientes: store.getClientes(),
         os: store.getOrdensServico(),
-        produtos: store.getProdutos(),
       });
       setMetas(store.getMetas());
       setDataLoaded(true);
@@ -383,23 +309,23 @@ export default function DashboardPage() {
     let updated;
     if (existing) { updated = metas.map(m => m.vendedor === vendedorNome ? { ...m, metaMensal: valor } : m); }
     else { updated = [...metas, { vendedor: vendedorNome, metaMensal: valor }]; }
-
+    
     // Update UI immediately
-    setMetas(updated);
+    setMetas(updated); 
     setEditingMeta(null);
-
+    
     // Suppress realtime reload to prevent reverting
     suppressReloadRef.current = true;
-
+    
     // Write directly to Supabase (skip localStorage middleman)
     const metaData = { vendedor: vendedorNome, metaMensal: valor };
     await supabase
       .from('metas_vendedores')
       .upsert({ vendedor: vendedorNome, data: metaData, updated_at: new Date().toISOString() } as any, { onConflict: 'vendedor' });
-
+    
     // Also update localStorage for consistency
     store.saveMetas(updated);
-
+    
     // Allow reloads again after a delay
     setTimeout(() => { suppressReloadRef.current = false; }, 3000);
     toast.success('Meta salva!');
@@ -676,38 +602,38 @@ export default function DashboardPage() {
             <div className="text-xs space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground font-medium">Meta do Mês</span>
-                {isMaster && editingMeta?.vendedor === usuario.nome ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      className="h-6 w-28 text-xs px-1"
-                      value={formatCurrencyInput(editingMeta.valor)}
-                      onChange={e => {
-                        const raw = e.target.value.replace(/\D/g, '');
-                        const cents = parseInt(raw || '0', 10);
-                        setEditingMeta({ ...editingMeta, valor: cents / 100 });
-                      }}
-                      autoFocus
-                    />
-                    <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <strong>{meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}</strong>
-                    {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3.5 w-3.5" /></button>}
-                  </div>
-                )}
-              </div>
-              {meta && meta.metaMensal > 0 && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Progress value={metaPct} className="h-2 flex-1" />
-                    <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
-                </>
+          {isMaster && editingMeta?.vendedor === usuario.nome ? (
+                <div className="flex items-center gap-1">
+                  <Input 
+                    type="text" 
+                    inputMode="numeric"
+                    className="h-6 w-28 text-xs px-1" 
+                    value={formatCurrencyInput(editingMeta.valor)} 
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      const cents = parseInt(raw || '0', 10);
+                      setEditingMeta({ ...editingMeta, valor: cents / 100 });
+                    }} 
+                    autoFocus 
+                  />
+                  <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <strong>{meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}</strong>
+                  {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3.5 w-3.5" /></button>}
+                </div>
+              )}
+            </div>
+            {meta && meta.metaMensal > 0 && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Progress value={metaPct} className="h-2 flex-1" />
+                  <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
+              </>
               )}
             </div>
           )}
@@ -734,113 +660,86 @@ export default function DashboardPage() {
   return (
     <div>
       {/* TOPO */}
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
-        <div>
-          <h1 className="page-header">Início</h1>
-          <p className="page-subtitle">Sistema Rollerport</p>
-        </div>
-        <Button onClick={() => navigate('/orcamentos?new=1')} className="gap-2">
-          <Plus className="h-4 w-4" /> Novo Orçamento
-        </Button>
+      <div className="mb-2">
+        <h1 className="page-header">Início</h1>
+        <p className="page-subtitle">Sistema Rollerport</p>
       </div>
 
-      {/* Espaço reduzido para subir os cards */}
-      <div className="h-4" />
+      {/* Espaço de 2 linhas */}
+      <div className="h-8" />
 
       {/* 4 Cards globais - contagens persistentes e clicáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* ORÇAMENTOS */}
-        <StatCard
-          icon={FileText}
-          label="Orçamentos"
-          value={(isMaster ? data.orcamentos : getUserOrcs(currentUserName)).length}
-          color="bg-primary/10 text-primary"
+        <StatCard 
+          icon={FileText} 
+          label="Orçamentos" 
+          value={(isMaster ? data.orcamentos : getUserOrcs(currentUserName)).length} 
+          color="bg-primary/10 text-primary" 
           onViewAll={() => navigate(isMaster ? '/orcamentos' : `/orcamentos?vendedor=${currentUserName}`)}
           items={(isMaster ? data.orcamentos : getUserOrcs(currentUserName))
             .slice(-3).reverse()
-            .map(o => ({ id: o.id, label: o.numero, user: o.vendedor, statusColor: getTrafficLightColor(o) }))}
+            .map(o => ({ id: o.id, label: o.numero, user: o.vendedor }))}
         />
 
         {/* PEDIDOS */}
-        <StatCard
-          icon={ShoppingCart}
-          label="Pedidos"
-          value={(isMaster ? data.pedidos : getUserPeds(currentUserName)).length}
-          color="bg-secondary/20 text-secondary"
+        <StatCard 
+          icon={ShoppingCart} 
+          label="Pedidos" 
+          value={(isMaster ? data.pedidos : getUserPeds(currentUserName)).length} 
+          color="bg-secondary/20 text-secondary" 
           onViewAll={() => navigate(isMaster ? '/pedidos' : `/pedidos?vendedor=${currentUserName}`)}
           items={(isMaster ? data.pedidos : getUserPeds(currentUserName))
             .slice(-3).reverse()
             .map(p => {
               const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-              return { id: p.id, label: p.numero, user: orc?.vendedor || 'Sistema', statusColor: getTrafficLightColor(p) };
+              return { id: p.id, label: p.numero, user: orc?.vendedor || 'Sistema' };
             })}
         />
 
         {/* CLIENTES */}
-        <StatCard
-          icon={Users}
-          label="Clientes"
+        <StatCard 
+          icon={Users} 
+          label="Clientes" 
           value={(isMaster ? data.clientes : data.clientes.filter(c => {
-            // ACL: For common users, show clients they registered themselves OR have budgets/orders with
-            if (c.usuarioCriador === currentUserName) return true;
+            // ACL: For common users, show clients they have budgets/orders with
             const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
             const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
             return hasOrc || hasPed;
-          })).length}
-          color="bg-info/10 text-info"
+          })).length} 
+          color="bg-info/10 text-info" 
           onViewAll={() => navigate('/clientes')}
-          items={(() => {
-            const userCounts: Record<string, number> = {};
-            data.clientes.forEach(c => {
-              const creator = c.usuarioCriador || 'Sistema';
-              userCounts[creator] = (userCounts[creator] || 0) + 1;
-            });
-            return Object.entries(userCounts)
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 3)
-              .map(([name, count]) => ({
-                id: name,
-                label: name.split(' ')[0],
-                user: `${count} clientes`,
-                onClick: () => navigate(`/clientes?vendedor=${encodeURIComponent(name)}`)
-              }));
-          })()}
+          items={(isMaster ? data.clientes : data.clientes.filter(c => {
+            const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
+            const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
+            return hasOrc || hasPed;
+          }))
+            .slice(-3).reverse()
+            .map(c => ({ id: c.id, label: 'CLI', user: c.nome }))}
         />
 
         {/* ORDENS DE SERVIÇO */}
-        <StatCard
-          icon={Factory}
-          label="Ordens de Serviço"
-          value={(isMaster ? data.os : getUserOS(currentUserName)).length}
-          color="bg-accent/10 text-accent"
+        <StatCard 
+          icon={Factory} 
+          label="Ordens de Serviço" 
+          value={(isMaster ? data.os : getUserOS(currentUserName)).length} 
+          color="bg-accent/10 text-accent" 
           onViewAll={() => navigate('/producao')}
           items={(isMaster ? data.os : getUserOS(currentUserName))
             .slice(-3).reverse()
             .map(os => {
               const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
               const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
-              return { id: os.id, label: os.numero, user: orc?.vendedor || 'Manual', statusColor: getTrafficLightColor(os) };
+              return { id: os.id, label: os.numero, user: orc?.vendedor || 'Manual' };
             })}
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-start gap-x-6 gap-y-2 mt-3 text-[11px] text-muted-foreground pl-1">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Interação Recente
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span> Atenção
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Atrasado ou Crítico
-        </div>
-      </div>
-
-      {/* Espaço aumentado entre legenda e cards de status */}
-      <div className="h-10" />
+      {/* Espaço de 2 linhas */}
+      <div className="h-8" />
 
       {/* 3 Cards de Status - clicáveis */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
           <CardHeader className="pb-2">
             <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
@@ -877,54 +776,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* --------------------------------- */}
-      {/* ATENÇÃO: O.S. ATRASADAS (LISTA) */}
-      {/* --------------------------------- */}
-      {
-        delayedOSList.length > 0 && (
-          <>
-            <div className="h-8" />
-            <Card className="border-red-500/30 overflow-hidden">
-              <CardHeader className="bg-red-500/10 pb-3">
-                <h2 className="font-semibold flex items-center gap-2 text-red-600">
-                  <AlertCircle className="h-4 w-4" /> Ordens de Serviço em Atraso ({delayedOSList.length})
-                </h2>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="max-h-[300px] overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 sticky top-0 text-xs text-muted-foreground z-10">
-                      <tr>
-                        <th className="font-medium text-left p-3">O.S.</th>
-                        <th className="font-medium text-left p-3">Cliente</th>
-                        <th className="font-medium text-left p-3 hidden sm:table-cell">Status</th>
-                        <th className="font-medium text-right p-3">Atraso</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {delayedOSList.map((os: any) => (
-                        <tr key={os.id} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/producao?status=' + os.status)}>
-                          <td className="p-3 font-mono font-medium">{os.numero}</td>
-                          <td className="p-3 truncate max-w-[150px]">{os.clienteNome}</td>
-                          <td className="p-3 hidden sm:table-cell">
-                            <Badge variant="outline" className={os.status === 'ABERTA' ? 'bg-muted text-foreground' : 'bg-secondary/10 text-secondary'}>
-                              {os.status.replace('_', ' ')}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-right text-red-600 font-bold whitespace-nowrap">
-                            {os.diffDays} {os.diffDays === 1 ? 'dia' : 'dias'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )
-      }
 
       {/* Espaço de 2 linhas */}
       <div className="h-8" />
@@ -975,40 +826,11 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
-        ) : (() => {
-          const activeUsers = dbUsuarios.filter(u => u.ativo);
-          const masters = activeUsers.filter(u => u.nivel === 'master' || u.nivel === 'admin');
-          const vendas = activeUsers.filter(u => u.nivel === 'Vendas');
-          const outros = activeUsers.filter(u => u.nivel !== 'master' && u.nivel !== 'admin' && u.nivel !== 'Vendas');
-          return (
-            <>
-              {masters.length > 0 && (
-                <>
-                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">Administração</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    {masters.map(u => renderUserCard(u))}
-                  </div>
-                </>
-              )}
-              {vendas.length > 0 && (
-                <>
-                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">Vendedores</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    {vendas.map(u => renderUserCard(u))}
-                  </div>
-                </>
-              )}
-              {outros.length > 0 && (
-                <>
-                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">Operacional</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {outros.map(u => renderUserCard(u))}
-                  </div>
-                </>
-              )}
-            </>
-          );
-        })()}
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dbUsuarios.filter(u => u.ativo).map(u => renderUserCard(u))}
+          </div>
+        )}
       </div>
     </div>
   );

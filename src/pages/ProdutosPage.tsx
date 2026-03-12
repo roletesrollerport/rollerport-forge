@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Trash2, Edit, Search, Settings2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
-const fmt = (v: number) => v ? `R$\u2009${v.toFixed(2).replace('.', ',')}` : '-';
+const fmt = (v: number) => v ? `R$ ${v.toFixed(2).replace('.', ',')}` : '-';
 
 const tiposRolete: TipoRolete[] = ['RC', 'RR', 'RG', 'RI', 'RRA'];
 
