@@ -163,7 +163,7 @@ export function useUsuarios() {
   const getById = async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+      .select('*')
       .eq('id', id)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
@@ -172,7 +172,7 @@ export function useUsuarios() {
   const getByAuthId = async (authId: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at, auth_id')
+      .select('*')
       .eq('auth_id', authId)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
