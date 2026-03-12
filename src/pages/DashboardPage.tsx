@@ -226,40 +226,55 @@ export default function DashboardPage() {
   const doLoadFromDb = useCallback(async () => {
     if (loadingRef.current || suppressReloadRef.current) return;
     loadingRef.current = true;
+
+    const fromDbOrFallback = async (table: string, fallback: any[]) => {
+      try {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout ao carregar ${table}`)), 8000)
+        );
+
+        const queryPromise = supabase.from(table as any).select('data');
+        const result: any = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (result?.error) throw result.error;
+        return (result?.data || []).map((r: any) => r.data);
+      } catch (err) {
+        console.warn(`[Dashboard] Falha ao carregar ${table}, usando cache local`, err);
+        return fallback;
+      }
+    };
+
     try {
-      const [orcRes, pedRes, cliRes, osRes, metRes, prodRes] = await Promise.all([
-        supabase.from('orcamentos').select('data'),
-        supabase.from('pedidos').select('data'),
-        supabase.from('clientes').select('data'),
-        supabase.from('ordens_servico').select('data'),
-        supabase.from('metas_vendedores').select('data'),
-        supabase.from('produtos').select('data'),
+      const [orcData, pedData, cliData, osData, metData, prodData] = await Promise.all([
+        fromDbOrFallback('orcamentos', store.getOrcamentos()),
+        fromDbOrFallback('pedidos', store.getPedidos()),
+        fromDbOrFallback('clientes', store.getClientes()),
+        fromDbOrFallback('ordens_servico', store.getOrdensServico()),
+        fromDbOrFallback('metas_vendedores', store.getMetas()),
+        fromDbOrFallback('produtos', store.getProdutos()),
       ]);
-
-      const orcData = (orcRes.data || []).map((r: any) => r.data);
-      const pedData = (pedRes.data || []).map((r: any) => r.data);
-      const cliData = (cliRes.data || []).map((r: any) => r.data);
-      const osData = (osRes.data || []).map((r: any) => r.data);
-      const metData = (metRes.data || []).map((r: any) => r.data);
-      const prodData = (prodRes.data || []).map((r: any) => r.data);
-
-      // Set direct from DB (DO NOT FALLBACK TO LOCAL STORAGE SEEDS unless strictly empty!)
-      const parsedCliData = cliData.length > 0 ? cliData : (store.getClientes().length > 0 ? store.getClientes() : []);
 
       setData({
         orcamentos: orcData,
         pedidos: pedData,
-        clientes: parsedCliData,
+        clientes: cliData,
         os: osData,
         produtos: prodData,
       });
       setMetas(metData);
-      setDataLoaded(true);
     } catch (err) {
       console.error('[Dashboard] DB load error:', err);
-      toast.error('Ocorreu um erro ao carregar os dados reais do sistema.');
-      setDataLoaded(true);
+      setData({
+        orcamentos: store.getOrcamentos(),
+        pedidos: store.getPedidos(),
+        clientes: store.getClientes(),
+        os: store.getOrdensServico(),
+        produtos: store.getProdutos(),
+      });
+      setMetas(store.getMetas());
+      toast.error('Falha ao carregar do banco, exibindo cache local.');
     } finally {
+      setDataLoaded(true);
       loadingRef.current = false;
     }
   }, []);

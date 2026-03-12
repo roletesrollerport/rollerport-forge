@@ -136,9 +136,7 @@ async function pullFromDb(key: string): Promise<boolean> {
  */
 export async function forcePull() {
   console.log('[DataSync] Forcing pull of all tables...');
-  for (const key of SYNCED_KEYS) {
-    await pullFromDb(key);
-  }
+  await Promise.allSettled(SYNCED_KEYS.map((key) => pullFromDb(key)));
   window.dispatchEvent(new CustomEvent('rp-data-synced'));
   console.log('[DataSync] Force pull complete');
 }
@@ -194,9 +192,11 @@ export function useDataSync() {
     if (SYNC_MAP[key]) {
       // Suppress pull for this table briefly to avoid echo
       suppressPullRef.current.add(key);
-      pushToDb(key).then(() => {
-        setTimeout(() => suppressPullRef.current.delete(key), 2000);
-      });
+      pushToDb(key)
+        .catch((err) => console.warn(`[DataSync] Push failed for ${key}:`, err))
+        .finally(() => {
+          setTimeout(() => suppressPullRef.current.delete(key), 2000);
+        });
     }
   }, []);
 
@@ -217,7 +217,7 @@ export function useDataSync() {
     initializedRef.current = true;
 
     // Do initial sync
-    initialSync();
+    initialSync().catch((err) => console.warn('[DataSync] Initial sync failed:', err));
 
     // Listen for store save events
     window.addEventListener('rp-store-save', handleStoreSave);

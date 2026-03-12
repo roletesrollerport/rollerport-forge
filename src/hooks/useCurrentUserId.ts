@@ -15,8 +15,8 @@ export function useCurrentUserId() {
         setUserId(null);
         return;
       }
-      const { data } = await supabase
-        .from('usuarios')
+      const { data } = await (supabase as any)
+        .from('usuarios_public')
         .select('id')
         .eq('auth_id', session.user.id)
         .maybeSingle();

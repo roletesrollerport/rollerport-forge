@@ -412,7 +412,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      usuarios_public: {
+        Row: {
+          ativo: boolean | null
+          auth_id: string | null
+          created_at: string | null
+          email: string | null
+          foto: string | null
+          genero: string | null
+          id: string | null
+          last_seen: string | null
+          login: string | null
+          nivel: string | null
+          nome: string | null
+          permissoes: Json | null
+          telefone: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          auth_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          foto?: string | null
+          genero?: string | null
+          id?: string | null
+          last_seen?: string | null
+          login?: string | null
+          nivel?: string | null
+          nome?: string | null
+          permissoes?: Json | null
+          telefone?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          auth_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          foto?: string | null
+          genero?: string | null
+          id?: string | null
+          last_seen?: string | null
+          login?: string | null
+          nivel?: string | null
+          nome?: string | null
+          permissoes?: Json | null
+          telefone?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

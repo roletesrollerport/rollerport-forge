@@ -19,6 +19,9 @@ export interface UsuarioDB {
   auth_id?: string;
 }
 
+const USERS_TABLE_READ = 'usuarios_public';
+const USERS_TABLE_WRITE = 'usuarios';
+
 function parseUsuario(row: any): UsuarioDB {
   return {
     id: row.id,
@@ -45,7 +48,7 @@ export function useUsuarios() {
   const fetchUsuarios = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('usuarios')
+        .from(USERS_TABLE_READ as any)
         .select('*');
 
       if (error) {
@@ -83,14 +86,14 @@ export function useUsuarios() {
 
       if (u.id) {
         const { error } = await supabase
-          .from('usuarios')
+          .from(USERS_TABLE_WRITE as any)
           .update(userData)
           .eq('id', u.id);
         if (error) throw error;
       } else {
         if (!userData.senha) throw new Error('Senha é obrigatória para novo usuário');
         const { error } = await supabase
-          .from('usuarios')
+          .from(USERS_TABLE_WRITE as any)
           .insert(userData);
         if (error) throw error;
       }
@@ -105,7 +108,7 @@ export function useUsuarios() {
   const deleteUsuario = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('usuarios')
+        .from(USERS_TABLE_WRITE as any)
         .delete()
         .eq('id', id);
       if (error) throw error;
@@ -118,18 +121,8 @@ export function useUsuarios() {
 
   const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; authSession: any } | null> => {
     try {
-      const { data: userRow, error: lookupError } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('login', loginStr.trim())
-        .maybeSingle();
-
-      if (lookupError || !userRow) {
-        console.warn('[useUsuarios] Login lookup failed:', lookupError?.message || 'User not found');
-        return null;
-      }
-
-      const syntheticEmail = `${userRow.login}@rollerport.app`;
+      const normalizedLogin = loginStr.trim().toLowerCase();
+      const syntheticEmail = `${normalizedLogin}@rollerport.app`;
 
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: syntheticEmail,
@@ -141,11 +134,28 @@ export function useUsuarios() {
         return null;
       }
 
-      const { data: profile } = await supabase
-        .from('usuarios')
+      let { data: profile } = await (supabase as any)
+        .from(USERS_TABLE_READ)
         .select('*')
         .eq('auth_id', authData.user.id)
         .maybeSingle();
+
+      if (!profile) {
+        const { data: profileByLogin } = await (supabase as any)
+          .from(USERS_TABLE_READ)
+          .select('*')
+          .eq('login', normalizedLogin)
+          .maybeSingle();
+
+        if (profileByLogin?.id) {
+          await supabase
+            .from(USERS_TABLE_WRITE as any)
+            .update({ auth_id: authData.user.id })
+            .eq('id', profileByLogin.id);
+
+          profile = { ...profileByLogin, auth_id: authData.user.id };
+        }
+      }
 
       if (!profile) {
         console.warn('[useUsuarios] Profile not found for auth user');
@@ -161,8 +171,8 @@ export function useUsuarios() {
   };
 
   const getById = async (id: string): Promise<UsuarioDB | null> => {
-    const { data } = await supabase
-      .from('usuarios')
+    const { data } = await (supabase as any)
+      .from(USERS_TABLE_READ)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -170,8 +180,8 @@ export function useUsuarios() {
   };
 
   const getByAuthId = async (authId: string): Promise<UsuarioDB | null> => {
-    const { data } = await supabase
-      .from('usuarios')
+    const { data } = await (supabase as any)
+      .from(USERS_TABLE_READ)
       .select('*')
       .eq('auth_id', authId)
       .maybeSingle();
