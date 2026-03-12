@@ -148,7 +148,6 @@ export default function DashboardPage() {
   const [dashView, setDashView] = useState<DashView>('main');
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
-  const [masterAiPrompt, setMasterAiPrompt] = useState<string>(() => localStorage.getItem('rp_master_ai_prompt') || '');
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -433,10 +432,6 @@ export default function DashboardPage() {
     const userPeds = getUserPeds(selectedVendor);
     const userOS = getUserOS(selectedVendor);
 
-    const handleSaveMasterPrompt = (prompt: string) => {
-      setMasterAiPrompt(prompt);
-      localStorage.setItem('rp_master_ai_prompt', prompt);
-    };
 
     return (
       <VendorReportView
@@ -449,8 +444,6 @@ export default function DashboardPage() {
         isPrint={dashView === 'vendor-print'}
         onBack={() => { setDashView('main'); setSelectedVendor(null); }}
         onPrint={() => dashView === 'vendor-detail' ? setDashView('vendor-print') : window.print()}
-        masterPrompt={masterAiPrompt || undefined}
-        onSaveMasterPrompt={handleSaveMasterPrompt}
       />
     );
   }
