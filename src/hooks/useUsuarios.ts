@@ -194,7 +194,7 @@ export function useUsuarios() {
     const sessionToken = localStorage.getItem('rp_session_token');
     if (!sessionToken) throw new Error('Not authenticated');
 
-    const { data: users, error: selectError } = await supabase.from('usuarios').select('id').neq('nivel', 'master');
+    const { data: users, error: selectError } = await supabase.from('usuarios_public').select('id').neq('nivel', 'master');
     if (selectError) throw selectError;
 
     if (!users || users.length === 0) return { success: true };
