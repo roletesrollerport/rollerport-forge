@@ -70,8 +70,10 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
     if (fileUrl.startsWith('http')) return fileUrl;
     if (signedUrls[fileUrl]) return signedUrls[fileUrl];
     try {
+      const headers = await getAuthHeaders();
       const { data } = await supabase.functions.invoke('chat-api', {
-        body: { action: 'get_signed_url', sessionToken, file_path: fileUrl },
+        body: { action: 'get_signed_url', file_path: fileUrl },
+        headers,
       });
       if (data?.url) {
         setSignedUrls(prev => ({ ...prev, [fileUrl]: data.url }));
@@ -79,7 +81,7 @@ export default function ChatWidget({ isOpen, onToggle, initialUserId, onClearIni
       }
     } catch {}
     return fileUrl;
-  }, [sessionToken, signedUrls]);
+  }, [signedUrls]);
 
   useEffect(() => {
     const toResolve = messages.filter(m =>
