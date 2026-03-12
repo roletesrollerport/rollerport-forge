@@ -5,6 +5,7 @@ import { useCustos } from '@/hooks/useCustos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ICMS_INTERESTADUAL_SP, PIS_FIXO, COFINS_FIXO } from '@/lib/utils';
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History,
@@ -22,7 +23,7 @@ const emptyItem = (): ItemOrcamento => ({
   aliqPIS: 0, aliqCOFINS: 0, aliqICMS: 0, aliqIPI: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0
 });
 
-function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[]): ItemOrcamento {
+function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[], ufCliente: string = 'SP'): ItemOrcamento {
 
   const tubo = tubos.find(t => t.diametro === item.diametroTubo && t.parede === item.paredeTubo);
   const eixo = eixos.find(e => e.diametro === String(item.diametroEixo));
@@ -67,11 +68,11 @@ function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: 
   const valorPorPeca = custo * multiplicador * (1 - desconto / 100);
   const valorTotal = valorPorPeca * item.quantidade;
 
-  // Extração informativa dos impostos (por dentro do total)
-  const aliqPIS = item.aliqPIS || 0;
-  const aliqCOFINS = item.aliqCOFINS || 0;
-  const aliqICMS = item.aliqICMS || 0;
-  const aliqIPI = item.aliqIPI || 0;
+  // Motor Fiscal Hardcoded
+  const aliqPIS = PIS_FIXO;
+  const aliqCOFINS = COFINS_FIXO;
+  const aliqICMS = ICMS_INTERESTADUAL_SP[ufCliente] || 18.0; // Se não houver UF ou for SP (18), senão (7 ou 12) dependendo do estado.
+  const aliqIPI = item.aliqIPI || 0; // IPI se mantém manual pelo item
 
   const valorPIS = valorTotal * (aliqPIS / 100);
   const valorCOFINS = valorTotal * (aliqCOFINS / 100);
@@ -220,8 +221,8 @@ export default function OrcamentosPage() {
     )
   );
 
-  const diametrosTubo = [...new Set(tubos.map(t => t.diametro))].sort((a, b) => a - b);
-  const paredesTubo = (diam: number) => [...new Set(tubos.filter(t => t.diametro === diam).map(t => t.parede))].sort((a, b) => a - b);
+  const diametrosTubo = [...new Set(tubos.map((t: Tubo) => t.diametro))].sort((a: number, b: number) => a - b);
+  const paredesTubo = (diam: number) => [...new Set(tubos.filter((t: Tubo) => t.diametro === diam).map((t: Tubo) => t.parede))].sort((a: number, b: number) => a - b);
   const diametrosEixo = eixos.map(e => e.diametro);
 
   useEffect(() => {
@@ -330,8 +331,9 @@ export default function OrcamentosPage() {
   // Clonar orçamento com preços atualizados
   const cloneOrcamento = (orc: Orcamento) => {
     // Recalcular itens rolete com preços atuais
+    const cliUF = clientes.find(c => c.id === orc.clienteId)?.estado || 'SP';
     const itensRoleteAtualizados = (orc.itensRolete || []).map(item => {
-      const recalculado = calcItem(item, tubos, eixos, conjuntos, revestimentos, encaixes);
+      const recalculado = calcItem(item, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF);
       return { ...recalculado, id: store.nextId('item') };
     });
 
@@ -436,13 +438,13 @@ export default function OrcamentosPage() {
       ncm: produtoNcm,
       medidas: (selectedProduto as any).medidas || '',
       descricao: selectedProduto.descricao || '',
-      aliqPIS: produtoAliqPIS,
-      aliqCOFINS: produtoAliqCOFINS,
-      aliqICMS: produtoAliqICMS,
+      aliqPIS: PIS_FIXO,
+      aliqCOFINS: COFINS_FIXO,
+      aliqICMS: ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0,
       aliqIPI: produtoAliqIPI,
-      valorPIS: +((valorComDesc * produtoQtd) * (produtoAliqPIS / 100)).toFixed(2),
-      valorCOFINS: +((valorComDesc * produtoQtd) * (produtoAliqCOFINS / 100)).toFixed(2),
-      valorICMS: +((valorComDesc * produtoQtd) * (produtoAliqICMS / 100)).toFixed(2),
+      valorPIS: +((valorComDesc * produtoQtd) * (PIS_FIXO / 100)).toFixed(2),
+      valorCOFINS: +((valorComDesc * produtoQtd) * (COFINS_FIXO / 100)).toFixed(2),
+      valorICMS: +((valorComDesc * produtoQtd) * ((ICMS_INTERESTADUAL_SP[clienteSelecionado?.estado || 'SP'] || 18.0) / 100)).toFixed(2),
       valorIPI: +((valorComDesc * produtoQtd) * (produtoAliqIPI / 100)).toFixed(2),
     };
     setItensProduto([...itensProduto, item]);
@@ -460,7 +462,8 @@ export default function OrcamentosPage() {
 
   // Insert rolete into orçamento
   const insertRolete = () => {
-    const calculated = calcItem({ ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete }, tubos, eixos, conjuntos, revestimentos, encaixes);
+    const cliUF = clienteSelecionado?.estado || 'SP';
+    const calculated = calcItem({ ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete }, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF);
     setItensRolete([...itensRolete, calculated]);
     // Salvar rolete como produto na lista de produtos
     const novoProduto: Produto = {
@@ -484,7 +487,8 @@ export default function OrcamentosPage() {
   };
 
   const updateRoleteField = (partial: Partial<ItemOrcamento>) => {
-    setRoleteItem(prev => calcItem({ ...prev, ...partial }, tubos, eixos, conjuntos, revestimentos, encaixes));
+    const cliUF = clienteSelecionado?.estado || 'SP';
+    setRoleteItem(prev => calcItem({ ...prev, ...partial }, tubos, eixos, conjuntos, revestimentos, encaixes, cliUF));
   };
 
   // Cadastrar cliente rápido
@@ -767,7 +771,8 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-right whitespace-nowrap w-[55px]" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>PIS</th>
                 <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
-                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS</th>
+                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS ORIGEM</th>
+                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS DEST.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[40px]" rowSpan={2}>IPI</th>
                 <th className="border p-1 text-right whitespace-nowrap w-[80px] bg-green-200" rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
               </tr>
@@ -776,6 +781,9 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center whitespace-nowrap w-[42px]">VALOR</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[13px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[42px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[13px]">ALÍQ.</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[42px]">VALOR</th>
+                {/* ICMS D */}
                 <th className="border p-1 text-center whitespace-nowrap w-[13px]">ALÍQ.</th>
                 <th className="border p-1 text-center whitespace-nowrap w-[42px]">VALOR</th>
               </tr>
@@ -797,8 +805,11 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{row.aliqCOFINS.toFixed(2)}%</td>
                   <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorCOFINS)}</td>
                   
-                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqICMS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorICMS)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{Number(18.00).toFixed(2)}%</td>
+                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorLiquidoUnit * row.qtd * (18.00 / 100))}</td>
+
+                  <td className="border p-1 text-center whitespace-nowrap">{row.aliqICMS.toFixed(2)}%</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorICMS)}</td>
                   
                   <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorIPI)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold bg-green-100">{fmt(row.valorTotalComImpostos)}</td>
@@ -815,6 +826,8 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-right">{fmt(totals.valorPIS)}</td>
                 <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorCOFINS)}</td>
+                <td className="border p-1"></td>
+                <td className="border p-1 text-right">{fmt(allPrintItems.reduce((s, row) => s + (row.valorLiquidoUnit * row.qtd * (18.00/100)), 0))}</td>
                 <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorICMS)}</td>
                 <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
@@ -1257,29 +1270,31 @@ export default function OrcamentosPage() {
                 <Input type="number" value={produtoQtd} onChange={e => setProdutoQtd(+e.target.value)} />
               </div>
               <div>
-                <label className="text-xs text-primary font-medium">Desconto (%)</label>
-                <Input type="number" value={produtoDesconto} onChange={e => setProdutoDesconto(+e.target.value)} />
-              </div>
-              <div>
                 <label className="text-xs text-primary font-medium">NCM</label>
                 <Input placeholder="Digite o NCM" value={produtoNcm} onChange={e => setProdutoNcm(e.target.value)} />
               </div>
-              <div className="col-span-3 sm:col-span-4 h-px bg-muted my-1" />
-              <div>
-                <label className="text-xs text-primary font-medium">PIS (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqPIS} onChange={e => setProdutoAliqPIS(+e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">COFINS (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqCOFINS} onChange={e => setProdutoAliqCOFINS(+e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">ICMS (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqICMS} onChange={e => setProdutoAliqICMS(+e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">IPI (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqIPI} onChange={e => setProdutoAliqIPI(+e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold">Desconto (%)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={produtoDesconto}
+                    onChange={e => setProdutoDesconto(+e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold">IPI (%)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={produtoAliqIPI}
+                    onChange={e => setProdutoAliqIPI(+e.target.value)}
+                  />
+                </div>
               </div>
             </div>
             <div>
@@ -1338,16 +1353,18 @@ export default function OrcamentosPage() {
                 <select value={roleteItem.diametroTubo || ''} onChange={e => updateRoleteField({ diametroTubo: +e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                  {diametrosTubo.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                        {diametrosTubo.map((d: any) => (
+                          <option key={`tubo-diam-${d}`} value={d}>{d}</option>
+                        ))}</select>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Parede do Tubo</label>
                 <select value={roleteItem.paredeTubo || ''} onChange={e => updateRoleteField({ paredeTubo: +e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
                   <option value="">Selecione...</option>
-                  {paredesTubo(roleteItem.diametroTubo).map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                        {paredesTubo(roleteItem.diametroTubo as number).map((p: any) => (
+                          <option key={`tubo-par-${p}`} value={p}>{p}</option>
+                        ))}</select>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Comp. Tubo (mm)</label>

@@ -359,7 +359,6 @@ export type Database = {
       usuarios: {
         Row: {
           ativo: boolean
-          auth_id: string | null
           created_at: string
           email: string
           foto: string | null
@@ -376,7 +375,6 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
-          auth_id?: string | null
           created_at?: string
           email?: string
           foto?: string | null
@@ -393,7 +391,6 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
-          auth_id?: string | null
           created_at?: string
           email?: string
           foto?: string | null
@@ -412,57 +409,7 @@ export type Database = {
       }
     }
     Views: {
-      usuarios_public: {
-        Row: {
-          ativo: boolean | null
-          auth_id: string | null
-          created_at: string | null
-          email: string | null
-          foto: string | null
-          genero: string | null
-          id: string | null
-          last_seen: string | null
-          login: string | null
-          nivel: string | null
-          nome: string | null
-          permissoes: Json | null
-          telefone: string | null
-          whatsapp: string | null
-        }
-        Insert: {
-          ativo?: boolean | null
-          auth_id?: string | null
-          created_at?: string | null
-          email?: string | null
-          foto?: string | null
-          genero?: string | null
-          id?: string | null
-          last_seen?: string | null
-          login?: string | null
-          nivel?: string | null
-          nome?: string | null
-          permissoes?: Json | null
-          telefone?: string | null
-          whatsapp?: string | null
-        }
-        Update: {
-          ativo?: boolean | null
-          auth_id?: string | null
-          created_at?: string | null
-          email?: string | null
-          foto?: string | null
-          genero?: string | null
-          id?: string | null
-          last_seen?: string | null
-          login?: string | null
-          nivel?: string | null
-          nome?: string | null
-          permissoes?: Json | null
-          telefone?: string | null
-          whatsapp?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       [_ in never]: never
