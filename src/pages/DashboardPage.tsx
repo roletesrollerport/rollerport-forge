@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios } from '@/hooks/useUsuarios';
+import { useCurrentUserId } from '@/hooks/useCurrentUserId';
 import { usePresenceContext } from '@/contexts/PresenceContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
