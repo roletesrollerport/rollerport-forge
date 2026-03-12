@@ -121,18 +121,8 @@ export function useUsuarios() {
 
   const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; authSession: any } | null> => {
     try {
-      const { data: userRow, error: lookupError } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('login', loginStr.trim())
-        .maybeSingle();
-
-      if (lookupError || !userRow) {
-        console.warn('[useUsuarios] Login lookup failed:', lookupError?.message || 'User not found');
-        return null;
-      }
-
-      const syntheticEmail = `${userRow.login}@rollerport.app`;
+      const normalizedLogin = loginStr.trim().toLowerCase();
+      const syntheticEmail = `${normalizedLogin}@rollerport.app`;
 
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: syntheticEmail,
@@ -144,11 +134,28 @@ export function useUsuarios() {
         return null;
       }
 
-      const { data: profile } = await supabase
-        .from('usuarios')
+      let { data: profile } = await (supabase as any)
+        .from(USERS_TABLE_READ)
         .select('*')
         .eq('auth_id', authData.user.id)
         .maybeSingle();
+
+      if (!profile) {
+        const { data: profileByLogin } = await (supabase as any)
+          .from(USERS_TABLE_READ)
+          .select('*')
+          .eq('login', normalizedLogin)
+          .maybeSingle();
+
+        if (profileByLogin?.id) {
+          await supabase
+            .from(USERS_TABLE_WRITE as any)
+            .update({ auth_id: authData.user.id })
+            .eq('id', profileByLogin.id);
+
+          profile = { ...profileByLogin, auth_id: authData.user.id };
+        }
+      }
 
       if (!profile) {
         console.warn('[useUsuarios] Profile not found for auth user');
