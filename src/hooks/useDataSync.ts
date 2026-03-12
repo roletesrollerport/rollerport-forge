@@ -151,25 +151,29 @@ export async function forcePull() {
 async function initialSync() {
   console.log('[DataSync] Starting initial sync...');
 
-  for (const key of SYNCED_KEYS) {
-    const config = SYNC_MAP[key];
-    const { count } = await supabase
-      .from(config.table as any)
-      .select('*', { count: 'exact', head: true });
+  const results = await Promise.allSettled(
+    SYNCED_KEYS.map(async (key) => {
+      const config = SYNC_MAP[key];
+      try {
+        const { count } = await supabase
+          .from(config.table as any)
+          .select('*', { count: 'exact', head: true });
 
-    if (count !== null && count > 0) {
-      // ALWAYS prioritize DB over local cache if DB has records
-      await pullFromDb(key);
-      console.log(`[DataSync] Pulled ${count} rows for ${config.table} (Realtime Sync)`);
-    } else {
-      // DB is strictly empty — fallback to push localStorage data to DB (initial setup migration)
-      const localData = getLocalData(key);
-      if (localData.length > 0) {
-        await pushToDb(key);
-        console.log(`[DataSync] Migrated ${localData.length} items to ${config.table}`);
+        if (count !== null && count > 0) {
+          await pullFromDb(key);
+          console.log(`[DataSync] Pulled ${count} rows for ${config.table}`);
+        } else {
+          const localData = getLocalData(key);
+          if (localData.length > 0) {
+            await pushToDb(key);
+            console.log(`[DataSync] Migrated ${localData.length} items to ${config.table}`);
+          }
+        }
+      } catch (err) {
+        console.warn(`[DataSync] Failed to sync ${config.table}, skipping:`, err);
       }
-    }
-  }
+    })
+  );
 
   // Notify all pages that data is ready
   window.dispatchEvent(new CustomEvent('rp-data-synced'));

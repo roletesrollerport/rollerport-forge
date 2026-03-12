@@ -84,14 +84,26 @@ function AppContent() {
 
   // Supabase Auth listener
   useEffect(() => {
+    // Safety timeout — never stay stuck on "Carregando" for more than 5s
+    const timeout = setTimeout(() => {
+      if (checking) {
+        console.warn('[App] Auth check timed out, proceeding without user');
+        setChecking(false);
+      }
+    }, 5000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        const profile = await getByAuthId(session.user.id);
-        if (profile) {
-          setCurrentUser(profile);
-        } else {
-          // Auth user exists but no profile - sign out
-          await supabase.auth.signOut();
+        try {
+          const profile = await getByAuthId(session.user.id);
+          if (profile) {
+            setCurrentUser(profile);
+          } else {
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+          }
+        } catch (err) {
+          console.error('[App] Error fetching profile:', err);
           setCurrentUser(null);
         }
       } else {
@@ -103,15 +115,24 @@ function AppContent() {
     // Check existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const profile = await getByAuthId(session.user.id);
-        if (profile) {
-          setCurrentUser(profile);
+        try {
+          const profile = await getByAuthId(session.user.id);
+          if (profile) {
+            setCurrentUser(profile);
+          }
+        } catch (err) {
+          console.error('[App] Error fetching profile on init:', err);
         }
       }
       setChecking(false);
+    }).catch(() => {
+      setChecking(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = (userId: string) => {
