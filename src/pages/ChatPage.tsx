@@ -273,26 +273,26 @@ export default function ChatPage() {
         // Convert blob to base64 for edge function upload
         const arrayBuffer = await blob.arrayBuffer();
         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const headers = await getAuthHeaders();
         const { error: uploadError } = await supabase.functions.invoke('chat-api', {
           body: {
             action: 'upload_file',
-            sessionToken,
             file_base64: base64,
             file_path: path,
             content_type: 'audio/webm',
           },
+          headers,
         });
         if (uploadError) { toast.error('Erro ao enviar áudio'); return; }
-        // Use edge function for insert (server enforces sender_id)
         await supabase.functions.invoke('chat-api', {
           body: {
             action: 'send_message',
-            sessionToken,
             receiver_id: selectedUser!.id,
             message_type: 'audio',
             file_url: path,
             audio_duration: recordingTime,
           },
+          headers,
         });
       };
       mediaRecorder.start();
