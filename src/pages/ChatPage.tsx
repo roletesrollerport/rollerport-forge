@@ -61,8 +61,10 @@ export default function ChatPage() {
     if (fileUrl.startsWith('http')) return fileUrl;
     if (signedUrls[fileUrl]) return signedUrls[fileUrl];
     try {
+      const headers = await getAuthHeaders();
       const { data } = await supabase.functions.invoke('chat-api', {
-        body: { action: 'get_signed_url', sessionToken, file_path: fileUrl },
+        body: { action: 'get_signed_url', file_path: fileUrl },
+        headers,
       });
       if (data?.url) {
         setSignedUrls(prev => ({ ...prev, [fileUrl]: data.url }));
@@ -70,7 +72,7 @@ export default function ChatPage() {
       }
     } catch {}
     return fileUrl;
-  }, [sessionToken, signedUrls]);
+  }, [signedUrls]);
 
   // Resolve URLs for visible messages
   useEffect(() => {
