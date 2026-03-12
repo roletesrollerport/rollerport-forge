@@ -129,19 +129,23 @@ export function useUsuarios() {
 
   const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; authSession: any } | null> => {
     try {
-      // Step 1: Look up the username to get the synthetic auth email
-      const { data: lookupData, error: lookupError } = await supabase.functions.invoke('auth-admin', {
-        body: { action: 'lookup_login', loginStr: loginStr.trim() },
-      });
+      // Step 1: Look up the username in usuarios table to build synthetic email
+      const { data: userRow, error: lookupError } = await supabase
+        .from('usuarios')
+        .select('login, auth_id')
+        .eq('login', loginStr.trim())
+        .maybeSingle();
 
-      if (lookupError || !lookupData?.found) {
-        console.warn('[useUsuarios] Login lookup failed:', lookupError || 'User not found');
+      if (lookupError || !userRow) {
+        console.warn('[useUsuarios] Login lookup failed:', lookupError?.message || 'User not found');
         return null;
       }
 
+      const syntheticEmail = `${userRow.login}@rollerport.app`;
+
       // Step 2: Sign in with Supabase Auth using the synthetic email
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: lookupData.authEmail,
+        email: syntheticEmail,
         password: senha,
       });
 
