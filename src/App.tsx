@@ -152,9 +152,7 @@ function AppContent() {
   const handleLogout = async () => {
     const token = localStorage.getItem('rp_session_token');
     if (token) {
-      await supabase.functions.invoke('hash-password', {
-        body: { action: 'logout', sessionToken: token },
-      }).catch(() => {});
+      await invokeEdgeFn('hash-password', { action: 'logout', sessionToken: token }).catch(() => {});
     }
     clearLocalSession();
   };
