@@ -145,6 +145,7 @@ export default function DashboardPage() {
   // Tracking Modal State
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [trackingVendor, setTrackingVendor] = useState<string>('');
+  const [trackingShowAll, setTrackingShowAll] = useState(false);
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -714,7 +715,9 @@ export default function DashboardPage() {
                     size="sm" 
                     className="w-full text-xs gap-1.5 h-8 border-dashed border-primary/50 text-primary hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" 
                     onClick={() => {
-                       setTrackingVendor(usuario.nome); 
+                       const isAdmin = usuario.nivel !== 'Vendas';
+                       setTrackingVendor(usuario.nome);
+                       setTrackingShowAll(isAdmin);
                        setIsTrackingModalOpen(true);
                     }}
                   >
@@ -967,6 +970,7 @@ export default function DashboardPage() {
         orcamentos={data.orcamentos}
         ordensServico={data.os}
         clientes={data.clientes}
+        showAll={trackingShowAll}
         onMetaUpdate={async (valorSoma) => {
           setMetas((prev) => {
             const updated = prev.map(m => m.vendedor === trackingVendor 

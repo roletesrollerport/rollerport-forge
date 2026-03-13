@@ -21,6 +21,7 @@ interface AcompanhamentoPedidosModalProps {
   ordensServico?: OrdemServico[];
   clientes?: Cliente[];
   onMetaUpdate: (valorSoma: number) => void;
+  showAll?: boolean; // For admin "Monitorar Geral"
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -56,6 +57,7 @@ export function AcompanhamentoPedidosModal({
   ordensServico: osProp,
   clientes: clientesProp,
   onMetaUpdate,
+  showAll = false,
 }: AcompanhamentoPedidosModalProps) {
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -68,11 +70,12 @@ export function AcompanhamentoPedidosModal({
 
   // All pedidos for this vendedor using fuzzy matching (loaded immediately)
   const allRelevantPedidos = useMemo(() => {
+    if (showAll) return pedidos; // Admin: show all
     return pedidos.filter((p) => {
       const orc = orcamentos.find((o) => o.id === p.orcamentoId);
       return orc && nameMatch(orc.vendedor, vendedor);
     });
-  }, [pedidos, orcamentos, vendedor]);
+  }, [pedidos, orcamentos, vendedor, showAll]);
 
   // Local instant search filter
   const matchesSearch = (p: Pedido) => {
