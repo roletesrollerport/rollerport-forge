@@ -443,9 +443,9 @@ export default function UsuariosPage() {
                       {u.ativo ? <ShieldAlert className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
                     </button>
                     <button onClick={() => handleLogoutUser(u.id)} className="p-1.5 rounded bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40" title="Forçar Logout"><LogOut className="h-4 w-4" /></button>
-                    <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                   </>
                 )}
+                <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
               </div>
             )}
           </div>
