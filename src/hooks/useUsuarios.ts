@@ -80,7 +80,8 @@ export function useUsuarios() {
       .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .order('created_at', { ascending: true });
     if (!error && data) {
-      setUsuarios(data.map(parseUsuario));
+      const lista = data.map(parseUsuario).filter(u => u.nome?.toLowerCase() !== 'sistema rollerport');
+      setUsuarios(lista);
     }
     setLoading(false);
   }, []);
