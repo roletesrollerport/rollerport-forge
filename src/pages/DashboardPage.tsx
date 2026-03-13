@@ -970,6 +970,7 @@ export default function DashboardPage() {
         orcamentos={data.orcamentos}
         ordensServico={data.os}
         clientes={data.clientes}
+        showAll={trackingShowAll}
         onMetaUpdate={async (valorSoma) => {
           setMetas((prev) => {
             const updated = prev.map(m => m.vendedor === trackingVendor 
