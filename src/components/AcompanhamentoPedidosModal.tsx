@@ -62,6 +62,7 @@ export function AcompanhamentoPedidosModal({
   };
 
   const allRelevantPedidos = pedidos.filter((p) => {
+    if (!vendedor) return true; // Empty = all vendors
     const orc = orcamentos.find((o) => o.id === p.orcamentoId);
     return orc && orc.vendedor === vendedor;
   });
