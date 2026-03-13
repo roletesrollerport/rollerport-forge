@@ -9,6 +9,7 @@ import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import { store } from '@/lib/store';
 import { AgendaItem, TipoCompromisso } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
   Calendar as CalendarIcon, 
@@ -19,7 +20,9 @@ import {
   Truck, 
   History,
   Bell,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Target
 } from 'lucide-react';
 import { AgendaModal } from '@/components/AgendaModal';
 import { AgendaSummary } from '@/components/AgendaSummary';
@@ -35,13 +38,19 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { isBefore, isPast, parseISO } from 'date-fns';
+import { isPast, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 const TYPE_COLORS: Record<TipoCompromisso, string> = {
-  'Visita Técnica': '#f59e0b', // Amber 500
-  'Ligação': '#3b82f6', // Blue 500
-  'Retorno de Orçamento': '#8b5cf6', // Violet 500
-  'Entrega de Roletes': '#10b981', // Emerald 500
+  'Visita Técnica': '#f59e0b',
+  'Ligação': '#3b82f6',
+  'Retorno de Orçamento': '#8b5cf6',
+  'Entrega de Roletes': '#10b981',
 };
 
 const TYPE_ICONS: Record<TipoCompromisso, any> = {
@@ -62,7 +71,7 @@ export default function AgendaPage() {
   const [editingItem, setEditingItem] = useState<AgendaItem | undefined>();
   const [initialDate, setInitialDate] = useState<Date | undefined>();
   const [filterTypes, setFilterTypes] = useState<TipoCompromisso[]>(['Visita Técnica', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes']);
-  const [agendaFilter, setAgendaFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [agendaFilter, setAgendaFilter] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
   
   const calendarRef = useRef<FullCalendar>(null);
 
@@ -95,7 +104,6 @@ export default function AgendaPage() {
       } as any);
       setInitialDate(new Date());
       setModalOpen(true);
-      // Clear state so it doesn't reopen on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -109,9 +117,18 @@ export default function AgendaPage() {
     }
   }, [searchParams]);
 
-  const overdueCount = useMemo(() => {
-    return items.filter(item => !item.status && isPast(new Date(item.data_inicio))).length;
+  const overdueItems = useMemo(() => {
+    return items.filter(item => !item.status && isPast(new Date(item.data_inicio)));
   }, [items]);
+
+  const overdueCount = overdueItems.length;
+
+  const handleShowOverdue = () => {
+    setAgendaFilter('overdue');
+    if (calendarRef.current) {
+      calendarRef.current.getApi().changeView('listWeek');
+    }
+  };
 
   const handleDateClick = (arg: any) => {
     setInitialDate(arg.date);
@@ -163,6 +180,7 @@ export default function AgendaPage() {
     .filter(item => {
       if (agendaFilter === 'pending') return !item.status;
       if (agendaFilter === 'completed') return item.status;
+      if (agendaFilter === 'overdue') return !item.status && isPast(new Date(item.data_inicio));
       return true;
     })
     .map(item => ({
@@ -191,10 +209,11 @@ export default function AgendaPage() {
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-32" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
         </div>
         <Skeleton className="h-[600px] w-full" />
       </div>
@@ -202,39 +221,116 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* ===== HEADER ===== */}
       <div className="flex items-center justify-between flex-wrap gap-4 no-print">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <CalendarIcon className="h-6 w-6 text-primary" />
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
+            <Target className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="page-header">Agenda & CRM</h1>
-            <p className="page-subtitle">Gestão de visitas e compromissos comerciais</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-extrabold tracking-tight text-foreground">Agenda CRM</h1>
+              <Badge variant="secondary" className="text-[10px] h-5 font-bold uppercase tracking-wider gap-1 bg-secondary/15 text-secondary border-0">
+                <Zap className="h-3 w-3" /> Pro
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground font-medium">Pipeline comercial · Compromissos · Follow-ups</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="relative mr-2">
-            <Bell className={cn("h-5 w-5 text-muted-foreground", overdueCount > 0 && "text-destructive animate-pulse")} />
-            {overdueCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white border-2 border-background">
-                {overdueCount}
-              </span>
-            )}
-          </div>
+          {/* Bell / Notifications */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={cn(
+                "relative h-9 w-9 rounded-xl flex items-center justify-center transition-all",
+                overdueCount > 0 
+                  ? "bg-destructive/10 hover:bg-destructive/20" 
+                  : "bg-muted/50 hover:bg-muted"
+              )}>
+                <Bell className={cn("h-4.5 w-4.5", overdueCount > 0 ? "text-destructive" : "text-muted-foreground")} />
+                {overdueCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground shadow-sm">
+                    {overdueCount}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0">
+              <div className="p-3 border-b bg-destructive/5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    Compromissos Atrasados
+                  </h4>
+                  <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                    {overdueCount}
+                  </span>
+                </div>
+              </div>
+              {overdueItems.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  Nenhum compromisso atrasado 🎉
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto divide-y">
+                  {overdueItems.slice(0, 8).map(item => {
+                    const Icon = TYPE_ICONS[item.tipo] || CalendarIcon;
+                    return (
+                      <button
+                        key={item.id}
+                        className="w-full flex items-start gap-3 p-3 text-left hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setDetailsOpen(true);
+                        }}
+                      >
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                          style={{ backgroundColor: TYPE_COLORS[item.tipo] + '20' }}>
+                          <Icon className="h-4 w-4" style={{ color: TYPE_COLORS[item.tipo] }} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate text-foreground">{item.titulo}</p>
+                          <p className="text-[11px] text-destructive font-medium">
+                            {format(new Date(item.data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                          {item.clienteNome && (
+                            <p className="text-[11px] text-muted-foreground truncate">{item.clienteNome}</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {overdueCount > 0 && (
+                <div className="p-2 border-t">
+                  <Button size="sm" variant="ghost" className="w-full h-8 text-xs font-bold text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={handleShowOverdue}>
+                    Ver todos os atrasados
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
 
+          {/* Overdue badge - clickable */}
           {overdueCount > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-full text-xs font-bold mr-2 border border-destructive/20">
+            <button
+              onClick={handleShowOverdue}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-xl text-xs font-bold border border-destructive/20 hover:bg-destructive hover:text-destructive-foreground transition-all"
+            >
               <AlertCircle className="h-3.5 w-3.5" />
               {overdueCount} {overdueCount === 1 ? 'ATRASADO' : 'ATRASADOS'}
-            </div>
+            </button>
           )}
+
+          <div className="h-6 w-px bg-border mx-1" />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" /> Filtros
+              <Button variant="outline" size="sm" className="gap-2 h-9 rounded-xl text-xs font-semibold">
+                <Filter className="h-3.5 w-3.5" /> Filtros
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -247,7 +343,7 @@ export default function AgendaPage() {
                   onCheckedChange={() => toggleFilter(type)}
                 >
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: TYPE_COLORS[type] }} />
+                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: TYPE_COLORS[type] }} />
                     {type}
                   </div>
                 </DropdownMenuCheckboxItem>
@@ -255,24 +351,56 @@ export default function AgendaPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button variant="outline" onClick={() => window.print()} className="gap-2 no-print">
-            <Printer className="h-4 w-4" /> Imprimir
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-2 no-print h-9 rounded-xl text-xs font-semibold">
+            <Printer className="h-3.5 w-3.5" />
           </Button>
 
-          <Button onClick={() => { setEditingItem(undefined); setInitialDate(new Date()); setModalOpen(true); }} className="gap-2">
-            <Plus className="h-4 w-4" /> Novo Compromisso
+          <Button size="sm" onClick={() => { setEditingItem(undefined); setInitialDate(new Date()); setModalOpen(true); }} className="gap-2 h-9 rounded-xl text-xs font-semibold shadow-md shadow-primary/20">
+            <Plus className="h-3.5 w-3.5" /> Novo
           </Button>
         </div>
       </div>
 
+      {/* ===== SUMMARY CARDS ===== */}
       <AgendaSummary items={items} onFilter={(f) => {
         setAgendaFilter(f);
         if (f !== 'all' && calendarRef.current) {
           calendarRef.current.getApi().changeView('listWeek');
         }
+        if (f === 'all' && calendarRef.current) {
+          calendarRef.current.getApi().changeView('dayGridMonth');
+        }
       }} currentFilter={agendaFilter} />
 
-      <div className="bg-card border rounded-xl p-4 shadow-sm calendar-container print:border-0 print:shadow-none print:p-0">
+      {/* ===== ACTIVE FILTER INDICATOR ===== */}
+      {agendaFilter !== 'all' && (
+        <div className="flex items-center gap-2">
+          <div className={cn(
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border",
+            agendaFilter === 'pending' && "bg-orange-50 text-orange-700 border-orange-200",
+            agendaFilter === 'completed' && "bg-emerald-50 text-emerald-700 border-emerald-200",
+            agendaFilter === 'overdue' && "bg-destructive/10 text-destructive border-destructive/20"
+          )}>
+            {agendaFilter === 'pending' && <><Clock className="h-3 w-3" /> Mostrando: Pendentes</>}
+            {agendaFilter === 'completed' && <><CheckCircle2 className="h-3 w-3" /> Mostrando: Concluídas</>}
+            {agendaFilter === 'overdue' && <><AlertCircle className="h-3 w-3" /> Mostrando: Atrasados</>}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs font-semibold"
+            onClick={() => {
+              setAgendaFilter('all');
+              if (calendarRef.current) calendarRef.current.getApi().changeView('dayGridMonth');
+            }}
+          >
+            Limpar filtro
+          </Button>
+        </div>
+      )}
+
+      {/* ===== CALENDAR ===== */}
+      <div className="bg-card border rounded-2xl p-4 shadow-sm calendar-container print:border-0 print:shadow-none print:p-0">
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
@@ -303,17 +431,20 @@ export default function AgendaPage() {
             const isCompleted = arg.event.extendedProps.status;
             const type = arg.event.extendedProps.tipo as TipoCompromisso;
             const Icon = TYPE_ICONS[type] || CalendarIcon;
+            const isOverdue = !isCompleted && isPast(new Date(arg.event.extendedProps.data_inicio));
 
             return (
               <div className={cn(
                 "px-1.5 py-1 text-[10px] sm:text-xs overflow-hidden truncate font-medium flex items-center gap-1.5",
-                isCompleted && "line-through text-white/70"
+                isCompleted && "line-through text-white/60",
+                isOverdue && "animate-pulse"
               )}>
                 <Icon className="h-3 w-3 flex-shrink-0" />
                 <div className="truncate">
                   <span className="font-bold opacity-80 mr-1">{arg.timeText}</span>
                   {arg.event.title}
                 </div>
+                {isOverdue && <AlertCircle className="h-3 w-3 flex-shrink-0 text-white/90" />}
               </div>
             );
           }}
@@ -344,47 +475,60 @@ export default function AgendaPage() {
       <style>{`
         .fc {
           --fc-button-bg-color: transparent;
-          --fc-button-border-color: #e2e8f0;
-          --fc-button-text-color: #64748b;
-          --fc-button-hover-bg-color: #f1f5f9;
-          --fc-button-hover-border-color: #cbd5e1;
-          --fc-button-active-bg-color: #e2e8f0;
-          --fc-button-active-border-color: #94a3b8;
-          --fc-border-color: #f1f5f9;
+          --fc-button-border-color: hsl(var(--border));
+          --fc-button-text-color: hsl(var(--muted-foreground));
+          --fc-button-hover-bg-color: hsl(var(--muted));
+          --fc-button-hover-border-color: hsl(var(--border));
+          --fc-button-active-bg-color: hsl(var(--primary) / 0.1);
+          --fc-button-active-border-color: hsl(var(--primary) / 0.3);
+          --fc-border-color: hsl(var(--border) / 0.5);
           --fc-page-bg-color: transparent;
-          --fc-today-bg-color: #f1f5f9;
+          --fc-today-bg-color: hsl(var(--primary) / 0.04);
           font-family: inherit;
         }
         .fc .fc-toolbar-title {
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: #1e293b;
+          font-size: 1rem;
+          font-weight: 800;
+          color: hsl(var(--foreground));
+          letter-spacing: -0.02em;
         }
         .fc .fc-button {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           font-weight: 600;
           text-transform: capitalize;
-          padding: 0.4rem 0.8rem;
+          padding: 0.35rem 0.7rem;
           box-shadow: none !important;
+          border-radius: 0.6rem;
         }
         .fc .fc-button-primary:not(:disabled).fc-button-active, 
         .fc .fc-button-primary:not(:disabled):active {
-          background-color: #f1f5f9;
-          color: #020617;
-          border-color: #e2e8f0;
+          background-color: hsl(var(--primary));
+          color: hsl(var(--primary-foreground));
+          border-color: hsl(var(--primary));
         }
         .fc-theme-standard td, .fc-theme-standard th {
-          border: 1px solid #f1f5f9;
+          border: 1px solid hsl(var(--border) / 0.4);
         }
         .fc-event {
           cursor: pointer;
-          border-radius: 6px;
+          border-radius: 8px;
           margin-bottom: 1px;
           border: none !important;
           padding: 1px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .fc-event:hover {
+          filter: brightness(1.1);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
         .fc-h-event .fc-event-main {
           color: white;
+        }
+        .fc-list-event-title a {
+          color: hsl(var(--foreground)) !important;
+        }
+        .fc .fc-list-sticky .fc-list-day > * {
+          background: hsl(var(--muted)) !important;
         }
         @media print {
           .calendar-container {

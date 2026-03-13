@@ -1,13 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Clock, ListTodo, Eye } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle2, Clock, ListTodo, Eye, AlertTriangle, TrendingUp } from "lucide-react";
 import { AgendaItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { isPast } from "date-fns";
 
 interface AgendaSummaryProps {
   items: AgendaItem[];
-  currentFilter?: 'all' | 'pending' | 'completed';
-  onFilter?: (filter: 'all' | 'pending' | 'completed') => void;
+  currentFilter?: 'all' | 'pending' | 'completed' | 'overdue';
+  onFilter?: (filter: 'all' | 'pending' | 'completed' | 'overdue') => void;
 }
 
 export function AgendaSummary({ items, currentFilter = 'all', onFilter }: AgendaSummaryProps) {
@@ -17,83 +18,115 @@ export function AgendaSummary({ items, currentFilter = 'all', onFilter }: Agenda
   const total = todayItems.length;
   const completed = todayItems.filter(item => item.status).length;
   const pending = total - completed;
+  const overdue = items.filter(item => !item.status && isPast(new Date(item.data_inicio))).length;
 
-  const handleFilterClick = (filter: 'all' | 'pending' | 'completed') => {
+  const handleFilterClick = (filter: 'all' | 'pending' | 'completed' | 'overdue') => {
     if (onFilter) {
       onFilter(currentFilter === filter ? 'all' : filter);
     }
   };
 
+  const cards = [
+    {
+      key: 'all' as const,
+      label: 'Hoje',
+      value: total,
+      icon: ListTodo,
+      btnLabel: 'Ver Todas',
+      active: { border: 'border-primary', bg: 'bg-primary/5', iconBg: 'bg-primary/15', iconColor: 'text-primary' },
+      idle: { border: 'border-transparent', bg: 'bg-card', iconBg: 'bg-muted/60', iconColor: 'text-muted-foreground' },
+      btnClass: 'hover:bg-primary hover:text-primary-foreground text-primary',
+      valueColor: 'text-foreground',
+    },
+    {
+      key: 'pending' as const,
+      label: 'Pendentes',
+      value: pending,
+      icon: Clock,
+      btnLabel: 'Ver Lista',
+      active: { border: 'border-orange-400', bg: 'bg-orange-50', iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
+      idle: { border: 'border-transparent', bg: 'bg-card', iconBg: 'bg-orange-50', iconColor: 'text-orange-400' },
+      btnClass: 'hover:bg-orange-500 hover:text-white text-orange-600',
+      valueColor: 'text-orange-600',
+    },
+    {
+      key: 'completed' as const,
+      label: 'Concluídas',
+      value: completed,
+      icon: CheckCircle2,
+      btnLabel: 'Ver Lista',
+      active: { border: 'border-emerald-400', bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600' },
+      idle: { border: 'border-transparent', bg: 'bg-card', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-400' },
+      btnClass: 'hover:bg-emerald-500 hover:text-white text-emerald-600',
+      valueColor: 'text-emerald-600',
+    },
+    {
+      key: 'overdue' as const,
+      label: 'Em Atraso',
+      value: overdue,
+      icon: AlertTriangle,
+      btnLabel: 'Ver Atrasados',
+      active: { border: 'border-destructive', bg: 'bg-destructive/5', iconBg: 'bg-destructive/15', iconColor: 'text-destructive' },
+      idle: { border: 'border-transparent', bg: 'bg-card', iconBg: 'bg-destructive/10', iconColor: 'text-destructive/60' },
+      btnClass: 'hover:bg-destructive hover:text-destructive-foreground text-destructive',
+      valueColor: 'text-destructive',
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <Card className={cn(
-        "transition-all duration-200 border-2",
-        currentFilter === 'all' ? "bg-slate-50 border-slate-400 shadow-md" : "bg-slate-50/50 border-slate-100"
-      )}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600">Total de tarefas hoje</CardTitle>
-          <ListTodo className="h-4 w-4 text-slate-400" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end justify-between">
-            <div className="text-2xl font-bold text-slate-800">{total}</div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-7 text-[10px] gap-1 text-slate-500 hover:bg-slate-600 hover:text-white font-bold uppercase tracking-wider"
-              onClick={() => handleFilterClick('all')}
-            >
-              <Eye className="h-3 w-3" /> Ver Todas
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className={cn(
-        "transition-all duration-200 border-2",
-        currentFilter === 'pending' ? "bg-orange-50 border-orange-400 shadow-md" : "bg-orange-50/50 border-orange-100"
-      )}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-orange-600">Pendentes</CardTitle>
-          <Clock className="h-4 w-4 text-orange-400" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end justify-between">
-            <div className="text-2xl font-bold text-orange-700">{pending}</div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-7 text-[10px] gap-1 text-orange-600 hover:bg-orange-500 hover:text-white font-bold uppercase tracking-wider"
-              onClick={() => handleFilterClick('pending')}
-            >
-              <Eye className="h-3 w-3" /> Ver Lista
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className={cn(
-        "transition-all duration-200 border-2",
-        currentFilter === 'completed' ? "bg-emerald-50 border-emerald-400 shadow-md" : "bg-emerald-50/50 border-emerald-100"
-      )}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-emerald-600">Concluídas</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end justify-between">
-            <div className="text-2xl font-bold text-emerald-700">{completed}</div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-7 text-[10px] gap-1 text-emerald-600 hover:bg-emerald-500 hover:text-white font-bold uppercase tracking-wider"
-              onClick={() => handleFilterClick('completed')}
-            >
-              <Eye className="h-3 w-3" /> Ver Lista
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {cards.map(card => {
+        const isActive = currentFilter === card.key;
+        const style = isActive ? card.active : card.idle;
+        const Icon = card.icon;
+
+        return (
+          <Card
+            key={card.key}
+            className={cn(
+              "relative overflow-hidden transition-all duration-300 border-2 cursor-pointer group",
+              style.border, style.bg,
+              isActive && "shadow-lg ring-1 ring-black/5",
+              !isActive && "hover:shadow-md hover:border-border"
+            )}
+            onClick={() => handleFilterClick(card.key)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center transition-colors", style.iconBg)}>
+                  <Icon className={cn("h-4.5 w-4.5", style.iconColor)} />
+                </div>
+                {card.key === 'overdue' && card.value > 0 && (
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{card.label}</p>
+                <div className="flex items-end justify-between">
+                  <span className={cn("text-3xl font-extrabold tracking-tight", card.valueColor)}>
+                    {card.value}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-7 text-[10px] gap-1 font-bold uppercase tracking-wider rounded-lg transition-all",
+                      card.btnClass
+                    )}
+                    onClick={(e) => { e.stopPropagation(); handleFilterClick(card.key); }}
+                  >
+                    <Eye className="h-3 w-3" /> {card.btnLabel}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
