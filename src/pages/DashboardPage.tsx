@@ -715,7 +715,9 @@ export default function DashboardPage() {
                     size="sm" 
                     className="w-full text-xs gap-1.5 h-8 border-dashed border-primary/50 text-primary hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" 
                     onClick={() => {
-                       setTrackingVendor(usuario.nome); 
+                       const isAdmin = usuario.nivel !== 'Vendas';
+                       setTrackingVendor(usuario.nome);
+                       setTrackingShowAll(isAdmin);
                        setIsTrackingModalOpen(true);
                     }}
                   >
