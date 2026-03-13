@@ -21,6 +21,7 @@ interface AcompanhamentoPedidosModalProps {
   ordensServico?: OrdemServico[];
   clientes?: Cliente[];
   onMetaUpdate: (valorSoma: number) => void;
+  showAll?: boolean; // For admin "Monitorar Geral"
 }
 
 const STATUS_LABELS: Record<string, string> = {
