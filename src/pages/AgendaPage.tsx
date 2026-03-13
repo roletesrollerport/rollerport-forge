@@ -366,11 +366,8 @@ export default function AgendaPage() {
       {/* ===== SUMMARY CARDS ===== */}
       <AgendaSummary items={items} onFilter={(f) => {
         setAgendaFilter(f);
-        if (f !== 'all' && calendarRef.current) {
+        if (calendarRef.current) {
           calendarRef.current.getApi().changeView('listWeek');
-        }
-        if (f === 'all' && calendarRef.current) {
-          calendarRef.current.getApi().changeView('dayGridMonth');
         }
       }} currentFilter={agendaFilter} />
 
