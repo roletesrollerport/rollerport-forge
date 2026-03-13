@@ -70,11 +70,12 @@ export function AcompanhamentoPedidosModal({
 
   // All pedidos for this vendedor using fuzzy matching (loaded immediately)
   const allRelevantPedidos = useMemo(() => {
+    if (showAll) return pedidos; // Admin: show all
     return pedidos.filter((p) => {
       const orc = orcamentos.find((o) => o.id === p.orcamentoId);
       return orc && nameMatch(orc.vendedor, vendedor);
     });
-  }, [pedidos, orcamentos, vendedor]);
+  }, [pedidos, orcamentos, vendedor, showAll]);
 
   // Local instant search filter
   const matchesSearch = (p: Pedido) => {
