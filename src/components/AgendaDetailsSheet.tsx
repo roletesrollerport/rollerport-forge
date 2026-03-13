@@ -29,11 +29,11 @@ interface AgendaDetailsSheetProps {
   onToggleComplete: (item: AgendaItem) => void;
 }
 
-const TYPE_CONFIG = {
-  'Visita': { color: 'text-amber-500', bg: 'bg-amber-50', icon: Calendar },
+const TYPE_CONFIG: Record<string, { color: string; bg: string; icon: any }> = {
+  'Visita Técnica': { color: 'text-amber-500', bg: 'bg-amber-50', icon: Calendar },
   'Ligação': { color: 'text-blue-500', bg: 'bg-blue-50', icon: Phone },
   'Retorno de Orçamento': { color: 'text-violet-500', bg: 'bg-violet-50', icon: History },
-  'Entrega': { color: 'text-emerald-500', bg: 'bg-emerald-50', icon: Clock },
+  'Entrega de Roletes': { color: 'text-emerald-500', bg: 'bg-emerald-50', icon: Clock },
 };
 
 export function AgendaDetailsSheet({ 
