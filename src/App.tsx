@@ -127,9 +127,7 @@ function AppContent() {
     };
 
     const updateLastSeen = async () => {
-      const { error } = await supabase.functions.invoke('chat-api', {
-        body: { action: 'heartbeat', sessionToken },
-      });
+      const { error } = await invokeEdgeFn('chat-api', { action: 'heartbeat', sessionToken });
 
       if (error && await is401SessionError(error)) {
         clearLocalSession();
