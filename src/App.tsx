@@ -74,30 +74,29 @@ function AppContent() {
   useEffect(() => {
     if (loggedUserId && sessionToken) {
       // Validate session server-side
-      supabase.functions.invoke('chat-api', {
-        body: { action: 'validate_session', sessionToken },
-      }).then(({ data, error }) => {
-        if (error || !data?.valid || data?.user_id !== loggedUserId) {
-          clearLocalSession();
-          setChecking(false);
-          return;
-        }
-
-        getById(loggedUserId).then(user => {
-          if (user) {
-            setCurrentUser(user);
-          } else {
+      invokeEdgeFn('chat-api', { action: 'validate_session', sessionToken })
+        .then(({ data, error }) => {
+          if (error || !data?.valid || data?.user_id !== loggedUserId) {
             clearLocalSession();
+            setChecking(false);
+            return;
           }
-          setChecking(false);
+
+          getById(loggedUserId).then(user => {
+            if (user) {
+              setCurrentUser(user);
+            } else {
+              clearLocalSession();
+            }
+            setChecking(false);
+          }).catch(() => {
+            clearLocalSession();
+            setChecking(false);
+          });
         }).catch(() => {
           clearLocalSession();
           setChecking(false);
         });
-      }).catch(() => {
-        clearLocalSession();
-        setChecking(false);
-      });
     } else {
       setChecking(false);
     }
