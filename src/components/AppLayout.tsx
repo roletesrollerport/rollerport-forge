@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw
+  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw, Database
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +27,7 @@ const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo 
   { to: '/chat', label: 'Bate-Papo', icon: MessageSquare, modulo: 'chat' },
   { to: '/ia', label: 'IA', icon: Bot, modulo: 'ia' },
   { to: '/usuarios', label: 'Usuários', icon: UserCog, modulo: 'usuarios' },
+  { to: '/gestao-dados', label: 'Gestão de Dados', icon: Database, modulo: 'gestao-dados' },
 ];
 
 export default function AppLayout({ children, currentUser, onLogout }: { children: React.ReactNode; currentUser: Usuario; onLogout: () => void }) {
@@ -131,14 +132,15 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
 
   const isMaster = currentUser.nivel === 'master';
-  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios'];
+  const isAdmin = currentUser.nivel === 'admin';
+  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios', 'gestao-dados'];
   const userPerms = currentUser.permissoes?.ver || allModulos;
 
-  const visibleNavItems = isMaster
+  const visibleNavItems = isMaster || isAdmin
     ? navItems
     : navItems.filter(item => {
         if (item.modulo === 'chat') return true;
-        if (item.modulo === 'usuarios') return false;
+        if (item.modulo === 'usuarios' || item.modulo === 'gestao-dados') return false;
         return userPerms.includes(item.modulo);
       });
 

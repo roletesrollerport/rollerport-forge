@@ -19,6 +19,7 @@ import ChatPage from "./pages/ChatPage";
 import IAPage from "./pages/IAPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
+import GestaoDadosPage from "./pages/GestaoDadosPage";
 import { useUsuarios, type UsuarioDB } from "./hooks/useUsuarios";
 import { useDataSync } from "./hooks/useDataSync";
 
@@ -168,6 +169,7 @@ function AppContent() {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/ia" element={<IAPage />} />
           <Route path="/usuarios" element={<UsuariosPage />} />
+          <Route path="/gestao-dados" element={<GestaoDadosPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
