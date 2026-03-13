@@ -6,6 +6,7 @@ import { useUsuarios } from '@/hooks/useUsuarios';
 import { usePresenceContext } from '@/contexts/PresenceContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
