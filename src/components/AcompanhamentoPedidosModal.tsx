@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pedido, Orcamento } from '@/lib/types';
-import { store } from '@/lib/store';
+import { Pedido, Orcamento, OrdemServico, Cliente } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Package, Truck, CheckCircle2, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import confetti from 'canvas-confetti';
 import { Input } from '@/components/ui/input';
 import { Search, History, ListFilter } from 'lucide-react';
+import { store } from '@/lib/store';
 
 interface AcompanhamentoPedidosModalProps {
   isOpen: boolean;
@@ -18,6 +18,8 @@ interface AcompanhamentoPedidosModalProps {
   vendedor: string;
   pedidos: Pedido[];
   orcamentos: Orcamento[];
+  ordensServico?: OrdemServico[];
+  clientes?: Cliente[];
   onMetaUpdate: (valorSoma: number) => void;
 }
 
@@ -37,12 +39,22 @@ const STATUS_COLORS: Record<string, string> = {
   ENTREGUE: 'bg-emerald-100 text-emerald-700',
 };
 
+// Fuzzy name match (same logic as DashboardPage)
+function nameMatch(vendedorField: string, userName: string): boolean {
+  const a = (vendedorField || '').trim().toLowerCase();
+  const b = (userName || '').trim().toLowerCase();
+  if (!a || !b) return false;
+  return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+}
+
 export function AcompanhamentoPedidosModal({
   isOpen,
   onOpenChange,
   vendedor,
   pedidos,
   orcamentos,
+  ordensServico: osProp,
+  clientes: clientesProp,
   onMetaUpdate,
 }: AcompanhamentoPedidosModalProps) {
   const { toast } = useToast();
@@ -50,15 +62,15 @@ export function AcompanhamentoPedidosModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [showFullHistory, setShowFullHistory] = useState(false);
 
-  // Pre-load all cross-reference data once
-  const clientes = useMemo(() => store.getClientes(), []);
-  const ordensServico = useMemo(() => store.getOrdensServico(), []);
+  // Use props if available, fallback to store
+  const ordensServico = useMemo(() => osProp && osProp.length > 0 ? osProp : store.getOrdensServico(), [osProp]);
+  const clientes = useMemo(() => clientesProp && clientesProp.length > 0 ? clientesProp : store.getClientes(), [clientesProp]);
 
-  // All pedidos for this vendedor (loaded immediately on open)
+  // All pedidos for this vendedor using fuzzy matching (loaded immediately)
   const allRelevantPedidos = useMemo(() => {
     return pedidos.filter((p) => {
       const orc = orcamentos.find((o) => o.id === p.orcamentoId);
-      return orc && orc.vendedor === vendedor;
+      return orc && nameMatch(orc.vendedor, vendedor);
     });
   }, [pedidos, orcamentos, vendedor]);
 
@@ -67,22 +79,22 @@ export function AcompanhamentoPedidosModal({
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     const orc = orcamentos.find(o => o.id === p.orcamentoId);
-    const os = ordensServico.find(o => o.pedidoId === p.id);
-    const cliente = clientes.find(c => c.nome === p.clienteNome || c.id === p.cliente_id);
+    const os = ordensServico.find((o: any) => o.pedidoId === p.id);
+    const cliente = clientes.find((c: any) => c.nome === p.clienteNome || c.id === p.cliente_id);
 
-    const compradorMatch = cliente?.compradores?.some(comp =>
+    const compradorMatch = cliente?.compradores?.some((comp: any) =>
       comp.nome?.toLowerCase().includes(term) ||
       comp.telefone?.toLowerCase().includes(term) ||
       comp.email?.toLowerCase().includes(term)
     ) || false;
 
-    return p.numero.toLowerCase().includes(term) ||
-      p.clienteNome.toLowerCase().includes(term) ||
+    return p.numero?.toLowerCase().includes(term) ||
+      p.clienteNome?.toLowerCase().includes(term) ||
       (orc?.numero || '').toLowerCase().includes(term) ||
-      (os?.numero || '').toLowerCase().includes(term) ||
-      (cliente?.cnpj || '').toLowerCase().includes(term) ||
-      (cliente?.telefone || '').toLowerCase().includes(term) ||
-      (cliente?.email || '').toLowerCase().includes(term) ||
+      ((os as any)?.numero || '').toLowerCase().includes(term) ||
+      ((cliente as any)?.cnpj || '').toLowerCase().includes(term) ||
+      ((cliente as any)?.telefone || '').toLowerCase().includes(term) ||
+      ((cliente as any)?.email || '').toLowerCase().includes(term) ||
       compradorMatch;
   };
 
@@ -90,6 +102,7 @@ export function AcompanhamentoPedidosModal({
     allRelevantPedidos
       .filter(p => p.status !== 'ENTREGUE' && matchesSearch(p))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [allRelevantPedidos, searchTerm]
   );
 
@@ -97,6 +110,7 @@ export function AcompanhamentoPedidosModal({
     allRelevantPedidos
       .filter(p => p.status === 'ENTREGUE' && matchesSearch(p))
       .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [allRelevantPedidos, searchTerm]
   );
 
@@ -118,7 +132,7 @@ export function AcompanhamentoPedidosModal({
       const { error: pedError } = await supabase
         .from('pedidos')
         .update({
-          data: { ...pedido, status: saveStatus },
+          data: { ...pedido, status: saveStatus, updatedAt: new Date().toISOString() },
           updated_at: new Date().toISOString(),
         })
         .eq('id', pedido.id);
@@ -198,10 +212,9 @@ export function AcompanhamentoPedidosModal({
     { key: 'ENTREGUE', label: 'Entregue' }
   ];
 
-  // Helper to get enriched data for a pedido
   const getEnrichedData = (pedido: Pedido) => {
     const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
-    const os = ordensServico.find(o => o.pedidoId === pedido.id);
+    const os = ordensServico.find((o: any) => o.pedidoId === pedido.id);
     return { orc, os };
   };
 
@@ -210,10 +223,13 @@ export function AcompanhamentoPedidosModal({
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Acompanhamento de Pedidos - {vendedor}</DialogTitle>
+          <DialogDescription>
+            {allRelevantPedidos.length} pedido(s) vinculado(s) • {activePedidos.length} ativo(s) • {deliveredPedidos.length} entregue(s)
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4 pb-4">
-          {/* Search Bar - Filtro instantâneo local */}
+        <div className="space-y-6 mt-2 pb-4">
+          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -224,7 +240,7 @@ export function AcompanhamentoPedidosModal({
             />
           </div>
 
-          {/* ACTIVE PEDIDOS - Tabela */}
+          {/* ACTIVE PEDIDOS */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
               <ListFilter className="h-4 w-4" />
@@ -234,7 +250,11 @@ export function AcompanhamentoPedidosModal({
 
             {activePedidos.length === 0 ? (
               <div className="text-center py-6 bg-muted/20 rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">Nenhum pedido ativo encontrado.</p>
+                <p className="text-sm text-muted-foreground">
+                  {allRelevantPedidos.length === 0 
+                    ? 'Nenhum pedido encontrado para este vendedor.' 
+                    : 'Nenhum pedido ativo encontrado.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -245,7 +265,7 @@ export function AcompanhamentoPedidosModal({
 
                   return (
                     <div key={pedido.id} className="border rounded-lg p-4 bg-card shadow-sm space-y-3 border-l-4 border-l-primary">
-                      {/* Header: Info do pedido em formato tabular */}
+                      {/* Info tabular */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div>
                           <span className="text-muted-foreground block">Orçamento</span>
@@ -257,7 +277,7 @@ export function AcompanhamentoPedidosModal({
                         </div>
                         <div>
                           <span className="text-muted-foreground block">O.S.</span>
-                          <span className="font-semibold">{os?.numero || '—'}</span>
+                          <span className="font-semibold">{(os as any)?.numero || '—'}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground block">Status</span>
@@ -282,11 +302,9 @@ export function AcompanhamentoPedidosModal({
                           className="absolute left-[10%] top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-300 z-0"
                           style={{ width: `${Math.max(0, (displayStepIndex) / (steps.length - 1)) * 80}%` }}
                         />
-
                         {steps.map((step, idx) => {
                           const isActive = displayStepIndex >= idx;
                           const isCurrent = displayStepIndex === idx;
-
                           return (
                             <button
                               key={step.key}
@@ -330,7 +348,7 @@ export function AcompanhamentoPedidosModal({
 
           <div className="h-px bg-muted" />
 
-          {/* HISTORY SECTION - últimos 3 entregues carregados imediatamente */}
+          {/* HISTORY */}
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm font-bold text-muted-foreground uppercase tracking-wider">
               <div className="flex items-center gap-2"><History className="h-4 w-4" /> Histórico de Entregas</div>
@@ -360,7 +378,7 @@ export function AcompanhamentoPedidosModal({
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-xs">Ped. {pedido.numero}</span>
                           {orc && <span className="text-[10px] text-muted-foreground">Orc. {orc.numero}</span>}
-                          {os && <span className="text-[10px] text-blue-600">O.S. {os.numero}</span>}
+                          {os && <span className="text-[10px] text-blue-600">O.S. {(os as any).numero}</span>}
                         </div>
                         <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">{pedido.clienteNome}</span>
                       </div>
