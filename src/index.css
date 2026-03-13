@@ -111,9 +111,27 @@
   aside { display: none !important; }
   header { display: none !important; }
   .fixed { display: none !important; }
+  .no-print { display: none !important; }
   
   /* Make main content fill the page without constraints */
   .flex.h-screen { display: block !important; height: auto !important; overflow: visible !important; }
   .flex-1.flex.flex-col { display: block !important; }
   main { padding: 0 !important; overflow: visible !important; }
+
+  /* Print-only elements */
+  .print-only { 
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 8pt;
+    color: #444;
+    padding: 10px;
+  }
+}
+
+.print-only {
+  display: none;
 }

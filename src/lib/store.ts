@@ -1,7 +1,7 @@
 import type {
   Tubo, Eixo, Conjunto, Revestimento, Encaixe,
   Cliente, Fornecedor, Orcamento, Pedido, OrdemServico, ItemEstoque, Usuario, Produto,
-  Notificacao, MetaVendedor
+  Notificacao, MetaVendedor, AgendaItem
 } from './types';
 
 function load<T>(key: string, fallback: T): T {
@@ -243,7 +243,22 @@ const SEED_PRODUTOS: Produto[] = [
 
 const SEED_USUARIOS: Usuario[] = [
   { id: '1', nome: 'Sistema Rollerport', email: 'gerente@rollerport.com.br', telefone: '(11) 4441-3572', whatsapp: '(11) 94441-3572', login: 'Gerente De sistema', senha: '••••••', nivel: 'master', ativo: true, createdAt: '2025-01-01' },
-  { id: '2', nome: 'Paulo Vendas', email: 'paulo@rollerport.com.br', telefone: '', whatsapp: '', login: 'paulo', senha: '••••••', nivel: 'vendedor', ativo: true, createdAt: '2025-01-10' },
+  { id: '2', nome: 'Paulo Vendas', email: 'paulo@rollerport.com.br', telefone: '', whatsapp: '', login: 'paulo', senha: '••••••', nivel: 'Vendas', ativo: true, createdAt: '2025-01-10' },
+];
+
+const SEED_AGENDA: AgendaItem[] = [
+  {
+    id: '1',
+    titulo: 'Visita Técnica - Polimix',
+    descricao: 'Verificar alinhamento dos roletes de carga na linha 4.',
+    data_inicio: `${new Date().toISOString().split('T')[0]}T10:00:00`,
+    data_fim: `${new Date().toISOString().split('T')[0]}T11:30:00`,
+    tipo: 'Visita',
+    cliente_id: '1',
+    clienteNome: 'Polimix',
+    status: false,
+    createdAt: new Date().toISOString()
+  }
 ];
 
 // ===== Store functions =====
@@ -294,6 +309,9 @@ export const store = {
 
   getMetas: (): MetaVendedor[] => load('rp_metas', []),
   saveMetas: (d: MetaVendedor[]) => save('rp_metas', d),
+
+  getAgenda: (): AgendaItem[] => load('rp_agenda', SEED_AGENDA),
+  saveAgenda: (d: AgendaItem[]) => save('rp_agenda', d),
 
   getTaxaConversao: (): number => load('rp_taxa_conversao', 0),
   saveTaxaConversao: (v: number) => save('rp_taxa_conversao', v),

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 import { useCustos } from '@/hooks/useCustos';
@@ -8,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History,
-  FileText, Mail, Settings2 as SettingsIcon, Check, PlusCircle
+  FileText, Mail, Settings2 as SettingsIcon, Check, PlusCircle,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
@@ -96,6 +98,7 @@ const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 type View = 'list' | 'form' | 'view' | 'print';
 
 export default function OrcamentosPage() {
+  const navigate = useNavigate();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [view, setView] = useState<View>('list');
   const [viewOrc, setViewOrc] = useState<Orcamento | null>(null);
@@ -1714,6 +1717,13 @@ export default function OrcamentosPage() {
                     <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Visualizar"><Eye className="h-4 w-4" /></button>
                     <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
                     <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
+                    <button 
+                      onClick={() => navigate('/agenda', { state: { followUp: { clienteId: o.clienteId, orcNumero: o.numero } } })} 
+                      className="p-1 rounded hover:bg-muted text-violet-500" 
+                      title="Agendar Follow-up"
+                    >
+                      <Calendar className="h-4 w-4" />
+                    </button>
                     <button onClick={() => convertToPedido(o)} className="p-1 rounded hover:bg-muted text-primary" title="Transformar em Pedido"><ShoppingCart className="h-4 w-4" /></button>
                     <button onClick={() => deleteOrcamento(o.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                   </div>

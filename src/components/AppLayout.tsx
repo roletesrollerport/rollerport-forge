@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
-  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw, Database
+  Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw, Database,
+  Calendar
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import { usePresence } from '@/hooks/usePresence';
 import { PresenceContext } from '@/contexts/PresenceContext';
+import { RealTimeClock } from '@/components/RealTimeClock';
 
 const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
   { to: '/', label: 'Início', icon: Home, modulo: 'inicio' },
@@ -27,6 +29,7 @@ const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo 
   { to: '/chat', label: 'Bate-Papo', icon: MessageSquare, modulo: 'chat' },
   { to: '/ia', label: 'IA', icon: Bot, modulo: 'ia' },
   { to: '/usuarios', label: 'Usuários', icon: UserCog, modulo: 'usuarios' },
+  { to: '/agenda', label: 'Agenda', icon: Calendar, modulo: 'agenda' },
   { to: '/gestao-dados', label: 'Gestão de Dados', icon: Database, modulo: 'gestao-dados' },
 ];
 
@@ -133,7 +136,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
 
   const isMaster = currentUser.nivel === 'master';
   const isAdmin = currentUser.nivel === 'admin';
-  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios', 'gestao-dados'];
+  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios', 'agenda', 'gestao-dados'];
   const userPerms = currentUser.permissoes?.ver || allModulos;
 
   const visibleNavItems = isMaster || isAdmin
@@ -296,7 +299,12 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           <button className="lg:hidden" onClick={() => setMobileOpen(true)}>
             <Menu className="h-5 w-5" />
           </button>
+          
           <div className="flex-1" />
+
+          <div className="hidden md:block">
+            <RealTimeClock />
+          </div>
 
           <div className="relative flex items-center gap-1">
             <button 
@@ -389,6 +397,11 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         </PresenceContext.Provider>
       </div>
 
+
+      {/* Print-only timestamp */}
+      <div className="print-only">
+        <p>Documento gerado em: <RealTimeClock className="inline-flex bg-transparent border-none p-0 shadow-none text-current font-sans text-[8pt]" /></p>
+      </div>
 
       {/* Chat Widget */}
       <ChatWidget

@@ -242,7 +242,7 @@ export interface ItemEstoque {
 export type NivelAcesso = 'master' | 'admin' | 'SEO' | 'Administrador' | 'Vendas' | 'Estoque' | 'Produção';
 export type Genero = 'M' | 'F';
 
-export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'ia' | 'usuarios' | 'gestao-dados';
+export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'ia' | 'usuarios' | 'agenda' | 'gestao-dados';
 
 export interface PermissoesUsuario {
   ver: PermissaoModulo[];
@@ -279,4 +279,20 @@ export interface Notificacao {
 export interface MetaVendedor {
   vendedor: string;
   metaMensal: number;
+}
+
+// ======= AGENDA & CRM =======
+export type TipoCompromisso = 'Visita' | 'Ligação' | 'Retorno de Orçamento' | 'Entrega';
+
+export interface AgendaItem {
+  id: string;
+  titulo: string;
+  descricao: string;
+  data_inicio: string;
+  data_fim: string;
+  tipo: TipoCompromisso;
+  cliente_id?: string;
+  clienteNome?: string;
+  status: boolean;
+  createdAt: string;
 }
