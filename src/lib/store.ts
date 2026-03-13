@@ -310,7 +310,16 @@ export const store = {
   getMetas: (): MetaVendedor[] => load('rp_metas', []),
   saveMetas: (d: MetaVendedor[]) => save('rp_metas', d),
 
-  getAgenda: (): AgendaItem[] => load('rp_agenda', SEED_AGENDA),
+  getAgenda: (): AgendaItem[] => {
+    const raw = load('rp_agenda', SEED_AGENDA);
+    // Deduplicate by id to prevent phantom duplicates from stale seeds
+    const seen = new Set<string>();
+    return raw.filter(item => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  },
   saveAgenda: (d: AgendaItem[]) => save('rp_agenda', d),
 
   getTaxaConversao: (): number => load('rp_taxa_conversao', 0),
