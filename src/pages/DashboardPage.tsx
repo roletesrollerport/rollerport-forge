@@ -15,7 +15,9 @@ import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
   ClipboardList,
-  Package
+  Package,
+  Check,
+  Edit2
 } from 'lucide-react';
 import VendorReportView from '@/components/VendorReportView';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
@@ -109,15 +111,19 @@ function StatCard({
 /* ------------------------------------------------------------------ */
 /*  Status progress bar                                                */
 /* ------------------------------------------------------------------ */
-function StatusBar({ label, value, max, color, extra, onClick }: { label: string; value: number; max: number; color: string; extra?: string; onClick?: (e?: React.MouseEvent) => void }) {
+function StatusBar({ label, value, max, color, extra, onClick, hideValues }: { label: string; value: number; max: number; color: string; extra?: string; onClick?: (e?: React.MouseEvent) => void, hideValues?: boolean }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
-    <button onClick={onClick} className="flex items-center gap-3 text-xs w-full hover:bg-muted/30 rounded px-1 py-0.5 transition-colors">
-      <span className="w-28 text-muted-foreground truncate text-left">{label}</span>
+    <div onClick={onClick} className={`flex items-center gap-3 text-xs w-full px-1 py-0.5 transition-colors ${onClick ? 'hover:bg-muted/30 rounded cursor-pointer' : ''}`}>
+      {label && <span className="w-28 text-muted-foreground truncate text-left">{label}</span>}
       <div className="flex-1"><Progress value={pct} className={`h-2 ${color}`} /></div>
-      <span className="w-8 text-right font-mono font-medium">{value}</span>
-      {extra && <span className="w-12 text-right text-[10px] text-muted-foreground">{extra}</span>}
-    </button>
+      {!hideValues && (
+        <>
+          <span className="w-8 text-right font-mono font-medium">{value}</span>
+          {extra && <span className="w-12 text-right text-[10px] text-muted-foreground">{extra}</span>}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -143,7 +149,7 @@ export default function DashboardPage() {
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
-  const isMaster = currentUser?.nivel === 'master';
+  const isMaster = currentUser?.nivel === 'master' || currentUser?.nivel === 'adm/dono' || currentUser?.nivel === 'SEO' || currentUser?.nivel === 'admin';
   const currentUserName = currentUser?.nome || '';
   const { onlineUserIds } = usePresenceContext();
 
@@ -594,8 +600,14 @@ export default function DashboardPage() {
     const isOnline = onlineUserIds.has(usuario.id);
     const userPeds = getUserPeds(usuario.nome);
     const meta = metas.find(m => m.vendedor === usuario.nome);
-    const totalVendido = meta?.valorRealizado || 0; // Use DB saved value instead of calculating manually from full history
-    const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
+    
+    // CALCULO DE META: Apenas pedidos com status 'ENTREGUE'
+    const totalVendido = userPeds
+      .filter(p => p.status === 'ENTREGUE')
+      .reduce((acc, p) => acc + (p.valorTotal || 0), 0);
+      
+    const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 1000) : 0; // Allowing > 100% display but cap if needed for bar
+    const displayPct = Math.min(metaPct, 100);
 
     return (
       <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
@@ -626,80 +638,102 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Meta do Mês (Apenas para Vendas) */}
-          {usuario.nivel === 'Vendas' && (
-            <div className="text-xs space-y-1">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground font-medium">Meta do Mês</span>
-          {isMaster && editingMeta?.vendedor === usuario.nome ? (
-                <div className="flex items-center gap-1">
-                  <Input 
-                    type="text" 
-                    inputMode="numeric"
-                    className="h-6 w-28 text-xs px-1" 
-                    value={formatCurrencyInput(editingMeta.valor)} 
-                    onChange={e => {
-                      const raw = e.target.value.replace(/\D/g, '');
-                      const cents = parseInt(raw || '0', 10);
-                      setEditingMeta({ ...editingMeta, valor: cents / 100 });
-                    }} 
-                    autoFocus 
-                  />
-                  <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80"><Save className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+          <CardContent className="space-y-4 pt-4">
+            {/* Meta do Mês (Apenas para Vendas) */}
+            {usuario.nivel === 'Vendas' && (
+              <div className="space-y-3 bg-muted/30 p-3 rounded-lg border border-orange-100/50">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Meta do Mês</p>
+                    <div className="flex items-center gap-2 group/edit">
+                      {isMaster && editingMeta?.vendedor === usuario.nome ? (
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="text" 
+                            inputMode="numeric"
+                            className="h-8 w-32 font-bold text-lg px-2" 
+                            value={formatCurrencyInput(editingMeta.valor)} 
+                            onChange={e => {
+                              const raw = e.target.value.replace(/\D/g, '');
+                              const cents = parseInt(raw || '0', 10);
+                              setEditingMeta({ ...editingMeta, valor: cents / 100 });
+                            }} 
+                            autoFocus 
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80 bg-success/10 p-1 rounded-sm"><Check className="h-3 w-3" /></button>
+                            <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground bg-muted p-1 rounded-sm"><X className="h-3 w-3" /></button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-xl font-black text-foreground">
+                            {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}
+                          </p>
+                          {isMaster && (
+                            <button 
+                              onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} 
+                              className="p-1.5 rounded-full hover:bg-orange-100 text-orange-600 transition-colors"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Realizado</p>
+                    <p className="text-lg font-bold text-orange-600">{fmt(totalVendido)}</p>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <strong>{meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}</strong>
-                  {isMaster && <button onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} className="text-muted-foreground hover:text-primary"><Edit className="h-3.5 w-3.5" /></button>}
-                </div>
-              )}
-            </div>
-            {meta && meta.metaMensal > 0 && (
-              <>
-                <div className="flex items-center gap-2">
-                  <Progress value={metaPct} className="h-2 flex-1" />
-                  <span className="text-[11px] font-mono font-medium">{metaPct.toFixed(0)}%</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">{fmt(totalVendido)} de {fmt(meta.metaMensal)}</p>
-              </>
-              )}
-            </div>
-          )}
 
-          {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
-          <div className="flex flex-col gap-2 pt-1">
-            <div className="flex gap-2">
-              {(isMaster || usuario.id === loggedUserId) && (
-                <>
-                  <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
-                    <Eye className="h-3.5 w-3.5" /> Ver Relatório
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
-                    <Printer className="h-3.5 w-3.5" /> Imprimir
-                  </Button>
-                </>
-              )}
-            </div>
-            
-            {/* Acompanhar Pedidos Button */}
-            {(isMaster || (usuario.id === loggedUserId && usuario.nivel === 'Vendas')) && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full text-xs gap-1.5 border-dashed border-primary/50 text-primary hover:bg-red-600 hover:text-white hover:border-red-600 focus:bg-red-600 focus:text-white transition-colors" 
-                  onClick={() => {
-                     setTrackingVendor(usuario.nome); 
-                     setIsTrackingModalOpen(true);
-                  }}
-                >
-                  <Package className="h-3.5 w-3.5" /> 
-                  Acompanhar Pedidos
-                </Button>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-bold">
+                    <span className="text-muted-foreground">Progresso</span>
+                    <span className="text-orange-600">{meta && meta.metaMensal > 0 ? ((totalVendido / meta.metaMensal) * 100).toFixed(1) : 0}%</span>
+                  </div>
+                  <Progress value={metaPct} className="h-2 [&>div]:bg-orange-500 bg-orange-100" />
+                </div>
+              </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+
+            {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
+            <div className="flex flex-col gap-2 pt-1 border-t mt-4 pt-4">
+              <div className="flex gap-2">
+                {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
+                 (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
+                  <>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+                      <Eye className="h-3.5 w-3.5" /> Ver Relatório
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+                      <Printer className="h-3.5 w-3.5" /> Imprimir
+                    </Button>
+                  </>
+                )}
+              </div>
+              
+              {/* Acompanhar Pedidos Button (Strictly for Vendas and Management) */}
+              {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
+               (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs gap-1.5 border-dashed border-primary/50 text-primary hover:bg-red-600 hover:text-white hover:border-red-600 focus:bg-red-600 focus:text-white transition-colors" 
+                    onClick={() => {
+                       setTrackingVendor(usuario.nome); 
+                       setIsTrackingModalOpen(true);
+                    }}
+                  >
+                    <Package className="h-3.5 w-3.5" /> 
+                    {usuario.nivel === 'Vendas' ? 'Acompanhar Pedidos' : 'Monitorar Geral'}
+                  </Button>
+                )}
+            </div>
+          </CardContent>
+        </Card>
     );
   };
 
@@ -787,43 +821,56 @@ export default function DashboardPage() {
       {/* Espaço de 2 linhas */}
       <div className="h-8" />
 
-      {/* 3 Cards de Status - clicáveis */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 4 Cards de Status - clicáveis */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
           <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
+            <h2 className="font-semibold flex items-center gap-2 text-sm"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
           </CardHeader>
           <CardContent className="space-y-3">
             <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
             <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
             <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
-            <StatusBar label="Cancelado" value={globalOrc.cancelado} max={globalOrc.total} color="[&>div]:bg-destructive" extra={avgDays(orcByStatus('REPROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=REPROVADO'); }} />
           </CardContent>
         </Card>
 
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos')}>
           <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
+            <h2 className="font-semibold flex items-center gap-2 text-sm"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
           </CardHeader>
           <CardContent className="space-y-3">
             <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
-            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
             <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
-            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('ENTREGUE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=ENTREGUE'); }} />
+            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
           </CardContent>
         </Card>
 
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/producao')}>
           <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
+            <h2 className="font-semibold flex items-center gap-2 text-sm"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
           </CardHeader>
           <CardContent className="space-y-3">
             <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
             <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
             <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
-            <StatusBar label="Entregue" value={globalOs.entregue} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
           </CardContent>
         </Card>
+
+        {/* CARD PEDIDOS ENTREGUES */}
+        <StatCard 
+          icon={CheckCircle} 
+          label="Pedidos Entregues" 
+          value={data.pedidos.filter((p: any) => p.status === 'ENTREGUE').length} 
+          color="bg-success/10 text-success" 
+          onViewAll={() => navigate('/pedidos?status=ENTREGUE')}
+          items={data.pedidos
+            .filter((p: any) => p.status === 'ENTREGUE')
+            .slice(-3).reverse()
+            .map((p: any) => {
+              const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
+              return { id: p.id, label: `Ped. ${p.numero}`, user: p.vendedor || orc?.vendedor || 'Sistema' };
+            })}
+        />
       </div>
 
       {/* Espaço de 2 linhas */}
@@ -876,8 +923,42 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dbUsuarios.filter(u => u.ativo).map(u => renderUserCard(u))}
+          <div className="space-y-8">
+            {/* 1ª Fileira: Gestão e Estratégia (SEO, administrador, adm/dono) */}
+            {(dbUsuarios.filter(u => u.ativo && u.nivel !== 'master' && (u.nivel === 'SEO' || u.nivel === 'administrador' || u.nivel === 'adm/dono' || u.nivel === 'admin' || u.nivel === 'Administrador')).length > 0) && (
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Gestão e Estratégia</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dbUsuarios
+                    .filter(u => u.ativo && u.nivel !== 'master' && (u.nivel === 'SEO' || u.nivel === 'administrador' || u.nivel === 'adm/dono' || u.nivel === 'admin' || u.nivel === 'Administrador'))
+                    .map(u => renderUserCard(u))}
+                </div>
+              </div>
+            )}
+
+            {/* 2ª Fileira: Equipe de Vendas */}
+            {(dbUsuarios.filter(u => u.ativo && u.nivel !== 'master' && u.nivel === 'Vendas').length > 0) && (
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Equipe de Vendas</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dbUsuarios
+                    .filter(u => u.ativo && u.nivel !== 'master' && u.nivel === 'Vendas')
+                    .map(u => renderUserCard(u))}
+                </div>
+              </div>
+            )}
+
+            {/* 3ª Fileira: Equipe de Produção (Produção e Estoque) */}
+            {(dbUsuarios.filter(u => u.ativo && u.nivel !== 'master' && u.nivel !== 'Vendas' && u.nivel !== 'SEO' && u.nivel !== 'administrador' && u.nivel !== 'adm/dono' && u.nivel !== 'admin' && u.nivel !== 'Administrador').length > 0) && (
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Equipe de Produção</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dbUsuarios
+                    .filter(u => u.ativo && u.nivel !== 'master' && u.nivel !== 'Vendas' && u.nivel !== 'SEO' && u.nivel !== 'administrador' && u.nivel !== 'adm/dono' && u.nivel !== 'admin' && u.nivel !== 'Administrador')
+                    .map(u => renderUserCard(u))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Pedido, Orcamento } from '@/lib/types';
 import { store } from '@/lib/store';
 import { formatCurrency } from '@/lib/utils';
@@ -8,6 +9,8 @@ import { Package, Truck, CheckCircle2, ChevronRight, MessageCircle } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import confetti from 'canvas-confetti';
+import { Input } from '@/components/ui/input';
+import { Search, History, ListFilter } from 'lucide-react';
 
 interface AcompanhamentoPedidosModalProps {
   isOpen: boolean;
@@ -28,17 +31,36 @@ export function AcompanhamentoPedidosModal({
 }: AcompanhamentoPedidosModalProps) {
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFullHistory, setShowFullHistory] = useState(false);
 
-  // Filter only active orders for the vendor
-  const pedidosAtivos = pedidos.filter((p) => {
-    // Check if the related budget belongs to the vendor
-    const orc = orcamentos.find((o) => o.id === p.orcamentoId);
-    if (!orc || orc.vendedor !== vendedor) return false;
+  // Helper to check if a pedido matches the search term
+  const matchesSearch = (p: Pedido) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    const orc = orcamentos.find(o => o.id === p.orcamentoId);
+    const os = store.getOrdensServico().find(o => o.pedidoId === p.id);
     
-    // Filter out delivered or cancelled
-    // return p.status !== 'ENTREGUE'; // We want to see them to mark as delivered or revert
-    return true; 
-  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return p.numero.toLowerCase().includes(term) || 
+           p.clienteNome.toLowerCase().includes(term) ||
+           (orc?.numero || '').toLowerCase().includes(term) ||
+           (os?.numero || '').toLowerCase().includes(term);
+  };
+
+  const allRelevantPedidos = pedidos.filter((p) => {
+    const orc = orcamentos.find((o) => o.id === p.orcamentoId);
+    return orc && orc.vendedor === vendedor;
+  });
+
+  const activePedidos = allRelevantPedidos
+    .filter(p => p.status !== 'ENTREGUE' && matchesSearch(p))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const deliveredPedidos = allRelevantPedidos
+    .filter(p => p.status === 'ENTREGUE' && matchesSearch(p))
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+
+  const displayedHistory = showFullHistory ? deliveredPedidos : deliveredPedidos.slice(0, 3);
 
   const handleStatusChange = async (pedido: Pedido, newStatus: string) => {
     if (updatingId) return;
@@ -159,84 +181,165 @@ export function AcompanhamentoPedidosModal({
           <DialogTitle>Acompanhamento de Pedidos - {vendedor}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 mt-4">
-          {pedidosAtivos.length === 0 ? (
-             <p className="text-center text-muted-foreground py-8">Nenhum pedido ativo no momento.</p>
-          ) : (
-            pedidosAtivos.map(pedido => {
-              const currentStepIndex = steps.findIndex(s => s.key === pedido.status);
-              // Fallback for PENDENTE ou CONFIRMADO
-              const displayStepIndex = currentStepIndex === -1 && pedido.status !== 'ENTREGUE' ? 0 : currentStepIndex;
+        <div className="space-y-6 mt-4 pb-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por Pedido, Orçamento ou O.S..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-11"
+            />
+          </div>
 
-              return (
-                <div key={pedido.id} className="border rounded-lg p-4 bg-card shadow-sm space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-semibold text-lg">Pedido {pedido.numero}</h4>
-                      <p className="text-sm text-muted-foreground">{pedido.clienteNome}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-mono font-medium text-lg">{formatCurrency(pedido.valorTotal)}</p>
-                      <p className="text-xs text-muted-foreground">Previsão: {pedido.dataEntrega}</p>
-                    </div>
-                  </div>
+          {/* ACTIVE PEDIDOS */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+               <ListFilter className="h-4 w-4" />
+               Acompanhamento Ativo
+               <Badge variant="outline" className="ml-2 font-mono">{activePedidos.length}</Badge>
+            </div>
+            
+            {activePedidos.length === 0 ? (
+               <div className="text-center py-6 bg-muted/20 rounded-lg border border-dashed">
+                 <p className="text-sm text-muted-foreground">Nenhum pedido ativo encontrado.</p>
+               </div>
+            ) : (
+              activePedidos.map(pedido => {
+                const currentStepIndex = steps.findIndex(s => s.key === pedido.status);
+                const displayStepIndex = currentStepIndex === -1 ? 0 : currentStepIndex;
+                const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
+                const os = store.getOrdensServico().find(o => o.pedidoId === pedido.id);
 
-                  {/* Stepper */}
-                  <div className="flex items-center justify-between relative pt-2">
-                    <div className="absolute left-[10%] top-1/2 -translate-y-1/2 w-[80%] h-1 bg-muted rounded-full z-0" />
-                    <div 
-                      className="absolute left-[10%] top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-300 z-0"
-                      style={{ width: `${Math.max(0, (displayStepIndex) / (steps.length - 1)) * 80}%` }}
-                    />
-                    
-                    {steps.map((step, idx) => {
-                      const isActive = displayStepIndex >= idx;
-                      const isCurrent = displayStepIndex === idx;
+                return (
+                  <div key={pedido.id} className="border rounded-lg p-4 bg-card shadow-sm space-y-4 border-l-4 border-l-primary">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-lg">Pedido {pedido.numero}</h4>
+                          {orc && <Badge variant="outline" className="text-[10px] h-5">Orc. {orc.numero}</Badge>}
+                          {os && <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">O.S. {os.numero}</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{pedido.clienteNome}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono font-medium text-lg text-primary">{formatCurrency(pedido.valorTotal)}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Previsão: {pedido.dataEntrega}</p>
+                      </div>
+                    </div>
+
+                    {/* Stepper */}
+                    <div className="flex items-center justify-between relative pt-2">
+                      <div className="absolute left-[10%] top-1/2 -translate-y-1/2 w-[80%] h-1 bg-muted rounded-full z-0" />
+                      <div 
+                        className="absolute left-[10%] top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-300 z-0"
+                        style={{ width: `${Math.max(0, (displayStepIndex) / (steps.length - 1)) * 80}%` }}
+                      />
                       
-                      return (
-                        <button
-                          key={step.key}
-                          disabled={updatingId === pedido.id}
-                          onClick={() => handleStatusChange(pedido, step.key)}
-                          className={`relative z-10 flex flex-col items-center gap-2 group outline-none ${updatingId === pedido.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                        >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 shadow-sm border-2 
-                            ${isActive ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-muted-foreground/30 text-muted-foreground'}
-                            ${isCurrent ? 'ring-4 ring-primary/20' : ''}
-                            group-hover:ring-2 group-hover:ring-primary/50
-                          `}>
-                            {idx === 0 && <Package className="w-4 h-4" />}
-                            {idx === 1 && <Truck className="w-4 h-4" />}
-                            {idx === 2 && <Truck className="w-4 h-4" />}
-                            {idx === 3 && <CheckCircle2 className="w-4 h-4" />}
-                          </div>
-                          <span className={`text-xs font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                            {step.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                      {steps.map((step, idx) => {
+                        const isActive = displayStepIndex >= idx;
+                        const isCurrent = displayStepIndex === idx;
+                        
+                        return (
+                          <button
+                            key={step.key}
+                            disabled={updatingId === pedido.id}
+                            onClick={() => handleStatusChange(pedido, step.key)}
+                            className={`relative z-10 flex flex-col items-center gap-2 group outline-none ${updatingId === pedido.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 shadow-sm border-2 
+                              ${isActive ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-muted-foreground/30 text-muted-foreground'}
+                              ${isCurrent ? 'ring-4 ring-primary/20' : ''}
+                            `}>
+                              {idx === 0 && <Package className="w-4 h-4" />}
+                              {idx === 1 && <Truck className="w-4 h-4" />}
+                              {idx === 2 && <Truck className="w-4 h-4" />}
+                              {idx === 3 && <CheckCircle2 className="w-4 h-4" />}
+                            </div>
+                            <span className={`text-[10px] whitespace-nowrap font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                              {step.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  {/* WhatsApp Action */}
-                  {pedido.status === 'ENTREGUE' && (
-                    <div className="pt-2 flex justify-end animate-in fade-in slide-in-from-top-2">
-                      <Button 
-                        variant="outline" 
+                    <div className="pt-2">
+                       <Button 
+                        variant="default" 
                         size="sm" 
-                        className="gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700 focus:ring-green-500"
-                        onClick={() => notifyWhatsApp(pedido)}
+                        className="w-full gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-sm h-10"
+                        disabled={updatingId === pedido.id}
+                        onClick={() => handleStatusChange(pedido, 'ENTREGUE')}
                       >
-                        <MessageCircle className="w-4 h-4" />
-                        Avisar Cliente via WhatsApp
+                        <CheckCircle2 className="w-4 h-4" />
+                        Confirmar Entrega ao Cliente
                       </Button>
                     </div>
-                  )}
+                  </div>
+                );
+              })
+            )}
+          </div>
 
-                </div>
-              );
-            })
-          )}
+          <div className="h-px bg-muted" />
+
+          {/* HISTORY SECTION */}
+          <div className="space-y-3">
+             <div className="flex items-center justify-between text-sm font-bold text-muted-foreground uppercase tracking-wider">
+               <div className="flex items-center gap-2"><History className="h-4 w-4" /> Histórico de Entregas</div>
+               {deliveredPedidos.length > 3 && (
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   className="text-[10px] h-6 px-2 hover:bg-primary/10 text-primary"
+                   onClick={() => setShowFullHistory(!showFullHistory)}
+                 >
+                   {showFullHistory ? 'Ver Menos' : 'Ver Tudo'}
+                 </Button>
+               )}
+            </div>
+
+            {displayedHistory.length === 0 ? (
+               <div className="text-center py-4 bg-muted/10 rounded-lg">
+                 <p className="text-xs text-muted-foreground italic">Nenhuma entrega registrada ainda.</p>
+               </div>
+            ) : (
+              <div className="space-y-2">
+                {displayedHistory.map(pedido => {
+                  const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
+                  return (
+                    <div key={pedido.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 group hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs">Pedido {pedido.numero}</span>
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[150px]">{pedido.clienteNome}</span>
+                        </div>
+                        <div className="flex gap-2 mt-0.5">
+                           {orc && <span className="text-[10px] text-muted-foreground">Orc: {orc.numero}</span>}
+                           <span className="text-[10px] text-success font-medium">Entregue via WhatsApp</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-xs font-mono font-bold text-muted-foreground">{formatCurrency(pedido.valorTotal)}</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 rounded-full border-green-200 text-green-600 hover:bg-green-50"
+                          onClick={() => notifyWhatsApp(pedido)}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

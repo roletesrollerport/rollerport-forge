@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar } from 'lucide-react';
+import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, Truck } from 'lucide-react';
 import { toast } from 'sonner';
+import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import logo from '@/assets/logo.png';
 
 const daysSince = (dateStr: string): number => {
@@ -166,6 +167,8 @@ export default function PedidosPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Pedido | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+  const [trackingVendor, setTrackingVendor] = useState('');
 
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
@@ -452,6 +455,18 @@ export default function PedidosPage() {
                       >
                         <Calendar className="h-4 w-4" />
                       </button>
+                      <button 
+                        onClick={() => {
+                          const orc = orcamentos.find(o => o.id === p.orcamentoId);
+                          const vendor = p.vendedor || orc?.vendedor || 'Sistema';
+                          setTrackingVendor(vendor);
+                          setIsTrackingOpen(true);
+                        }} 
+                        className="p-1.5 rounded hover:bg-muted text-primary" 
+                        title="Rastrear Pedido"
+                      >
+                        <Truck className="h-4 w-4" />
+                      </button>
                       <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
                       <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                     </div>
@@ -484,6 +499,15 @@ export default function PedidosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AcompanhamentoPedidosModal 
+        isOpen={isTrackingOpen}
+        onOpenChange={setIsTrackingOpen}
+        vendedor={trackingVendor}
+        pedidos={pedidos}
+        orcamentos={orcamentos}
+        onMetaUpdate={() => {}} // Not strictly needed here as we don't show meta cards in PedidosPage
+      />
     </div>
   );
 }
