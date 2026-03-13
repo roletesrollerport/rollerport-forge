@@ -38,14 +38,14 @@ import {
 import { isBefore, isPast, parseISO } from 'date-fns';
 
 const TYPE_COLORS: Record<TipoCompromisso, string> = {
-  'Visita': '#f59e0b', // Amber 500
+  'Visita Técnica': '#f59e0b', // Amber 500
   'Ligação': '#3b82f6', // Blue 500
   'Retorno de Orçamento': '#8b5cf6', // Violet 500
   'Entrega de Roletes': '#10b981', // Emerald 500
 };
 
 const TYPE_ICONS: Record<TipoCompromisso, any> = {
-  'Visita': Briefcase,
+  'Visita Técnica': Briefcase,
   'Ligação': Phone,
   'Retorno de Orçamento': History,
   'Entrega de Roletes': Truck,
@@ -61,7 +61,7 @@ export default function AgendaPage() {
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
   const [editingItem, setEditingItem] = useState<AgendaItem | undefined>();
   const [initialDate, setInitialDate] = useState<Date | undefined>();
-  const [filterTypes, setFilterTypes] = useState<TipoCompromisso[]>(['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes']);
+  const [filterTypes, setFilterTypes] = useState<TipoCompromisso[]>(['Visita Técnica', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes']);
   const [agendaFilter, setAgendaFilter] = useState<'all' | 'pending' | 'completed'>('all');
   
   const calendarRef = useRef<FullCalendar>(null);
@@ -240,7 +240,7 @@ export default function AgendaPage() {
             <DropdownMenuContent align="end" className="w-56">
               <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipos de Compromisso</div>
               <DropdownMenuSeparator />
-              {(['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes'] as TipoCompromisso[]).map(type => (
+              {(['Visita Técnica', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes'] as TipoCompromisso[]).map(type => (
                 <DropdownMenuCheckboxItem
                   key={type}
                   checked={filterTypes.includes(type)}

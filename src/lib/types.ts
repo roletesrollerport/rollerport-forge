@@ -173,6 +173,7 @@ export interface Pedido {
   clienteNome: string;
   dataEntrega: string;
   status: StatusPedido;
+  cliente_id?: string;
   valorTotal: number;
   createdAt: string;
   motivoCancelamento?: string;
@@ -282,7 +283,7 @@ export interface MetaVendedor {
 }
 
 // ======= AGENDA & CRM =======
-export type TipoCompromisso = 'Visita' | 'Ligação' | 'Retorno de Orçamento' | 'Entrega de Roletes';
+export type TipoCompromisso = 'Visita Técnica' | 'Ligação' | 'Retorno de Orçamento' | 'Entrega de Roletes';
 
 export interface AgendaItem {
   id: string;
