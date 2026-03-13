@@ -129,13 +129,10 @@ export function AcompanhamentoPedidosModal({
         // Add to Meta
         onMetaUpdate(pedido.valorTotal);
 
-        // Log entrega (ignore errors if table doesn't exist)
-        await supabase.from('logs_entrega' as any).insert({
-          pedido_id: pedido.id,
-          vendedor: vendedor,
-          acao: 'ENTREGUE',
-          valor: pedido.valorTotal
-        } as any).then(() => {}).catch(() => {});
+        // Log entrega
+        try { await (supabase.from as any)('logs_entrega').insert({
+          pedido_id: pedido.id, vendedor, acao: 'ENTREGUE', valor: pedido.valorTotal
+        }); } catch {}
 
       } else if (isRevertingFromEntregue) {
         // Subtract from Meta
