@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { NivelAcesso, Genero, PermissoesUsuario } from '@/lib/types';
 
+const SESSION_EXPIRED_EVENT = 'rp-session-expired';
+
 export interface UsuarioDB {
   id: string;
   nome: string;
@@ -36,6 +38,38 @@ function parseUsuario(row: any): UsuarioDB {
   };
 }
 
+function clearSessionAndNotify() {
+  localStorage.removeItem('rp_logged_user');
+  localStorage.removeItem('rp_session_token');
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+}
+
+async function readEdgeErrorMessage(error: any): Promise<string | null> {
+  if (!error) return null;
+
+  const fallbackMessage = typeof error?.message === 'string' ? error.message : null;
+
+  try {
+    const jsonReader = error?.context?.json;
+    if (typeof jsonReader === 'function') {
+      const payload = await jsonReader.call(error.context);
+      if (typeof payload?.error === 'string' && payload.error.length > 0) {
+        return payload.error;
+      }
+    }
+  } catch {
+    // Ignore parse issues, fallback to generic message
+  }
+
+  return fallbackMessage;
+}
+
+function isSessionExpiredError(message: string | null, error: any): boolean {
+  if (error?.context?.status === 401) return true;
+  const text = (message || '').toLowerCase();
+  return text.includes('invalid or expired session') || text.includes('missing session token');
+}
+
 export function useUsuarios() {
   const [usuarios, setUsuarios] = useState<UsuarioDB[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,9 +87,41 @@ export function useUsuarios() {
 
   useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
 
-  const saveUsuario = async (u: Partial<UsuarioDB> & { id?: string }) => {
+  const requireSessionToken = () => {
     const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
+    if (!sessionToken) {
+      clearSessionAndNotify();
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+    return sessionToken;
+  };
+
+  const invokeUserApi = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke('user-api', { body });
+
+    if (error) {
+      const message = await readEdgeErrorMessage(error);
+      if (isSessionExpiredError(message, error)) {
+        clearSessionAndNotify();
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+      throw new Error(message || 'Erro ao processar requisição');
+    }
+
+    if (data?.error) {
+      const message = String(data.error);
+      if (isSessionExpiredError(message, null)) {
+        clearSessionAndNotify();
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+      throw new Error(message);
+    }
+
+    return data;
+  };
+
+  const saveUsuario = async (u: Partial<UsuarioDB> & { id?: string }) => {
+    const sessionToken = requireSessionToken();
 
     const userData: any = {
       id: u.id || undefined,
@@ -75,25 +141,13 @@ export function useUsuarios() {
       userData.senha = u.senha.trim();
     }
 
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'save_user', sessionToken, userData },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-
+    await invokeUserApi({ action: 'save_user', sessionToken, userData });
     await fetchUsuarios();
   };
 
   const deleteUsuario = async (id: string) => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'delete_user', sessionToken, userId: id },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-
+    const sessionToken = requireSessionToken();
+    await invokeUserApi({ action: 'delete_user', sessionToken, userId: id });
     await fetchUsuarios();
   };
 
@@ -144,14 +198,8 @@ export function useUsuarios() {
   };
 
   const getUserCredentials = async (userId: string) => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'get_user_credentials', sessionToken, userId },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    const sessionToken = requireSessionToken();
+    const data = await invokeUserApi({ action: 'get_user_credentials', sessionToken, userId });
 
     return {
       password: data.password,
@@ -160,21 +208,13 @@ export function useUsuarios() {
   };
 
   const generateTempPassword = async (userId: string) => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase.functions.invoke('user-api', {
-      body: { action: 'generate_temp_password', sessionToken, userId },
-    });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-
+    const sessionToken = requireSessionToken();
+    const data = await invokeUserApi({ action: 'generate_temp_password', sessionToken, userId });
     return { tempPassword: data.tempPassword };
   };
 
   const logoutUser = async (userId: string) => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
+    requireSessionToken();
 
     const { error } = await supabase.from('sessions').delete().eq('user_id', userId);
     if (error) throw error;
@@ -183,8 +223,7 @@ export function useUsuarios() {
   };
 
   const logoutAllCommonUsers = async () => {
-    const sessionToken = localStorage.getItem('rp_session_token');
-    if (!sessionToken) throw new Error('Not authenticated');
+    requireSessionToken();
 
     const { data: users, error: selectError } = await supabase.from('usuarios').select('id').neq('nivel', 'master');
     if (selectError) throw selectError;
@@ -198,9 +237,9 @@ export function useUsuarios() {
     return { success: true };
   };
 
-  return { 
+  return {
     usuarios, loading, fetchUsuarios, saveUsuario, deleteUsuario, login, getById,
-    requestPasswordReset, verifyResetCode, resetPassword, getUserCredentials, 
+    requestPasswordReset, verifyResetCode, resetPassword, getUserCredentials,
     generateTempPassword, logoutUser, logoutAllCommonUsers
   };
 }
