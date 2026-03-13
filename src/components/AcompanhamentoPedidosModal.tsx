@@ -34,17 +34,31 @@ export function AcompanhamentoPedidosModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [showFullHistory, setShowFullHistory] = useState(false);
 
-  // Helper to check if a pedido matches the search term
+  // Helper to check if a pedido matches the search term (numero, cliente, CNPJ, comprador, telefone, email)
   const matchesSearch = (p: Pedido) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     const orc = orcamentos.find(o => o.id === p.orcamentoId);
     const os = store.getOrdensServico().find(o => o.pedidoId === p.id);
     
+    // Find client data for CNPJ, buyer, phone, email
+    const clientes = store.getClientes();
+    const cliente = clientes.find(c => c.nome === p.clienteNome || c.id === p.cliente_id);
+    
+    const compradorMatch = cliente?.compradores?.some(comp => 
+      comp.nome?.toLowerCase().includes(term) || 
+      comp.telefone?.toLowerCase().includes(term) || 
+      comp.email?.toLowerCase().includes(term)
+    ) || false;
+    
     return p.numero.toLowerCase().includes(term) || 
            p.clienteNome.toLowerCase().includes(term) ||
            (orc?.numero || '').toLowerCase().includes(term) ||
-           (os?.numero || '').toLowerCase().includes(term);
+           (os?.numero || '').toLowerCase().includes(term) ||
+           (cliente?.cnpj || '').toLowerCase().includes(term) ||
+           (cliente?.telefone || '').toLowerCase().includes(term) ||
+           (cliente?.email || '').toLowerCase().includes(term) ||
+           compradorMatch;
   };
 
   const allRelevantPedidos = pedidos.filter((p) => {
