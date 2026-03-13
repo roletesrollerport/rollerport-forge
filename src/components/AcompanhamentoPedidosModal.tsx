@@ -34,17 +34,31 @@ export function AcompanhamentoPedidosModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [showFullHistory, setShowFullHistory] = useState(false);
 
-  // Helper to check if a pedido matches the search term
+  // Helper to check if a pedido matches the search term (numero, cliente, CNPJ, comprador, telefone, email)
   const matchesSearch = (p: Pedido) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     const orc = orcamentos.find(o => o.id === p.orcamentoId);
     const os = store.getOrdensServico().find(o => o.pedidoId === p.id);
     
+    // Find client data for CNPJ, buyer, phone, email
+    const clientes = store.getClientes();
+    const cliente = clientes.find(c => c.nome === p.clienteNome || c.id === p.cliente_id);
+    
+    const compradorMatch = cliente?.compradores?.some(comp => 
+      comp.nome?.toLowerCase().includes(term) || 
+      comp.telefone?.toLowerCase().includes(term) || 
+      comp.email?.toLowerCase().includes(term)
+    ) || false;
+    
     return p.numero.toLowerCase().includes(term) || 
            p.clienteNome.toLowerCase().includes(term) ||
            (orc?.numero || '').toLowerCase().includes(term) ||
-           (os?.numero || '').toLowerCase().includes(term);
+           (os?.numero || '').toLowerCase().includes(term) ||
+           (cliente?.cnpj || '').toLowerCase().includes(term) ||
+           (cliente?.telefone || '').toLowerCase().includes(term) ||
+           (cliente?.email || '').toLowerCase().includes(term) ||
+           compradorMatch;
   };
 
   const allRelevantPedidos = pedidos.filter((p) => {
@@ -115,25 +129,19 @@ export function AcompanhamentoPedidosModal({
         // Add to Meta
         onMetaUpdate(pedido.valorTotal);
 
-        // Log
-        await supabase.from('logs_entrega').insert({
-          pedido_id: pedido.id,
-          vendedor: vendedor,
-          acao: 'ENTREGUE',
-          valor: pedido.valorTotal
-        });
+        // Log entrega
+        try { await (supabase.from as any)('logs_entrega').insert({
+          pedido_id: pedido.id, vendedor, acao: 'ENTREGUE', valor: pedido.valorTotal
+        }); } catch {}
 
       } else if (isRevertingFromEntregue) {
         // Subtract from Meta
         onMetaUpdate(-pedido.valorTotal);
 
-        // Log
-        await supabase.from('logs_entrega').insert({
-          pedido_id: pedido.id,
-          vendedor: vendedor,
-          acao: 'REVERTIDO',
-          valor: -pedido.valorTotal
-        });
+        // Log reversão
+        try { await (supabase.from as any)('logs_entrega').insert({
+          pedido_id: pedido.id, vendedor, acao: 'REVERTIDO', valor: -pedido.valorTotal
+        }); } catch {}
         
         toast({
           title: "Status Revertido",
@@ -185,12 +193,12 @@ export function AcompanhamentoPedidosModal({
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por Pedido, Orçamento ou O.S..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-11"
-            />
+             <Input 
+               placeholder="Buscar por Pedido, Cliente, CNPJ, Comprador, Telefone, Email..." 
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+               className="pl-9 h-11"
+             />
           </div>
 
           {/* ACTIVE PEDIDOS */}

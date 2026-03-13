@@ -641,60 +641,51 @@ export default function DashboardPage() {
           <CardContent className="space-y-4 pt-4">
             {/* Meta do Mês (Apenas para Vendas) */}
             {usuario.nivel === 'Vendas' && (
-              <div className="space-y-3 bg-muted/30 p-3 rounded-lg border border-orange-100/50">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Meta do Mês</p>
-                    <div className="flex items-center gap-2 group/edit">
-                      {isMaster && editingMeta?.vendedor === usuario.nome ? (
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            type="text" 
-                            inputMode="numeric"
-                            className="h-8 w-32 font-bold text-lg px-2" 
-                            value={formatCurrencyInput(editingMeta.valor)} 
-                            onChange={e => {
-                              const raw = e.target.value.replace(/\D/g, '');
-                              const cents = parseInt(raw || '0', 10);
-                              setEditingMeta({ ...editingMeta, valor: cents / 100 });
-                            }} 
-                            autoFocus 
-                          />
-                          <div className="flex flex-col gap-0.5">
-                            <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80 bg-success/10 p-1 rounded-sm"><Check className="h-3 w-3" /></button>
-                            <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground bg-muted p-1 rounded-sm"><X className="h-3 w-3" /></button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-xl font-black text-foreground">
-                            {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'Não definida'}
-                          </p>
-                          {isMaster && (
-                            <button 
-                              onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} 
-                              className="p-1.5 rounded-full hover:bg-orange-100 text-orange-600 transition-colors"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Realizado</p>
-                    <p className="text-lg font-bold text-orange-600">{fmt(totalVendido)}</p>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground font-medium">Meta do Mês</span>
+                  <div className="flex items-center gap-1.5">
+                    {isMaster && editingMeta?.vendedor === usuario.nome ? (
+                      <div className="flex items-center gap-1.5">
+                        <Input 
+                          type="text" 
+                          inputMode="numeric"
+                          className="h-7 w-28 font-bold text-sm px-2 text-right" 
+                          value={formatCurrencyInput(editingMeta.valor)} 
+                          onChange={e => {
+                            const raw = e.target.value.replace(/\D/g, '');
+                            const cents = parseInt(raw || '0', 10);
+                            setEditingMeta({ ...editingMeta, valor: cents / 100 });
+                          }} 
+                          autoFocus 
+                        />
+                        <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80 bg-success/10 p-1 rounded-sm"><Check className="h-3 w-3" /></button>
+                        <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground bg-muted p-1 rounded-sm"><X className="h-3 w-3" /></button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-lg font-bold text-foreground">
+                          {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'R$ 0,00'}
+                        </span>
+                        {isMaster && (
+                          <button 
+                            onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} 
+                            className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                    <span className="text-sm font-bold text-muted-foreground ml-2">
+                      {meta && meta.metaMensal > 0 ? ((totalVendido / meta.metaMensal) * 100).toFixed(0) : 0}%
+                    </span>
                   </div>
                 </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-[10px] font-bold">
-                    <span className="text-muted-foreground">Progresso</span>
-                    <span className="text-orange-600">{meta && meta.metaMensal > 0 ? ((totalVendido / meta.metaMensal) * 100).toFixed(1) : 0}%</span>
-                  </div>
-                  <Progress value={metaPct} className="h-2 [&>div]:bg-orange-500 bg-orange-100" />
-                </div>
+                <Progress value={displayPct} className="h-2.5 [&>div]:bg-primary bg-muted" />
+                <p className="text-xs text-muted-foreground">
+                  {fmt(totalVendido)} de {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'R$ 0,00'}
+                </p>
               </div>
             )}
           </CardContent>
@@ -856,21 +847,26 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* CARD PEDIDOS ENTREGUES */}
-        <StatCard 
-          icon={CheckCircle} 
-          label="Pedidos Entregues" 
-          value={data.pedidos.filter((p: any) => p.status === 'ENTREGUE').length} 
-          color="bg-success/10 text-success" 
-          onViewAll={() => navigate('/pedidos?status=ENTREGUE')}
-          items={data.pedidos
-            .filter((p: any) => p.status === 'ENTREGUE')
-            .slice(-3).reverse()
-            .map((p: any) => {
-              const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-              return { id: p.id, label: `Ped. ${p.numero}`, user: p.vendedor || orc?.vendedor || 'Sistema' };
-            })}
-        />
+        {/* CARD PEDIDOS ENTREGUES - mesmo estilo dos cards de status */}
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos?status=ENTREGUE')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2 text-sm"><CheckCircle className="h-4 w-4 text-success" /> Pedidos Entregues</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-success" extra={avgDays(pedByStatus('ENTREGUE'))} />
+            <div className="border-t pt-2 space-y-1">
+              {data.pedidos
+                .filter((p: any) => p.status === 'ENTREGUE')
+                .slice(-3).reverse()
+                .map((p: any) => (
+                  <p key={p.id} className="text-xs text-muted-foreground font-mono">Pedido {p.numero}</p>
+                ))}
+              {data.pedidos.filter((p: any) => p.status === 'ENTREGUE').length === 0 && (
+                <p className="text-xs text-muted-foreground italic">Nenhuma entrega registrada</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Espaço de 2 linhas */}
