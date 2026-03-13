@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Pedido, Orcamento } from '@/lib/types';
+import { store } from '@/lib/store';
 import { formatCurrency } from '@/lib/utils';
 import { Package, Truck, CheckCircle2, ChevronRight, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,6 +70,8 @@ export function AcompanhamentoPedidosModal({
       const idx = pedidos.findIndex(p => p.id === pedido.id);
       if(idx !== -1) {
          pedidos[idx].status = saveStatus as any;
+         // Persist to local store so DashboardPage (which listens to 'rp-data-synced') picks it up
+         store.savePedidos(pedidos);
       }
 
       // Handle Meta Logic & Logging

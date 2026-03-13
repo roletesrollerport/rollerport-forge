@@ -75,16 +75,17 @@ function StatCard({
       </CardHeader>
       <CardContent className="flex-1 pb-2">
         {items && items.length > 0 ? (
-          <div className="space-y-1.5 border-t pt-2">
+          <ul className="space-y-1.5 border-t pt-2 list-none m-0 p-0 text-xs">
             {items.map((item) => (
-              <div key={item.id} className="flex justify-between items-center text-[11px] gap-2">
-                <span className="font-mono text-muted-foreground shrink-0">{item.label}</span>
-                <span className="font-medium truncate text-right">{item.user}</span>
-              </div>
+              <li key={item.id} className="flex justify-between items-center text-muted-foreground w-full gap-2">
+                <span className="font-semibold text-foreground shrink-0 max-w-[55%] truncate text-left" title={item.label}>{item.label}</span>
+                <span className="shrink-0 text-muted-foreground/30">-</span>
+                <span className="truncate text-right flex-1 font-medium" title={item.user}>{item.user}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
-          <div className="text-[11px] text-muted-foreground border-t pt-2 italic">Nenhum registro recente</div>
+          <div className="text-xs text-muted-foreground border-t pt-2 italic">Nenhum registro recente</div>
         )}
       </CardContent>
       <CardFooter className="pt-0">
@@ -236,32 +237,54 @@ export default function DashboardPage() {
   /* ---------------------------------------------------------------- */
   /*  Derived counts                                                   */
   /* ---------------------------------------------------------------- */
-  const countByStatus = (items: any[], field: string, status: string) => items.filter(i => i[field] === status).length;
+  const countByStatus = (items: any[], field: string, status: string) => 
+    items.filter(i => (i[field] || '').toString().trim().toUpperCase() === status.toUpperCase()).length;
 
   const getOrcStats = (orcs: any[]) => {
-    const aprovado = countByStatus(orcs, 'status', 'APROVADO');
+    const peds = data.pedidos;
+    const aprovado = orcs.filter(o => peds.some(p => p.orcamentoId === o.id)).length;
     const cancelado = countByStatus(orcs, 'status', 'REPROVADO');
-    const restantes = orcs.filter(o => o.status !== 'APROVADO' && o.status !== 'REPROVADO');
-    const rascunho = restantes.filter(o => !o.valorTotal || o.valorTotal === 0 || !o.clienteNome).length;
-    const pendente = restantes.length - rascunho;
+    const rascunho = orcs.filter(o => o.status === 'RASCUNHO' || !o.valorTotal || o.valorTotal === 0 || !o.clienteNome).length;
+    const pendente = orcs.length - aprovado - cancelado - rascunho;
     return { total: orcs.length, rascunho, pendente, aprovado, cancelado };
   };
 
-  const getPedStats = (peds: any[]) => ({
-    total: peds.length,
-    pendente: countByStatus(peds, 'status', 'PENDENTE'),
-    confirmado: countByStatus(peds, 'status', 'CONFIRMADO'),
-    producao: countByStatus(peds, 'status', 'EM_PRODUCAO'),
-    concluido: countByStatus(peds, 'status', 'CONCLUIDO'),
-    entregue: countByStatus(peds, 'status', 'ENTREGUE'),
-  });
+  const getPedStats = (peds: any[]) => {
+    const osList = data.os;
+    const entregue = countByStatus(peds, 'status', 'ENTREGUE');
+    const concluido = entregue; 
+    
+    const pendente = peds.filter(p => 
+      (p.status === 'PENDENTE' || p.status === 'CONFIRMADO') && !osList.some(os => os.pedidoId === p.id)
+    ).length;
+    
+    const confirmado = peds.filter(p => {
+      const relOs = osList.filter(os => os.pedidoId === p.id);
+      return relOs.length > 0 && relOs.every(os => os.status === 'ABERTA');
+    }).length;
 
-  const getOsStats = (osList: any[]) => ({
-    total: osList.length,
-    aberta: countByStatus(osList, 'status', 'ABERTA'),
-    emAndamento: countByStatus(osList, 'status', 'EM_ANDAMENTO'),
-    concluida: countByStatus(osList, 'status', 'CONCLUIDA'),
-  });
+    const producao = peds.filter(p => {
+      if (p.status === 'CONCLUIDO') return true; // 'Enviado' still counts as production cycle or in-transit
+      const relOs = osList.filter(os => os.pedidoId === p.id);
+      return relOs.length > 0 && relOs.some(os => os.status === 'EM_ANDAMENTO' || os.status === 'CONCLUIDA');
+    }).length;
+
+    return { total: peds.length, pendente, confirmado, producao, concluido, entregue };
+  };
+
+  const getOsStats = (osList: any[]) => {
+    const peds = data.pedidos;
+    const aberta = countByStatus(osList, 'status', 'ABERTA');
+    const emAndamento = countByStatus(osList, 'status', 'EM_ANDAMENTO');
+    const concluida = countByStatus(osList, 'status', 'CONCLUIDA');
+    
+    const entregue = osList.filter(os => {
+      const ped = peds.find(p => p.id === os.pedidoId);
+      return ped && ped.status === 'ENTREGUE';
+    }).length;
+
+    return { total: osList.length, aberta, emAndamento, concluida, entregue };
+  };
 
   // Per-user data helpers (fuzzy matching: "karen" matches "Karen Ferreira")
   const nameMatch = (vendedorField: string, userName: string) => {
@@ -705,7 +728,7 @@ export default function DashboardPage() {
           onViewAll={() => navigate(isMaster ? '/orcamentos' : `/orcamentos?vendedor=${currentUserName}`)}
           items={(isMaster ? data.orcamentos : getUserOrcs(currentUserName))
             .slice(-3).reverse()
-            .map(o => ({ id: o.id, label: o.numero, user: o.vendedor }))}
+            .map((o: any) => ({ id: o.id, label: o.numero, user: o.vendedor || 'Sistema' }))}
         />
 
         {/* PEDIDOS */}
@@ -717,9 +740,9 @@ export default function DashboardPage() {
           onViewAll={() => navigate(isMaster ? '/pedidos' : `/pedidos?vendedor=${currentUserName}`)}
           items={(isMaster ? data.pedidos : getUserPeds(currentUserName))
             .slice(-3).reverse()
-            .map(p => {
+            .map((p: any) => {
               const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-              return { id: p.id, label: p.numero, user: orc?.vendedor || 'Sistema' };
+              return { id: p.id, label: p.numero, user: p.vendedor || orc?.vendedor || 'Sistema' };
             })}
         />
 
@@ -735,28 +758,28 @@ export default function DashboardPage() {
           })).length} 
           color="bg-info/10 text-info" 
           onViewAll={() => navigate('/clientes')}
-          items={(isMaster ? data.clientes : data.clientes.filter(c => {
-            const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
-            const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
+          items={(isMaster ? data.clientes : data.clientes.filter((c: any) => {
+            const hasOrc = data.orcamentos.some((o: any) => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
+            const hasPed = data.pedidos.some((p: any) => p.clienteNome === c.nome && getUserPeds(currentUserName).some((up: any) => up.id === p.id));
             return hasOrc || hasPed;
           }))
             .slice(-3).reverse()
-            .map(c => ({ id: c.id, label: 'CLI', user: c.nome }))}
+            .map((c: any) => ({ id: c.id, label: c.nome?.split(' - ')[0] || c.nome || 'Cliente', user: c.vendedor || c.criadoPor || 'Sistema' }))}
         />
 
         {/* ORDENS DE SERVIÇO */}
         <StatCard 
           icon={Factory} 
-          label="Ordens de Serviço" 
+          label="Ordens O.S." 
           value={(isMaster ? data.os : getUserOS(currentUserName)).length} 
           color="bg-accent/10 text-accent" 
           onViewAll={() => navigate('/producao')}
           items={(isMaster ? data.os : getUserOS(currentUserName))
             .slice(-3).reverse()
-            .map(os => {
+            .map((os: any) => {
               const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
               const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
-              return { id: os.id, label: os.numero, user: orc?.vendedor || 'Manual' };
+              return { id: os.id, label: os.numero, user: os.responsavelTecnico || os.emitente || orc?.vendedor || 'Manual' };
             })}
         />
       </div>
@@ -786,7 +809,7 @@ export default function DashboardPage() {
             <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
             <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
             <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
-            <StatusBar label="Concluído" value={globalPed.concluido} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('CONCLUIDO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONCLUIDO'); }} />
+            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-primary" extra={avgDays(pedByStatus('ENTREGUE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=ENTREGUE'); }} />
           </CardContent>
         </Card>
 
@@ -798,7 +821,7 @@ export default function DashboardPage() {
             <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
             <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
             <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
-            <StatusBar label="Entregue" value={globalOs.total > 0 ? globalOs.concluida : 0} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
+            <StatusBar label="Entregue" value={globalOs.entregue} max={globalOs.total} color="[&>div]:bg-primary" onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
           </CardContent>
         </Card>
       </div>
