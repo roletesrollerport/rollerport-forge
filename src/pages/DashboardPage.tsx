@@ -693,8 +693,8 @@ export default function DashboardPage() {
             {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
             <div className="flex flex-col gap-1.5 border-t pt-2">
               <div className="flex gap-1.5">
-                {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
-                 (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
+                {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && 
+                 (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && (
                   <>
                     <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
                       <Eye className="h-3.5 w-3.5" /> Ver Relatório
@@ -707,8 +707,8 @@ export default function DashboardPage() {
               </div>
               
               {/* Acompanhar Pedidos Button */}
-              {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
-               (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
+              {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && 
+               (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && (
                   <Button 
                     variant="outline" 
                     size="sm" 
