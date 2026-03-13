@@ -282,7 +282,7 @@ export interface MetaVendedor {
 }
 
 // ======= AGENDA & CRM =======
-export type TipoCompromisso = 'Visita' | 'Ligação' | 'Retorno de Orçamento' | 'Entrega';
+export type TipoCompromisso = 'Visita' | 'Ligação' | 'Retorno de Orçamento' | 'Entrega de Roletes';
 
 export interface AgendaItem {
   id: string;

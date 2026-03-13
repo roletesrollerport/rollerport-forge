@@ -41,14 +41,14 @@ const TYPE_COLORS: Record<TipoCompromisso, string> = {
   'Visita': '#f59e0b', // Amber 500
   'Ligação': '#3b82f6', // Blue 500
   'Retorno de Orçamento': '#8b5cf6', // Violet 500
-  'Entrega': '#10b981', // Emerald 500
+  'Entrega de Roletes': '#10b981', // Emerald 500
 };
 
 const TYPE_ICONS: Record<TipoCompromisso, any> = {
   'Visita': Briefcase,
   'Ligação': Phone,
   'Retorno de Orçamento': History,
-  'Entrega': Truck,
+  'Entrega de Roletes': Truck,
 };
 
 export default function AgendaPage() {
@@ -61,7 +61,7 @@ export default function AgendaPage() {
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
   const [editingItem, setEditingItem] = useState<AgendaItem | undefined>();
   const [initialDate, setInitialDate] = useState<Date | undefined>();
-  const [filterTypes, setFilterTypes] = useState<TipoCompromisso[]>(['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega']);
+  const [filterTypes, setFilterTypes] = useState<TipoCompromisso[]>(['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes']);
   const [agendaFilter, setAgendaFilter] = useState<'all' | 'pending' | 'completed'>('all');
   
   const calendarRef = useRef<FullCalendar>(null);
@@ -215,8 +215,17 @@ export default function AgendaPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="relative mr-2">
+            <Bell className={cn("h-5 w-5 text-muted-foreground", overdueCount > 0 && "text-destructive animate-pulse")} />
+            {overdueCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white border-2 border-background">
+                {overdueCount}
+              </span>
+            )}
+          </div>
+
           {overdueCount > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-full text-xs font-bold animate-pulse mr-2 border border-destructive/20">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-full text-xs font-bold mr-2 border border-destructive/20">
               <AlertCircle className="h-3.5 w-3.5" />
               {overdueCount} {overdueCount === 1 ? 'ATRASADO' : 'ATRASADOS'}
             </div>
@@ -231,7 +240,7 @@ export default function AgendaPage() {
             <DropdownMenuContent align="end" className="w-56">
               <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipos de Compromisso</div>
               <DropdownMenuSeparator />
-              {(['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega'] as TipoCompromisso[]).map(type => (
+              {(['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes'] as TipoCompromisso[]).map(type => (
                 <DropdownMenuCheckboxItem
                   key={type}
                   checked={filterTypes.includes(type)}

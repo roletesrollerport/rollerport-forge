@@ -24,7 +24,7 @@ interface AgendaModalProps {
   onSave: (item: AgendaItem) => void;
 }
 
-const TIPOS: TipoCompromisso[] = ['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega'];
+const TIPOS: TipoCompromisso[] = ['Visita', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes'];
 
 export function AgendaModal({ open, onOpenChange, item, initialDate, onSave }: AgendaModalProps) {
   const [formData, setFormData] = useState<Partial<AgendaItem>>({
