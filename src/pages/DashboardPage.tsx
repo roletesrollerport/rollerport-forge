@@ -643,14 +643,14 @@ export default function DashboardPage() {
             {usuario.nivel === 'Vendas' && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground font-medium">Meta do Mês</span>
+                  <span className="text-xs text-muted-foreground font-medium">Meta do Mês</span>
                   <div className="flex items-center gap-1.5">
                     {isMaster && editingMeta?.vendedor === usuario.nome ? (
                       <div className="flex items-center gap-1.5">
                         <Input 
                           type="text" 
                           inputMode="numeric"
-                          className="h-7 w-28 font-bold text-sm px-2 text-right" 
+                          className="h-6 w-24 font-semibold text-xs px-2 text-right" 
                           value={formatCurrencyInput(editingMeta.valor)} 
                           onChange={e => {
                             const raw = e.target.value.replace(/\D/g, '');
@@ -664,7 +664,7 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       <>
-                        <span className="text-lg font-bold text-foreground">
+                        <span className="text-sm font-semibold text-foreground">
                           {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'R$ 0,00'}
                         </span>
                         {isMaster && (
@@ -672,18 +672,18 @@ export default function DashboardPage() {
                             onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} 
                             className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
                           >
-                            <Edit2 className="h-3.5 w-3.5" />
+                            <Edit2 className="h-3 w-3" />
                           </button>
                         )}
                       </>
                     )}
-                    <span className="text-sm font-bold text-muted-foreground ml-2">
+                    <span className="text-xs font-semibold text-muted-foreground ml-1">
                       {meta && meta.metaMensal > 0 ? ((totalVendido / meta.metaMensal) * 100).toFixed(0) : 0}%
                     </span>
                   </div>
                 </div>
-                <Progress value={displayPct} className="h-2.5 [&>div]:bg-primary bg-muted" />
-                <p className="text-xs text-muted-foreground">
+                <Progress value={displayPct} className="h-2 [&>div]:bg-primary bg-muted" />
+                <p className="text-[11px] text-muted-foreground">
                   {fmt(totalVendido)} de {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'R$ 0,00'}
                 </p>
               </div>
