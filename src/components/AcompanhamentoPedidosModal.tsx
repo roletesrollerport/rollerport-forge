@@ -2,10 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Pedido, Orcamento, OrdemServico, Cliente } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { Package, Truck, CheckCircle2, MessageCircle, Clock, Eye, Printer, Factory } from 'lucide-react';
+import { Package, Truck, CheckCircle2, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import confetti from 'canvas-confetti';
@@ -22,34 +21,26 @@ interface AcompanhamentoPedidosModalProps {
   ordensServico?: OrdemServico[];
   clientes?: Cliente[];
   onMetaUpdate: (valorSoma: number) => void;
-  showAll?: boolean;
+  showAll?: boolean; // For admin "Monitorar Geral"
 }
 
-const statusProgress: Record<string, number> = {
-  'PENDENTE': 20, 'CONFIRMADO': 40, 'EM_PRODUCAO': 60, 'CONCLUIDO': 80, 'ENTREGUE': 100,
+const STATUS_LABELS: Record<string, string> = {
+  PENDENTE: 'Pendente',
+  CONFIRMADO: 'Confirmado',
+  EM_PRODUCAO: 'Em Produção',
+  CONCLUIDO: 'Enviado',
+  ENTREGUE: 'Entregue',
 };
 
-function StatusProgressBar({ status }: { status: string }) {
-  const pct = statusProgress[status] || 0;
-  return (
-    <div className="flex items-center gap-2 min-w-[120px]">
-      <Progress value={pct} className="h-2 flex-1" />
-      <span className={`text-xs font-medium whitespace-nowrap ${status === 'ENTREGUE' || status === 'CONCLUIDO' ? 'text-emerald-600' : status === 'EM_PRODUCAO' ? 'text-amber-600' : 'text-muted-foreground'}`}>
-        {status.replace('_', ' ')}
-      </span>
-    </div>
-  );
-}
-
-const daysSince = (dateStr: string): number => {
-  if (!dateStr) return 0;
-  const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr.split('/').reverse().join('-'));
-  if (isNaN(d.getTime())) return 0;
-  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+const STATUS_COLORS: Record<string, string> = {
+  PENDENTE: 'bg-muted text-muted-foreground',
+  CONFIRMADO: 'bg-blue-100 text-blue-700',
+  EM_PRODUCAO: 'bg-amber-100 text-amber-700',
+  CONCLUIDO: 'bg-violet-100 text-violet-700',
+  ENTREGUE: 'bg-emerald-100 text-emerald-700',
 };
 
-const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
-
+// Fuzzy name match (same logic as DashboardPage)
 function nameMatch(vendedorField: string, userName: string): boolean {
   const a = (vendedorField || '').trim().toLowerCase();
   const b = (userName || '').trim().toLowerCase();
@@ -73,26 +64,33 @@ export function AcompanhamentoPedidosModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [showFullHistory, setShowFullHistory] = useState(false);
 
+  // Use props if available, fallback to store
   const ordensServico = useMemo(() => osProp && osProp.length > 0 ? osProp : store.getOrdensServico(), [osProp]);
   const clientes = useMemo(() => clientesProp && clientesProp.length > 0 ? clientesProp : store.getClientes(), [clientesProp]);
 
+  // All pedidos for this vendedor using fuzzy matching (loaded immediately)
   const allRelevantPedidos = useMemo(() => {
-    if (showAll) return pedidos;
+    if (showAll) return pedidos; // Admin: show all
     return pedidos.filter((p) => {
       const orc = orcamentos.find((o) => o.id === p.orcamentoId);
       return orc && nameMatch(orc.vendedor, vendedor);
     });
   }, [pedidos, orcamentos, vendedor, showAll]);
 
+  // Local instant search filter
   const matchesSearch = (p: Pedido) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     const orc = orcamentos.find(o => o.id === p.orcamentoId);
     const os = ordensServico.find((o: any) => o.pedidoId === p.id);
     const cliente = clientes.find((c: any) => c.nome === p.clienteNome || c.id === p.cliente_id);
+
     const compradorMatch = cliente?.compradores?.some((comp: any) =>
-      comp.nome?.toLowerCase().includes(term) || comp.telefone?.toLowerCase().includes(term) || comp.email?.toLowerCase().includes(term)
+      comp.nome?.toLowerCase().includes(term) ||
+      comp.telefone?.toLowerCase().includes(term) ||
+      comp.email?.toLowerCase().includes(term)
     ) || false;
+
     return p.numero?.toLowerCase().includes(term) ||
       p.clienteNome?.toLowerCase().includes(term) ||
       (orc?.numero || '').toLowerCase().includes(term) ||
@@ -124,40 +122,81 @@ export function AcompanhamentoPedidosModal({
   const handleStatusChange = async (pedido: Pedido, newStatus: string) => {
     if (updatingId) return;
     setUpdatingId(pedido.id);
+
     try {
       const isRevertingFromEntregue = pedido.status === 'ENTREGUE' && newStatus !== 'ENTREGUE';
       const isMarkingAsEntregue = pedido.status !== 'ENTREGUE' && newStatus === 'ENTREGUE';
+
       let saveStatus = newStatus;
       if (isRevertingFromEntregue && newStatus !== 'EM_PRODUCAO' && newStatus !== 'CONCLUIDO') {
         saveStatus = 'CONFIRMADO';
       }
+
       const { error: pedError } = await supabase
         .from('pedidos')
-        .update({ data: { ...pedido, status: saveStatus, updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() })
+        .update({
+          data: { ...pedido, status: saveStatus, updatedAt: new Date().toISOString() },
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', pedido.id);
+
       if (pedError) throw pedError;
+
+      // Update local data for instant visual feedback
       const idx = pedidos.findIndex(p => p.id === pedido.id);
       if (idx !== -1) {
         pedidos[idx].status = saveStatus as any;
         pedidos[idx].updatedAt = new Date().toISOString();
         store.savePedidos(pedidos);
       }
+
       if (isMarkingAsEntregue) {
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#F97316', '#FFFFFF', '#000000'] });
-        toast({ title: "Parabéns! 🎉", description: `Venda de ${formatCurrency(pedido.valorTotal)} computada na meta!`, className: "bg-success text-white border-success" });
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#F97316', '#FFFFFF', '#000000'],
+        });
+
+        toast({
+          title: "Parabéns! 🎉",
+          description: `Venda de ${formatCurrency(pedido.valorTotal)} computada na meta!`,
+          className: "bg-success text-white border-success",
+        });
+
         onMetaUpdate(pedido.valorTotal);
-        try { await (supabase.from as any)('logs_entrega').insert({ pedido_id: pedido.id, vendedor, acao: 'ENTREGUE', valor: pedido.valorTotal }); } catch {}
+
+        try { await (supabase.from as any)('logs_entrega').insert({
+          pedido_id: pedido.id, vendedor, acao: 'ENTREGUE', valor: pedido.valorTotal
+        }); } catch {}
+
       } else if (isRevertingFromEntregue) {
         onMetaUpdate(-pedido.valorTotal);
-        try { await (supabase.from as any)('logs_entrega').insert({ pedido_id: pedido.id, vendedor, acao: 'REVERTIDO', valor: -pedido.valorTotal }); } catch {}
-        toast({ title: "Status Revertido", description: `O pedido ${pedido.numero} voltou para ${saveStatus.replace('_', ' ')}` });
+
+        try { await (supabase.from as any)('logs_entrega').insert({
+          pedido_id: pedido.id, vendedor, acao: 'REVERTIDO', valor: -pedido.valorTotal
+        }); } catch {}
+
+        toast({
+          title: "Status Revertido",
+          description: `O pedido ${pedido.numero} voltou para ${saveStatus.replace('_', ' ')}`,
+        });
       } else {
-        toast({ title: "Status Atualizado", description: `O pedido ${pedido.numero} agora está ${saveStatus.replace('_', ' ')}` });
+        toast({
+          title: "Status Atualizado",
+          description: `O pedido ${pedido.numero} agora está ${saveStatus.replace('_', ' ')}`,
+        });
       }
+
       window.dispatchEvent(new CustomEvent('rp-data-synced'));
+
     } catch (error) {
       console.error('Error updating order status:', error);
-      toast({ title: "Erro", description: "Não foi possível atualizar o status do pedido.", variant: "destructive" });
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status do pedido.",
+        variant: "destructive"
+      });
     } finally {
       setUpdatingId(null);
     }
@@ -165,8 +204,16 @@ export function AcompanhamentoPedidosModal({
 
   const notifyWhatsApp = (pedido: Pedido) => {
     const text = `Olá, os roletes da Rollerport referente ao pedido ${pedido.numero} acabaram de ser entregues! Qualquer dúvida, estou à disposição.`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
   };
+
+  const steps = [
+    { key: 'CONFIRMADO', label: 'Orçamento' },
+    { key: 'EM_PRODUCAO', label: 'Produção' },
+    { key: 'CONCLUIDO', label: 'Enviado' },
+    { key: 'ENTREGUE', label: 'Entregue' }
+  ];
 
   const getEnrichedData = (pedido: Pedido) => {
     const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
@@ -174,131 +221,147 @@ export function AcompanhamentoPedidosModal({
     return { orc, os };
   };
 
-  const renderPedidoRow = (p: Pedido) => {
-    const { orc, os } = getEnrichedData(p);
-    const days = daysSince(p.createdAt);
-    const lastStatusChange = p.statusHistory?.length ? p.statusHistory[p.statusHistory.length - 1] : null;
-    const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
-    const isActive = p.status !== 'ENTREGUE';
-
-    return (
-      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-        <td className="p-3 font-mono font-medium text-xs">{p.numero}</td>
-        <td className="p-3 font-mono text-xs text-muted-foreground hidden md:table-cell">{orc?.numero || p.orcamentoNumero || '—'}</td>
-        <td className="p-3 font-mono text-xs text-blue-600 hidden md:table-cell">{(os as any)?.numero || '—'}</td>
-        <td className="p-3 text-xs">{p.clienteNome}</td>
-        <td className="p-3 hidden md:table-cell text-xs">{p.createdAt}</td>
-        <td className="p-3"><StatusProgressBar status={p.status} /></td>
-        <td className="p-3 hidden md:table-cell">
-          <div className="flex flex-col text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {days}d</span>
-            <span className="text-[10px]">No status: {daysInStatus}d</span>
-          </div>
-        </td>
-        <td className="p-3 text-right font-mono text-xs font-semibold">{fmt(p.valorTotal)}</td>
-        <td className="p-3">
-          <div className="flex gap-1 justify-end flex-wrap">
-            {isActive && p.status === 'EM_PRODUCAO' && (
-              <Button size="sm" variant="outline" className="text-[10px] h-6 px-2" disabled={updatingId === p.id}
-                onClick={() => handleStatusChange(p, 'CONCLUIDO')}>Concluir</Button>
-            )}
-            {isActive && p.status === 'CONCLUIDO' && (
-              <Button size="sm" variant="outline" className="text-[10px] h-6 px-2" disabled={updatingId === p.id}
-                onClick={() => handleStatusChange(p, 'ENTREGUE')}>Entregar</Button>
-            )}
-            {isActive && (
-              <Button size="sm" className="text-[10px] h-6 px-2 bg-orange-600 hover:bg-orange-700 text-white gap-1" disabled={updatingId === p.id}
-                onClick={() => handleStatusChange(p, 'ENTREGUE')}>
-                <CheckCircle2 className="h-3 w-3" /> Entregue
-              </Button>
-            )}
-            {!isActive && (
-              <Button variant="outline" size="sm" className="h-6 w-6 p-0 rounded-full border-green-200 text-green-600 hover:bg-green-50"
-                onClick={() => notifyWhatsApp(p)}>
-                <MessageCircle className="w-3 h-3" />
-              </Button>
-            )}
-          </div>
-        </td>
-      </tr>
-    );
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            Acompanhamento de Pedidos — {vendedor}
-          </DialogTitle>
+          <DialogTitle>Acompanhamento de Pedidos - {vendedor}</DialogTitle>
           <DialogDescription>
-            {allRelevantPedidos.length} pedido(s) • {activePedidos.length} ativo(s) • {deliveredPedidos.length} entregue(s)
+            {allRelevantPedidos.length} pedido(s) vinculado(s) • {activePedidos.length} ativo(s) • {deliveredPedidos.length} entregue(s)
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2 pb-4">
-          {/* Search */}
+        <div className="space-y-6 mt-2 pb-4">
+          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Filtrar por Pedido, Orçamento, O.S., Cliente, CNPJ, Comprador, Telefone, Email..."
+              placeholder="Filtrar por Pedido, Cliente, CNPJ, Comprador, Telefone, Email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-10"
+              className="pl-9 h-11"
             />
           </div>
 
-          {/* ACTIVE - Table format like PedidosPage */}
-          <div className="space-y-2">
+          {/* ACTIVE PEDIDOS */}
+          <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
               <ListFilter className="h-4 w-4" />
-              Pedidos Ativos
+              Acompanhamento Ativo
               <Badge variant="outline" className="ml-2 font-mono">{activePedidos.length}</Badge>
             </div>
 
             {activePedidos.length === 0 ? (
               <div className="text-center py-6 bg-muted/20 rounded-lg border border-dashed">
                 <p className="text-sm text-muted-foreground">
-                  {allRelevantPedidos.length === 0 ? 'Nenhum pedido encontrado para este vendedor.' : 'Nenhum pedido ativo encontrado.'}
+                  {allRelevantPedidos.length === 0 
+                    ? 'Nenhum pedido encontrado para este vendedor.' 
+                    : 'Nenhum pedido ativo encontrado.'}
                 </p>
               </div>
             ) : (
-              <div className="bg-card rounded-lg border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium text-xs">Nº Pedido</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Nº Orçamento</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Nº O.S.</th>
-                      <th className="text-left p-3 font-medium text-xs">Empresa</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Data</th>
-                      <th className="text-left p-3 font-medium text-xs min-w-[140px]">Status</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Dias</th>
-                      <th className="text-right p-3 font-medium text-xs">Valor</th>
-                      <th className="p-3 font-medium text-xs text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activePedidos.map(p => renderPedidoRow(p))}
-                  </tbody>
-                </table>
+              <div className="space-y-3">
+                {activePedidos.map(pedido => {
+                  const { orc, os } = getEnrichedData(pedido);
+                  const currentStepIndex = steps.findIndex(s => s.key === pedido.status);
+                  const displayStepIndex = currentStepIndex === -1 ? 0 : currentStepIndex;
+
+                  return (
+                    <div key={pedido.id} className="border rounded-lg p-4 bg-card shadow-sm space-y-3 border-l-4 border-l-primary">
+                      {/* Info tabular */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground block">Orçamento</span>
+                          <span className="font-semibold">{orc?.numero || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Pedido</span>
+                          <span className="font-semibold">{pedido.numero}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">O.S.</span>
+                          <span className="font-semibold">{(os as any)?.numero || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Status</span>
+                          <Badge className={`text-[10px] h-5 ${STATUS_COLORS[pedido.status] || 'bg-muted text-muted-foreground'}`}>
+                            {STATUS_LABELS[pedido.status] || pedido.status}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium">{pedido.clienteNome}</p>
+                        <div className="text-right">
+                          <p className="font-mono font-semibold text-primary">{formatCurrency(pedido.valorTotal)}</p>
+                          <p className="text-[10px] text-muted-foreground">Previsão: {pedido.dataEntrega}</p>
+                        </div>
+                      </div>
+
+                      {/* Stepper */}
+                      <div className="flex items-center justify-between relative pt-2">
+                        <div className="absolute left-[10%] top-1/2 -translate-y-1/2 w-[80%] h-1 bg-muted rounded-full z-0" />
+                        <div
+                          className="absolute left-[10%] top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-300 z-0"
+                          style={{ width: `${Math.max(0, (displayStepIndex) / (steps.length - 1)) * 80}%` }}
+                        />
+                        {steps.map((step, idx) => {
+                          const isActive = displayStepIndex >= idx;
+                          const isCurrent = displayStepIndex === idx;
+                          return (
+                            <button
+                              key={step.key}
+                              disabled={updatingId === pedido.id}
+                              onClick={() => handleStatusChange(pedido, step.key)}
+                              className={`relative z-10 flex flex-col items-center gap-2 group outline-none ${updatingId === pedido.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 shadow-sm border-2 
+                                ${isActive ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-muted-foreground/30 text-muted-foreground'}
+                                ${isCurrent ? 'ring-4 ring-primary/20' : ''}
+                              `}>
+                                {idx === 0 && <Package className="w-4 h-4" />}
+                                {idx === 1 && <Truck className="w-4 h-4" />}
+                                {idx === 2 && <Truck className="w-4 h-4" />}
+                                {idx === 3 && <CheckCircle2 className="w-4 h-4" />}
+                              </div>
+                              <span className={`text-[10px] whitespace-nowrap font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                {step.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="w-full gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-sm h-10"
+                        disabled={updatingId === pedido.id}
+                        onClick={() => handleStatusChange(pedido, 'ENTREGUE')}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Confirmar Entrega ao Cliente
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
           <div className="h-px bg-muted" />
 
-          {/* HISTORY - Same table format */}
-          <div className="space-y-2">
+          {/* HISTORY */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between text-sm font-bold text-muted-foreground uppercase tracking-wider">
-              <div className="flex items-center gap-2">
-                <History className="h-4 w-4" /> Histórico de Entregas
-                <Badge variant="outline" className="ml-1 font-mono">{deliveredPedidos.length}</Badge>
-              </div>
+              <div className="flex items-center gap-2"><History className="h-4 w-4" /> Histórico de Entregas</div>
               {deliveredPedidos.length > 3 && (
-                <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2 hover:bg-primary/10 text-primary"
-                  onClick={() => setShowFullHistory(!showFullHistory)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-[10px] h-6 px-2 hover:bg-primary/10 text-primary"
+                  onClick={() => setShowFullHistory(!showFullHistory)}
+                >
                   {showFullHistory ? 'Ver Menos' : `Ver Tudo (${deliveredPedidos.length})`}
                 </Button>
               )}
@@ -309,25 +372,33 @@ export function AcompanhamentoPedidosModal({
                 <p className="text-xs text-muted-foreground italic">Nenhuma entrega registrada ainda.</p>
               </div>
             ) : (
-              <div className="bg-card rounded-lg border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium text-xs">Nº Pedido</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Nº Orçamento</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Nº O.S.</th>
-                      <th className="text-left p-3 font-medium text-xs">Empresa</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Data</th>
-                      <th className="text-left p-3 font-medium text-xs min-w-[140px]">Status</th>
-                      <th className="text-left p-3 font-medium text-xs hidden md:table-cell">Dias</th>
-                      <th className="text-right p-3 font-medium text-xs">Valor</th>
-                      <th className="p-3 font-medium text-xs text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedHistory.map(p => renderPedidoRow(p))}
-                  </tbody>
-                </table>
+              <div className="space-y-2">
+                {displayedHistory.map(pedido => {
+                  const { orc, os } = getEnrichedData(pedido);
+                  return (
+                    <div key={pedido.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 group hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs">Ped. {pedido.numero}</span>
+                          {orc && <span className="text-[10px] text-muted-foreground">Orc. {orc.numero}</span>}
+                          {os && <span className="text-[10px] text-blue-600">O.S. {(os as any).numero}</span>}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">{pedido.clienteNome}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <p className="text-xs font-mono font-bold text-muted-foreground">{formatCurrency(pedido.valorTotal)}</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 rounded-full border-green-200 text-green-600 hover:bg-green-50"
+                          onClick={() => notifyWhatsApp(pedido)}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
