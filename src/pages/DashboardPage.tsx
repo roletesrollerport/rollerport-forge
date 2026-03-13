@@ -707,8 +707,8 @@ export default function DashboardPage() {
               </div>
               
               {/* Acompanhar Pedidos Button */}
-              {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
-               (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
+              {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && 
+               (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && (
                   <Button 
                     variant="outline" 
                     size="sm" 
