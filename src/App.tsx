@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -31,9 +31,23 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState<UsuarioDB | null>(null);
   const [checking, setChecking] = useState(true);
   const { getById } = useUsuarios();
-  
+
   // Initialize bidirectional data sync with database
   useDataSync();
+
+  const clearLocalSession = useCallback(() => {
+    localStorage.removeItem('rp_logged_user');
+    localStorage.removeItem('rp_session_token');
+    setLoggedUserId(null);
+    setSessionToken(null);
+    setCurrentUser(null);
+  }, []);
+
+  useEffect(() => {
+    const onSessionExpired = () => clearLocalSession();
+    window.addEventListener('rp-session-expired', onSessionExpired);
+    return () => window.removeEventListener('rp-session-expired', onSessionExpired);
+  }, [clearLocalSession]);
 
   useEffect(() => {
     if (loggedUserId && sessionToken) {
@@ -42,47 +56,65 @@ function AppContent() {
         body: { action: 'validate_session', sessionToken },
       }).then(({ data, error }) => {
         if (error || !data?.valid || data?.user_id !== loggedUserId) {
-          localStorage.removeItem('rp_logged_user');
-          localStorage.removeItem('rp_session_token');
-          setLoggedUserId(null);
-          setSessionToken(null);
+          clearLocalSession();
           setChecking(false);
           return;
         }
+
         getById(loggedUserId).then(user => {
           if (user) {
             setCurrentUser(user);
           } else {
-            localStorage.removeItem('rp_logged_user');
-            localStorage.removeItem('rp_session_token');
-            setLoggedUserId(null);
-            setSessionToken(null);
+            clearLocalSession();
           }
           setChecking(false);
         }).catch(() => {
+          clearLocalSession();
           setChecking(false);
         });
       }).catch(() => {
-        // Session invalid or network error - show login
-        localStorage.removeItem('rp_logged_user');
-        localStorage.removeItem('rp_session_token');
-        setLoggedUserId(null);
-        setSessionToken(null);
+        clearLocalSession();
         setChecking(false);
       });
     } else {
       setChecking(false);
     }
-  }, [loggedUserId]);
+  }, [loggedUserId, sessionToken, getById, clearLocalSession]);
 
   // Heartbeat: update last_seen every 60s while logged in (via edge function)
   useEffect(() => {
     if (!loggedUserId || !sessionToken) return;
-    const updateLastSeen = () => {
-      supabase.functions.invoke('chat-api', {
-        body: { action: 'heartbeat', sessionToken },
-      }).catch(() => {});
+
+    const is401SessionError = async (error: any) => {
+      if (error?.context?.status === 401) return true;
+
+      try {
+        const jsonReader = error?.context?.json;
+        if (typeof jsonReader === 'function') {
+          const payload = await jsonReader.call(error.context);
+          const text = String(payload?.error || '').toLowerCase();
+          if (text.includes('invalid or expired session') || text.includes('missing session token')) {
+            return true;
+          }
+        }
+      } catch {
+        // ignore parse failures
+      }
+
+      const message = String(error?.message || '').toLowerCase();
+      return message.includes('401');
     };
+
+    const updateLastSeen = async () => {
+      const { error } = await supabase.functions.invoke('chat-api', {
+        body: { action: 'heartbeat', sessionToken },
+      });
+
+      if (error && await is401SessionError(error)) {
+        clearLocalSession();
+      }
+    };
+
     updateLastSeen();
     const interval = setInterval(updateLastSeen, 60000);
 
@@ -100,13 +132,14 @@ function AppContent() {
         );
       }
     };
+
     window.addEventListener('beforeunload', handleUnload);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('beforeunload', handleUnload);
     };
-  }, [loggedUserId, sessionToken]);
+  }, [loggedUserId, sessionToken, clearLocalSession]);
 
   const handleLogin = (userId: string, token: string) => {
     localStorage.setItem('rp_logged_user', userId);
@@ -122,11 +155,7 @@ function AppContent() {
         body: { action: 'logout', sessionToken: token },
       }).catch(() => {});
     }
-    localStorage.removeItem('rp_logged_user');
-    localStorage.removeItem('rp_session_token');
-    setLoggedUserId(null);
-    setSessionToken(null);
-    setCurrentUser(null);
+    clearLocalSession();
   };
 
   if (checking) {
