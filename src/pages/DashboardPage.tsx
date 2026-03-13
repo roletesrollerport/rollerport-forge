@@ -145,6 +145,7 @@ export default function DashboardPage() {
   // Tracking Modal State
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [trackingVendor, setTrackingVendor] = useState<string>('');
+  const [trackingShowAll, setTrackingShowAll] = useState(false);
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
