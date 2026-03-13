@@ -707,9 +707,9 @@ export default function DashboardPage() {
                 )}
               </div>
               
-              {/* Acompanhar Pedidos Button */}
               {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && 
                (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && (
+                usuario.nivel === 'Vendas' ? (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -719,10 +719,44 @@ export default function DashboardPage() {
                        setIsTrackingModalOpen(true);
                     }}
                   >
-                    <Package className="h-3.5 w-3.5" /> 
-                    {usuario.nivel === 'Vendas' ? 'Acompanhar Pedidos' : 'Monitorar Geral'}
+                    <Package className="h-3.5 w-3.5" /> Acompanhar Pedidos
                   </Button>
-                )}
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full text-xs gap-1.5 h-8 border-dashed border-primary/50 text-primary hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+                      >
+                        <Package className="h-3.5 w-3.5" /> Monitorar Geral
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Selecione o vendedor</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-xs cursor-pointer" 
+                        onClick={() => { setTrackingVendor(''); setIsTrackingModalOpen(true); }}
+                      >
+                        <Users className="h-3.5 w-3.5 mr-2" /> Todos os Vendedores
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {dbUsuarios
+                        .filter(u => u.ativo && ['Vendas'].includes(u.nivel))
+                        .map(v => (
+                          <DropdownMenuItem 
+                            key={v.id} 
+                            className="text-xs cursor-pointer"
+                            onClick={() => { setTrackingVendor(v.nome); setIsTrackingModalOpen(true); }}
+                          >
+                            <Package className="h-3.5 w-3.5 mr-2" /> {v.nome}
+                          </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )
+               )}
             </div>
           </CardContent>
         </Card>
