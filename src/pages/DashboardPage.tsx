@@ -856,21 +856,26 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* CARD PEDIDOS ENTREGUES */}
-        <StatCard 
-          icon={CheckCircle} 
-          label="Pedidos Entregues" 
-          value={data.pedidos.filter((p: any) => p.status === 'ENTREGUE').length} 
-          color="bg-success/10 text-success" 
-          onViewAll={() => navigate('/pedidos?status=ENTREGUE')}
-          items={data.pedidos
-            .filter((p: any) => p.status === 'ENTREGUE')
-            .slice(-3).reverse()
-            .map((p: any) => {
-              const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-              return { id: p.id, label: `Ped. ${p.numero}`, user: p.vendedor || orc?.vendedor || 'Sistema' };
-            })}
-        />
+        {/* CARD PEDIDOS ENTREGUES - mesmo estilo dos cards de status */}
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos?status=ENTREGUE')}>
+          <CardHeader className="pb-2">
+            <h2 className="font-semibold flex items-center gap-2 text-sm"><CheckCircle className="h-4 w-4 text-success" /> Pedidos Entregues</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-success" extra={avgDays(pedByStatus('ENTREGUE'))} />
+            <div className="border-t pt-2 space-y-1">
+              {data.pedidos
+                .filter((p: any) => p.status === 'ENTREGUE')
+                .slice(-3).reverse()
+                .map((p: any) => (
+                  <p key={p.id} className="text-xs text-muted-foreground font-mono">Pedido {p.numero}</p>
+                ))}
+              {data.pedidos.filter((p: any) => p.status === 'ENTREGUE').length === 0 && (
+                <p className="text-xs text-muted-foreground italic">Nenhuma entrega registrada</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Espaço de 2 linhas */}
