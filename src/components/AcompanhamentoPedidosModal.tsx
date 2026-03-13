@@ -62,7 +62,6 @@ export function AcompanhamentoPedidosModal({
   };
 
   const allRelevantPedidos = pedidos.filter((p) => {
-    if (!vendedor) return true; // Empty = all vendors
     const orc = orcamentos.find((o) => o.id === p.orcamentoId);
     return orc && orc.vendedor === vendedor;
   });
@@ -187,7 +186,7 @@ export function AcompanhamentoPedidosModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Acompanhamento de Pedidos {vendedor ? `- ${vendedor}` : '- Todos os Vendedores'}</DialogTitle>
+          <DialogTitle>Acompanhamento de Pedidos - {vendedor}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-4 pb-4">
