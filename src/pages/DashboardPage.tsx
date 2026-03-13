@@ -611,34 +611,34 @@ export default function DashboardPage() {
 
     return (
       <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
-        <CardContent className="p-5 space-y-4">
+        <CardContent className="p-4 space-y-2">
           {/* Foto + Nome */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="relative">
-              <Avatar className="h-14 w-14">
+              <Avatar className="h-11 w-11">
                 {usuario.foto ? <AvatarImage src={usuario.foto} alt={usuario.nome} /> : null}
-                <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">
+                <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                   {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               {isOnline ? (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4">
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-success border-2 border-card"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-success border-2 border-card"></span>
                 </span>
               ) : (
-                <span className="absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-4 w-4 bg-muted-foreground/40 border-2 border-card"></span>
+                <span className="absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-3.5 w-3.5 bg-muted-foreground/40 border-2 border-card"></span>
               )}
             </div>
             <div>
-              <p className="font-semibold text-base">{usuario.nome}</p>
-              <span className={`text-xs font-medium ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
+              <p className="font-semibold text-sm">{usuario.nome}</p>
+              <span className={`text-[11px] font-medium ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
                 {isOnline ? '● Online' : '● Offline'}
               </span>
             </div>
           </div>
 
-          <CardContent className="space-y-4 pt-4">
+          <div className="space-y-2">
             {/* Meta do Mês (Apenas para Vendas) */}
             {usuario.nivel === 'Vendas' && (
               <div className="space-y-2">
@@ -688,31 +688,31 @@ export default function DashboardPage() {
                 </p>
               </div>
             )}
-          </CardContent>
+          </div>
 
             {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
-            <div className="flex flex-col gap-2 pt-1 border-t mt-4 pt-4">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-1.5 border-t pt-2">
+              <div className="flex gap-1.5">
                 {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
                  (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
                   <>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
                       <Eye className="h-3.5 w-3.5" /> Ver Relatório
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
                       <Printer className="h-3.5 w-3.5" /> Imprimir
                     </Button>
                   </>
                 )}
               </div>
               
-              {/* Acompanhar Pedidos Button (Strictly for Vendas and Management) */}
+              {/* Acompanhar Pedidos Button */}
               {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
                (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full text-xs gap-1.5 border-dashed border-primary/50 text-primary hover:bg-red-600 hover:text-white hover:border-red-600 focus:bg-red-600 focus:text-white transition-colors" 
+                    className="w-full text-xs gap-1.5 h-8 border-dashed border-primary/50 text-primary hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" 
                     onClick={() => {
                        setTrackingVendor(usuario.nome); 
                        setIsTrackingModalOpen(true);
