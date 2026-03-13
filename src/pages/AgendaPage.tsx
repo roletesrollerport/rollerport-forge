@@ -22,7 +22,9 @@ import {
   Bell,
   AlertCircle,
   Zap,
-  Target
+  Target,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import { AgendaModal } from '@/components/AgendaModal';
 import { AgendaSummary } from '@/components/AgendaSummary';
