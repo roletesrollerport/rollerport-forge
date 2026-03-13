@@ -57,6 +57,7 @@ export function AcompanhamentoPedidosModal({
   ordensServico: osProp,
   clientes: clientesProp,
   onMetaUpdate,
+  showAll = false,
 }: AcompanhamentoPedidosModalProps) {
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
