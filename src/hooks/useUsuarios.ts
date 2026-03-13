@@ -152,12 +152,35 @@ export function useUsuarios() {
   };
 
   const login = async (loginStr: string, senha: string): Promise<{ user: UsuarioDB; sessionToken: string } | null> => {
+    const payload = { action: 'login', loginStr: loginStr.trim(), password: senha };
+
     try {
-      // Use server-side login via edge function (password never compared client-side)
-      const { data, error } = await supabase.functions.invoke('hash-password', {
-        body: { action: 'login', loginStr: loginStr.trim(), password: senha },
+      // Primary path
+      const { data, error } = await supabase.functions.invoke('hash-password', { body: payload });
+      if (!error && data?.user && data?.sessionToken) {
+        return { user: parseUsuario(data.user), sessionToken: data.sessionToken };
+      }
+    } catch {
+      // Fallback below
+    }
+
+    try {
+      // Fallback path: direct fetch avoids sporadic invoke transport failures in browser
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/hash-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: publishableKey,
+          Authorization: `Bearer ${publishableKey}`,
+        },
+        body: JSON.stringify(payload),
       });
-      if (error || !data?.user || !data?.sessionToken) return null;
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.user || !data?.sessionToken) return null;
+
       return { user: parseUsuario(data.user), sessionToken: data.sessionToken };
     } catch {
       return null;
