@@ -40,7 +40,7 @@ export function AgendaSummary({ items, currentFilter = 'all', onFilter }: Agenda
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-7 text-[10px] gap-1 text-slate-500 hover:text-slate-700 font-bold uppercase tracking-wider"
+              className="h-7 text-[10px] gap-1 text-slate-500 hover:bg-slate-600 hover:text-white font-bold uppercase tracking-wider"
               onClick={() => handleFilterClick('all')}
             >
               <Eye className="h-3 w-3" /> Ver Todas
