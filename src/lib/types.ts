@@ -280,6 +280,7 @@ export interface Notificacao {
 export interface MetaVendedor {
   vendedor: string;
   metaMensal: number;
+  valorRealizado?: number;
 }
 
 // ======= AGENDA & CRM =======

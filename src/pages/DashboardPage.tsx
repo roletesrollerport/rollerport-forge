@@ -14,9 +14,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
   Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
-  ClipboardList
+  ClipboardList,
+  Package
 } from 'lucide-react';
 import VendorReportView from '@/components/VendorReportView';
+import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import { toast } from 'sonner';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
@@ -132,6 +134,10 @@ export default function DashboardPage() {
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedReportVendor, setSelectedReportVendor] = useState<string | null>(null);
   const [masterAiPrompt, setMasterAiPrompt] = useState<string>(() => localStorage.getItem('rp_master_ai_prompt') || '');
+  
+  // Tracking Modal State
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
+  const [trackingVendor, setTrackingVendor] = useState<string>('');
 
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -564,8 +570,8 @@ export default function DashboardPage() {
   const renderUserCard = (usuario: any, fullWidth = false) => {
     const isOnline = onlineUserIds.has(usuario.id);
     const userPeds = getUserPeds(usuario.nome);
-    const totalVendido = userPeds.reduce((s: number, p: any) => s + p.valorTotal, 0);
     const meta = metas.find(m => m.vendedor === usuario.nome);
+    const totalVendido = meta?.valorRealizado || 0; // Use DB saved value instead of calculating manually from full history
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 100) : 0;
 
     return (
@@ -638,17 +644,37 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Botões - Ver Relatório e Imprimir (Master vê todos, comum só o próprio) */}
-          {(isMaster || usuario.id === loggedUserId) && (
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
-                <Eye className="h-3.5 w-3.5" /> Ver Relatório
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
-                <Printer className="h-3.5 w-3.5" /> Imprimir
-              </Button>
+          {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex gap-2">
+              {(isMaster || usuario.id === loggedUserId) && (
+                <>
+                  <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+                    <Eye className="h-3.5 w-3.5" /> Ver Relatório
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+                    <Printer className="h-3.5 w-3.5" /> Imprimir
+                  </Button>
+                </>
+              )}
             </div>
-          )}
+            
+            {/* Acompanhar Pedidos Button */}
+            {(isMaster || (usuario.id === loggedUserId && usuario.nivel === 'Vendas')) && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs gap-1.5 border-dashed border-primary/50 text-primary hover:bg-red-600 hover:text-white hover:border-red-600 focus:bg-red-600 focus:text-white transition-colors" 
+                  onClick={() => {
+                     setTrackingVendor(usuario.nome); 
+                     setIsTrackingModalOpen(true);
+                  }}
+                >
+                  <Package className="h-3.5 w-3.5" /> 
+                  Acompanhar Pedidos
+                </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
@@ -832,6 +858,34 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      <AcompanhamentoPedidosModal
+        isOpen={isTrackingModalOpen}
+        onOpenChange={setIsTrackingModalOpen}
+        vendedor={trackingVendor}
+        pedidos={data.pedidos}
+        orcamentos={data.orcamentos}
+        onMetaUpdate={async (valorSoma) => {
+          setMetas((prev) => {
+            const updated = prev.map(m => m.vendedor === trackingVendor 
+              ? { ...m, valorRealizado: (m.valorRealizado || 0) + valorSoma } 
+              : m
+            );
+            
+            const changedMeta = updated.find(m => m.vendedor === trackingVendor);
+            if(changedMeta) {
+               // Fire and forget to Supabase
+               supabase.from('metas_vendedores').upsert({
+                 vendedor: trackingVendor,
+                 data: changedMeta as any,
+                 updated_at: new Date().toISOString()
+               }, { onConflict: 'vendedor' }).then(() => store.saveMetas(updated));
+            }
+            
+            return updated;
+          });
+        }}
+      />
     </div>
   );
 }

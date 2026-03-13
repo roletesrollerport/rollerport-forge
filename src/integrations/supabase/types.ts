@@ -242,6 +242,33 @@ export type Database = {
         }
         Relationships: []
       }
+      logs_entrega: {
+        Row: {
+          acao: string
+          created_at: string | null
+          id: string
+          pedido_id: string
+          valor: number
+          vendedor: string
+        }
+        Insert: {
+          acao: string
+          created_at?: string | null
+          id?: string
+          pedido_id: string
+          valor: number
+          vendedor: string
+        }
+        Update: {
+          acao?: string
+          created_at?: string | null
+          id?: string
+          pedido_id?: string
+          valor?: number
+          vendedor?: string
+        }
+        Relationships: []
+      }
       metas_vendedores: {
         Row: {
           data: Json
