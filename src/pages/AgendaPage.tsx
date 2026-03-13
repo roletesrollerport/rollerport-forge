@@ -265,7 +265,12 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      <AgendaSummary items={items} onFilter={setAgendaFilter} currentFilter={agendaFilter} />
+      <AgendaSummary items={items} onFilter={(f) => {
+        setAgendaFilter(f);
+        if (f !== 'all' && calendarRef.current) {
+          calendarRef.current.getApi().changeView('listWeek');
+        }
+      }} currentFilter={agendaFilter} />
 
       <div className="bg-card border rounded-xl p-4 shadow-sm calendar-container print:border-0 print:shadow-none print:p-0">
         <FullCalendar
