@@ -1,5 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+// Resilient edge function caller with direct fetch fallback
+async function invokeEdgeFn(fnName: string, body: Record<string, unknown>) {
+  try {
+    const { data, error } = await supabase.functions.invoke(fnName, { body });
+    if (!error) return { data, error: null };
+  } catch {
+    // fall through to fallback
+  }
+  // Fallback: direct fetch
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const res = await fetch(`https://${projectId}.supabase.co/functions/v1/${fnName}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return { data: null, error: { context: { status: res.status } } };
+  const data = await res.json().catch(() => null);
+  return { data, error: null };
+}
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
