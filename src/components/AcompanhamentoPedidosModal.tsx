@@ -187,7 +187,7 @@ export function AcompanhamentoPedidosModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Acompanhamento de Pedidos - {vendedor}</DialogTitle>
+          <DialogTitle>Acompanhamento de Pedidos {vendedor ? `- ${vendedor}` : '- Todos os Vendedores'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-4 pb-4">
