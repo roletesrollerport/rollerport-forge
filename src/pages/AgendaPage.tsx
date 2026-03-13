@@ -24,7 +24,8 @@ import {
   Zap,
   Target,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 import { AgendaModal } from '@/components/AgendaModal';
 import { AgendaSummary } from '@/components/AgendaSummary';
@@ -48,6 +49,10 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
+import { IAHunterModal } from '@/components/IAHunterModal';
+import { EstrategiaFocoModal } from '@/components/EstrategiaFocoModal';
+import { addDays, startOfWeek, setDay } from 'date-fns';
+
 const TYPE_COLORS: Record<TipoCompromisso, string> = {
   'Visita Técnica': '#f59e0b',
   'Ligação': '#3b82f6',
@@ -69,6 +74,11 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // IA Hunter States
+  const [iaHunterOpen, setIaHunterOpen] = useState(false);
+  const [estrategiaFocoOpen, setEstrategiaFocoOpen] = useState(false);
+
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
   const [editingItem, setEditingItem] = useState<AgendaItem | undefined>();
   const [initialDate, setInitialDate] = useState<Date | undefined>();
@@ -89,6 +99,44 @@ export default function AgendaPage() {
     window.addEventListener('rp-data-synced', loadData);
     return () => window.removeEventListener('rp-data-synced', loadData);
   }, []);
+
+  const handleAgendarLead = (lead: any, targetDayOfWeek: number) => {
+    // Calculates the date for the target day in the CURRENT week
+    const now = new Date();
+    let targetDate = setDay(startOfWeek(now, { weekStartsOn: 0 }), targetDayOfWeek);
+    
+    // If that day has already passed this week, schedule for next week
+    if (isPast(targetDate) && targetDate.getDate() !== now.getDate()) {
+       targetDate = addDays(targetDate, 7);
+    }
+    
+    // Set Time to 09:00 AM
+    targetDate.setHours(9, 0, 0, 0);
+
+    const newItem: AgendaItem = {
+      id: crypto.randomUUID(),
+      titulo: `Prospecção: ${lead.empresa}`,
+      descricao: `Contato inicial com ${lead.empresa}.\nSetor: ${lead.setor}\nLocal: ${lead.localizacao}\nContato: (Agente IA buscou as redês: ${lead.contato})`,
+      tipo: 'Ligação',
+      data_inicio: targetDate.toISOString(),
+      data_fim: addDays(targetDate, 0).setHours(10, 0, 0, 0).toString(), // 1 hour duration
+      status: false,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...items, newItem];
+    setItems(updated);
+    store.saveAgenda(updated);
+    toast.success('Lead agendado com sucesso!');
+    
+    // Refresh calendar view
+    if (calendarRef.current) {
+       calendarRef.current.getApi().gotoDate(targetDate);
+       calendarRef.current.getApi().changeView('timeGridDay');
+    }
+    
+    setIaHunterOpen(false);
+  };
 
   // Handle follow-up from other pages
   useEffect(() => {
@@ -232,7 +280,7 @@ export default function AgendaPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">Agenda CRM</h1>
+              <h1 className="text-xl font-extrabold tracking-tight text-foreground">CRM Rollerport</h1>
               <Badge variant="secondary" className="text-[10px] h-5 font-bold uppercase tracking-wider gap-1 bg-secondary/15 text-secondary border-0">
                 <Zap className="h-3 w-3" /> Pro
               </Badge>
@@ -241,7 +289,28 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* IA HUNTER BUTTONS */}
+          <Button 
+            onClick={() => setIaHunterOpen(true)}
+            size="sm" 
+            className="gap-2 h-9 rounded-xl text-xs font-bold shadow-md shadow-primary/20"
+          >
+            <Sparkles className="h-4 w-4" />
+            Agente de Prospecção IA
+          </Button>
+          
+          <Button 
+            onClick={() => setEstrategiaFocoOpen(true)}
+            variant="outline"
+            size="sm" 
+            className="gap-2 h-9 rounded-xl text-xs font-bold text-primary hover:bg-primary hover:text-white border-primary/20 transition-colors"
+          >
+            <Target className="h-4 w-4" />
+            Estratégia de Foco
+          </Button>
+
+          <div className="h-6 w-px bg-border mx-1" />
           {/* Bell / Notifications */}
           <Popover>
             <PopoverTrigger asChild>
@@ -469,6 +538,17 @@ export default function AgendaPage() {
         }}
         onDelete={handleDelete}
         onToggleComplete={handleToggleComplete}
+      />
+
+      <IAHunterModal
+        isOpen={iaHunterOpen}
+        onOpenChange={setIaHunterOpen}
+        onAgendar={handleAgendarLead}
+      />
+      
+      <EstrategiaFocoModal
+        isOpen={estrategiaFocoOpen}
+        onOpenChange={setEstrategiaFocoOpen}
       />
 
       <style>{`

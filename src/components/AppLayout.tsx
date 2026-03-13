@@ -29,7 +29,7 @@ const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo 
   { to: '/chat', label: 'Bate-Papo', icon: MessageSquare, modulo: 'chat' },
   { to: '/ia', label: 'IA', icon: Bot, modulo: 'ia' },
   { to: '/usuarios', label: 'Usuários', icon: UserCog, modulo: 'usuarios' },
-  { to: '/agenda', label: 'Agenda', icon: Calendar, modulo: 'agenda' },
+  { to: '/agenda', label: 'CRM Rollerport', icon: Calendar, modulo: 'agenda' },
   { to: '/gestao-dados', label: 'Gestão de Dados', icon: Database, modulo: 'gestao-dados' },
 ];
 
