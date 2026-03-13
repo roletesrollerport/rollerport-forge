@@ -138,13 +138,10 @@ export function AcompanhamentoPedidosModal({
         // Subtract from Meta
         onMetaUpdate(-pedido.valorTotal);
 
-        // Log reversão (ignore errors if table doesn't exist)
-        await supabase.from('logs_entrega' as any).insert({
-          pedido_id: pedido.id,
-          vendedor: vendedor,
-          acao: 'REVERTIDO',
-          valor: -pedido.valorTotal
-        } as any).then(() => {}).catch(() => {});
+        // Log reversão
+        try { await (supabase.from as any)('logs_entrega').insert({
+          pedido_id: pedido.id, vendedor, acao: 'REVERTIDO', valor: -pedido.valorTotal
+        }); } catch {}
         
         toast({
           title: "Status Revertido",
