@@ -253,7 +253,7 @@ const SEED_AGENDA: AgendaItem[] = [
     descricao: 'Verificar alinhamento dos roletes de carga na linha 4.',
     data_inicio: `${new Date().toISOString().split('T')[0]}T10:00:00`,
     data_fim: `${new Date().toISOString().split('T')[0]}T11:30:00`,
-    tipo: 'Visita',
+    tipo: 'Visita Técnica',
     cliente_id: '1',
     clienteNome: 'Polimix',
     status: false,
