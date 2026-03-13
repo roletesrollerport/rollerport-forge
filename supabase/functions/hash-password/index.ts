@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
-
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,38 +11,9 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, password, hashedPassword, userId, loginStr, sessionToken: bodySessionToken } = body;
-
-    if (action === "hash") {
-      // Hash a password
-      if (!password || typeof password !== "string" || password.length < 1 || password.length > 128) {
-        return new Response(JSON.stringify({ error: "Invalid password" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const hashed = hashSync(password);
-      return new Response(JSON.stringify({ hash: hashed }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "verify") {
-      // Verify password against hash
-      if (!password || !hashedPassword) {
-        return new Response(JSON.stringify({ error: "Missing fields" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const valid = compareSync(password, hashedPassword);
-      return new Response(JSON.stringify({ valid }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { action, password, userId, loginStr, sessionToken: bodySessionToken } = body;
 
     if (action === "login") {
-      // Server-side login: find user and verify password
       if (!loginStr || !password) {
         return new Response(JSON.stringify({ error: "Missing credentials" }), {
           status: 400,
@@ -71,21 +40,8 @@ serve(async (req) => {
         });
       }
 
-      // Support both plain text and legacy bcrypt hashed passwords
-      let valid = false;
-      if (user.senha.startsWith("$2")) {
-        // Legacy bcrypt hash - compare and migrate to plain text
-        valid = compareSync(password, user.senha);
-        if (valid) {
-          // Migrate to plain text
-          await supabaseAdmin
-            .from("usuarios")
-            .update({ senha: password })
-            .eq("id", user.id);
-        }
-      } else {
-        valid = user.senha === password;
-      }
+      // Plain text password comparison
+      const valid = user.senha === password;
 
       if (!valid) {
         return new Response(JSON.stringify({ user: null }), {
@@ -95,7 +51,7 @@ serve(async (req) => {
 
       // Create a session token
       const sessionToken = crypto.randomUUID() + '-' + crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
       await supabaseAdmin.from("sessions").insert({
         user_id: user.id,
@@ -109,14 +65,13 @@ serve(async (req) => {
         .update({ last_seen: new Date().toISOString() })
         .eq("id", user.id);
 
-      // Clean up expired sessions for this user
+      // Clean up expired sessions
       await supabaseAdmin
         .from("sessions")
         .delete()
         .eq("user_id", user.id)
         .lt("expires_at", new Date().toISOString());
 
-      // Return user without senha, plus session token
       const { senha: _, ...safeUser } = user;
       return new Response(JSON.stringify({ user: safeUser, sessionToken }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
