@@ -688,31 +688,31 @@ export default function DashboardPage() {
                 </p>
               </div>
             )}
-          </CardContent>
+          </div>
 
             {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
-            <div className="flex flex-col gap-2 pt-1 border-t mt-4 pt-4">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-1.5 border-t pt-2">
+              <div className="flex gap-1.5">
                 {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
                  (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
                   <>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
                       <Eye className="h-3.5 w-3.5" /> Ver Relatório
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
                       <Printer className="h-3.5 w-3.5" /> Imprimir
                     </Button>
                   </>
                 )}
               </div>
               
-              {/* Acompanhar Pedidos Button (Strictly for Vendas and Management) */}
+              {/* Acompanhar Pedidos Button */}
               {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin'].includes(usuario.nivel)) && 
                (['Vendas', 'SEO', 'adm/dono', 'master', 'admin'].includes(usuario.nivel)) && (
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full text-xs gap-1.5 border-dashed border-primary/50 text-primary hover:bg-red-600 hover:text-white hover:border-red-600 focus:bg-red-600 focus:text-white transition-colors" 
+                    className="w-full text-xs gap-1.5 h-8 border-dashed border-primary/50 text-primary hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" 
                     onClick={() => {
                        setTrackingVendor(usuario.nome); 
                        setIsTrackingModalOpen(true);
