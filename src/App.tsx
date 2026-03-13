@@ -118,26 +118,8 @@ function AppContent() {
     updateLastSeen();
     const interval = setInterval(updateLastSeen, 60000);
 
-    // On tab close / navigate away, try to clean up session
-    const handleUnload = () => {
-      const token = localStorage.getItem('rp_session_token');
-      if (token) {
-        const blob = new Blob(
-          [JSON.stringify({ action: 'logout', sessionToken: token })],
-          { type: 'application/json' }
-        );
-        navigator.sendBeacon(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hash-password`,
-          blob
-        );
-      }
-    };
-
-    window.addEventListener('beforeunload', handleUnload);
-
     return () => {
       clearInterval(interval);
-      window.removeEventListener('beforeunload', handleUnload);
     };
   }, [loggedUserId, sessionToken, clearLocalSession]);
 
