@@ -1,5 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+// Resilient edge function caller with direct fetch fallback
+async function invokeEdgeFn(fnName: string, body: Record<string, unknown>) {
+  try {
+    const { data, error } = await supabase.functions.invoke(fnName, { body });
+    if (!error) return { data, error: null };
+  } catch {
+    // fall through to fallback
+  }
+  // Fallback: direct fetch
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const res = await fetch(`https://${projectId}.supabase.co/functions/v1/${fnName}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return { data: null, error: { context: { status: res.status } } };
+  const data = await res.json().catch(() => null);
+  return { data, error: null };
+}
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -53,30 +74,29 @@ function AppContent() {
   useEffect(() => {
     if (loggedUserId && sessionToken) {
       // Validate session server-side
-      supabase.functions.invoke('chat-api', {
-        body: { action: 'validate_session', sessionToken },
-      }).then(({ data, error }) => {
-        if (error || !data?.valid || data?.user_id !== loggedUserId) {
-          clearLocalSession();
-          setChecking(false);
-          return;
-        }
-
-        getById(loggedUserId).then(user => {
-          if (user) {
-            setCurrentUser(user);
-          } else {
+      invokeEdgeFn('chat-api', { action: 'validate_session', sessionToken })
+        .then(({ data, error }) => {
+          if (error || !data?.valid || data?.user_id !== loggedUserId) {
             clearLocalSession();
+            setChecking(false);
+            return;
           }
-          setChecking(false);
+
+          getById(loggedUserId).then(user => {
+            if (user) {
+              setCurrentUser(user);
+            } else {
+              clearLocalSession();
+            }
+            setChecking(false);
+          }).catch(() => {
+            clearLocalSession();
+            setChecking(false);
+          });
         }).catch(() => {
           clearLocalSession();
           setChecking(false);
         });
-      }).catch(() => {
-        clearLocalSession();
-        setChecking(false);
-      });
     } else {
       setChecking(false);
     }
@@ -107,9 +127,7 @@ function AppContent() {
     };
 
     const updateLastSeen = async () => {
-      const { error } = await supabase.functions.invoke('chat-api', {
-        body: { action: 'heartbeat', sessionToken },
-      });
+      const { error } = await invokeEdgeFn('chat-api', { action: 'heartbeat', sessionToken });
 
       if (error && await is401SessionError(error)) {
         clearLocalSession();
@@ -134,9 +152,7 @@ function AppContent() {
   const handleLogout = async () => {
     const token = localStorage.getItem('rp_session_token');
     if (token) {
-      await supabase.functions.invoke('hash-password', {
-        body: { action: 'logout', sessionToken: token },
-      }).catch(() => {});
+      await invokeEdgeFn('hash-password', { action: 'logout', sessionToken: token }).catch(() => {});
     }
     clearLocalSession();
   };
