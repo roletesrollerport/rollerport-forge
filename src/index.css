@@ -153,3 +153,42 @@ html, body, #root {
     justify-content: center;
   }
 }
+
+/* Calendar event dots */
+.rp-cal-event .rdp-day_button,
+.rp-cal-event button[name="day"] {
+  position: relative;
+}
+.rp-cal-event .rdp-day_button::after,
+.rp-cal-event button[name="day"]::after,
+.rp-cal-event::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: hsl(142 71% 45%);
+}
+.rp-cal-event {
+  position: relative;
+}
+
+.rp-cal-overdue .rdp-day_button::after,
+.rp-cal-overdue button[name="day"]::after,
+.rp-cal-overdue::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: hsl(0 72% 51%);
+}
+.rp-cal-overdue {
+  position: relative;
+}
