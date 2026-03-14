@@ -37,6 +37,7 @@ import VendorReportView from '@/components/VendorReportView';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import { toast } from 'sonner';
 import { RealTimeClock } from '@/components/RealTimeClock';
+import logo from '@/assets/logo.png';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
 
@@ -722,13 +723,16 @@ export default function DashboardPage() {
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             {/* Saudação Dinâmica */}
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-[#223c61] tracking-tight">
-                {getGreeting()}, {currentUser?.nome?.split(' ')[0]}!
-              </h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                Aqui está o status atual da Rollerport hoje.
-              </p>
+            <div className="flex-1 flex flex-col xs:flex-row items-center gap-5">
+              <img src={logo} alt="Rollerport" className="h-14 w-14 sm:h-16 sm:w-16 object-contain shrink-0" />
+              <div className="text-center xs:text-left">
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#223c61] tracking-tight">
+                  {getGreeting()}, {currentUser?.nome?.split(' ')[0]}!
+                </h1>
+                <p className="text-muted-foreground text-sm sm:text-base mt-1">
+                  Aqui está o status atual da Rollerport hoje.
+                </p>
+              </div>
             </div>
 
             {/* Controles do Cockpit */}

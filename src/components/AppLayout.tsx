@@ -263,8 +263,8 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[92px] p-0 border-none bg-white flex flex-col items-center">
-              <div className="flex items-center justify-center py-8 border-b border-[#F1F5F9] w-full">
-                <img src={logo} alt="Rollerport" className="h-10 w-10 object-contain" />
+              <div className="py-2 w-full">
+                {/* Espaço reduzido para foco total na navegação */}
               </div>
               <TooltipProvider delayDuration={0}>
                 <nav className="flex-1 overflow-y-auto w-full px-2 py-4 space-y-1 flex flex-col items-center">
@@ -320,7 +320,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
               </TooltipProvider>
             </SheetContent>
           </Sheet>
-          <img src={logo} alt="Rollerport" className="h-8 w-8 object-contain" />
+          {/* Logo removida do header mobile para unificação */}
         </div>
         
         <div className="flex items-center gap-2">
@@ -339,8 +339,8 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
 
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex flex-col bg-[#F8FAFC] border-r border-[#E2E8F0] w-[92px] fixed inset-y-0 left-0 z-50">
-        <div className="flex items-center justify-center py-6">
-          <img src={logo} alt="Rollerport" className="h-11 w-11 object-contain" />
+        <div className="py-4">
+          {/* Espaço removido para que os ícones subam */}
         </div>
 
         <TooltipProvider delayDuration={0}>
