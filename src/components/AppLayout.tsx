@@ -143,6 +143,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     ? navItems
     : navItems.filter(item => {
         if (item.modulo === 'chat') return true;
+        if (item.modulo === 'agenda') return true;
         if (item.modulo === 'usuarios' || item.modulo === 'gestao-dados') return false;
         return userPerms.includes(item.modulo);
       });
