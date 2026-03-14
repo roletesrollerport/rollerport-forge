@@ -16,6 +16,13 @@ import { useUsuarios } from '@/hooks/useUsuarios';
 import { usePresence } from '@/hooks/usePresence';
 import { PresenceContext } from '@/contexts/PresenceContext';
 import { RealTimeClock } from '@/components/RealTimeClock';
+  import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
   { to: '/', label: 'Início', icon: Home, modulo: 'inicio' },
@@ -229,186 +236,124 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     }
   };
 
-  return (
-    <div className="flex h-screen overflow-hidden">
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-foreground/30 lg:hidden" onClick={() => setMobileOpen(false)} />
-      )}
+  const mobileNavItems = [
+    { to: '/', label: 'Início', icon: Home },
+    { to: '/pedidos', label: 'Pedidos', icon: ShoppingCart },
+    { to: '/producao', label: 'Produção', icon: Factory },
+    { to: '/agenda', label: 'Agenda', icon: Calendar },
+    { to: '/chat', label: 'Chat', icon: MessageSquare },
+  ];
 
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50
-        flex flex-col bg-sidebar text-sidebar-foreground
-        transition-all duration-300 ease-in-out
-        ${collapsed ? 'w-16' : 'w-60'}
-        ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="flex items-center gap-3 px-3 py-4 border-b border-sidebar-border">
-          <img src={logo} alt="Rollerport" className="h-14 w-14 object-contain flex-shrink-0" />
-          {!collapsed && <span className="text-lg font-bold tracking-tight text-sidebar-foreground">ROLLERPORT</span>}
+  return (
+    <div className="flex bg-[#F8FAFC] h-screen overflow-hidden">
+      {/* MOBILE HEADER (TOP) */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#E2E8F0] z-40 flex items-center justify-between px-4">
+        <img src={logo} alt="Rollerport" className="h-8 w-8 object-contain" />
+        <div className="flex items-center gap-2">
+           <button onClick={handleBellClick} className="p-2 relative text-[#223c61]">
+             <Bell className="h-5 w-5" />
+             {naoLidas > 0 && <span className="absolute top-1 right-1 h-3.5 w-3.5 bg-red-500 rounded-full border-2 border-white" />}
+           </button>
+           <Avatar className="h-8 w-8 border border-[#E2E8F0]">
+             {currentUser?.foto ? <AvatarImage src={currentUser.foto} /> : null}
+             <AvatarFallback className="bg-[#223c61] text-white text-[10px] font-bold">
+               {currentUser?.nome?.substring(0, 1).toUpperCase()}
+             </AvatarFallback>
+           </Avatar>
+        </div>
+      </div>
+
+      {/* DESKTOP SIDEBAR */}
+      <aside className="hidden lg:flex flex-col bg-[#F8FAFC] border-r border-[#E2E8F0] w-[92px] shrink-0">
+        <div className="flex items-center justify-center py-6">
+          <img src={logo} alt="Rollerport" className="h-11 w-11 object-contain" />
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2">
-          {visibleNavItems.map(item => {
-            const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
-            
-            if (item.modulo === 'chat') {
-              return (
-                <button
-                  key={item.to}
-                  onClick={() => { setMobileOpen(false); setChatOpen(true); }}
-                  className={`
-                    flex items-center gap-3 mx-2 px-3 py-2.5 rounded-md text-sm font-medium w-[calc(100%-1rem)]
-                    transition-colors duration-150
-                    text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
-                  `}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-                  {!collapsed && unreadChatCount > 0 && (
-                    <span className="h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-                      {unreadChatCount}
-                    </span>
-                  )}
-                </button>
-              );
-            }
-
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                className={`
-                  flex items-center gap-3 mx-2 px-3 py-2.5 rounded-md text-sm font-medium
-                  transition-colors duration-150
-                  ${active
-                    ? 'bg-sidebar-accent text-sidebar-primary'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+        <TooltipProvider delayDuration={0}>
+          <nav className="flex-1 overflow-y-auto px-2 space-y-1 flex flex-col items-center">
+            {visibleNavItems.map(item => {
+              const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
+              
+              const NavItem = (
+                <div className={`
+                  p-2.5 rounded-2xl transition-all duration-200
+                  ${active 
+                    ? 'bg-[#223c61]/10 text-[#223c61]' 
+                    : 'text-[#223c61] hover:bg-[#223c61]/10'
                   }
-                `}
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span className="flex-1">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
+                `}>
+                  <item.icon className="h-[26px] w-[26px]" />
+                </div>
+              );
 
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex items-center justify-center py-3 border-t border-sidebar-border text-sidebar-muted hover:text-sidebar-foreground transition-colors"
-        >
-          <ChevronRight className={`h-4 w-4 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
-        </button>
+              return (
+                <Tooltip key={item.to}>
+                  <TooltipTrigger asChild>
+                    {item.modulo === 'chat' ? (
+                      <button
+                        onClick={() => { setChatOpen(true); }}
+                        className="relative"
+                      >
+                        {NavItem}
+                        {unreadChatCount > 0 && (
+                          <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-[#F8FAFC]">
+                            {unreadChatCount}
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <Link
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        {NavItem}
+                      </Link>
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-[#223c61] text-white border-none text-xs font-bold py-1 px-3 ml-2">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </nav>
+        </TooltipProvider>
+
+        <div className="py-4 border-t border-[#E2E8F0] opacity-0 pointer-events-none">
+          {/* Espaçador para manter proporção se necessário */}
+        </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center gap-4 h-14 px-4 border-b bg-card shrink-0">
-          <button className="lg:hidden" onClick={() => setMobileOpen(true)}>
-            <Menu className="h-5 w-5" />
-          </button>
-          
-          <div className="flex-1" />
-
-          <div className="hidden md:block">
-            <RealTimeClock />
-          </div>
-
-          <div className="relative flex items-center gap-1">
-            <button 
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-[#E2E8F0] z-40 flex items-center justify-around px-2">
+        {mobileNavItems.map(item => {
+          const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+          return (
+            <Link 
+              key={item.to} 
+              to={item.to}
+              className={`flex flex-col items-center gap-1 px-3 py-1.5 transition-all
+                ${active ? 'text-[#223c61]' : 'text-[#64748B]'}
+              `}
               onClick={() => {
-                if(confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
-                  localStorage.removeItem('rp_orcamentos');
-                  localStorage.removeItem('rp_pedidos');
-                  localStorage.removeItem('rp_clientes');
-                  localStorage.removeItem('rp_produtos');
-                  localStorage.removeItem('rp_os');
-                  localStorage.removeItem('rp_estoque');
-                  localStorage.removeItem('rp_metas');
-                  window.location.reload();
+                if(item.label === 'Chat') {
+                   setChatOpen(true);
                 }
-              }} 
-              className="relative p-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary" 
-              title="Forçar Sincronização com Banco de Dados"
+              }}
             >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-            <button onClick={handleBellClick} className="relative p-2 rounded-md hover:bg-muted transition-colors">
-              <Bell className={`h-5 w-5 ${naoLidas > 0 ? 'animate-bounce' : ''}`} />
-              {naoLidas > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-                  {naoLidas}
-                </span>
-              )}
-            </button>
-            {showNotif && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-card border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                <div className="p-3 border-b font-semibold text-sm flex items-center justify-between">
-                  <span>Notificações</span>
-                  {notificacoes.length > 0 && (
-                    <button onClick={excluirTodas} className="text-[10px] text-destructive hover:underline">Limpar tudo</button>
-                  )}
-                </div>
-                {notificacoes.length === 0 && unreadChatCount === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground text-center">Nenhuma notificação</div>
-                ) : (
-                  <>
-                    {unreadChatCount > 0 && (
-                      <div
-                        className="p-3 border-b text-sm cursor-pointer hover:bg-muted/50 bg-primary/5"
-                        onClick={() => { setShowNotif(false); setChatOpen(true); }}
-                      >
-                        <p className="font-medium text-xs">💬 Novas mensagens no Bate-Papo</p>
-                        <p className="text-xs text-muted-foreground">{unreadChatCount} conversa(s) com mensagens novas</p>
-                      </div>
-                    )}
-                    {notificacoes.slice(-10).reverse().map(n => (
-                      <div
-                        key={n.id}
-                        className={`p-3 border-b last:border-0 text-sm cursor-pointer hover:bg-muted/50 ${!n.lida ? 'bg-primary/5' : ''}`}
-                        onClick={() => handleNotifClick(n)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-xs truncate">{n.titulo}</p>
-                            <p className="text-xs text-muted-foreground truncate">{n.mensagem}</p>
-                          </div>
-                          <button onClick={(e) => { e.stopPropagation(); excluirNotif(n.id); }} className="p-1 rounded hover:bg-muted text-destructive flex-shrink-0" title="Excluir">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+              <item.icon className="h-6 w-6" />
+              <span className="text-[10px] font-bold">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                {currentUser.foto ? <img src={currentUser.foto} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-muted-foreground" />}
-              </div>
-              <span className="text-xs font-medium hidden sm:block">{currentUser.nome}</span>
-            </div>
-            <button onClick={onLogout} className="p-2 rounded-md hover:bg-muted transition-colors" title="Sair">
-              <LogOut className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-        </header>
-
+      <div className="flex-1 flex flex-col min-w-0 pb-16 lg:pb-0 pt-14 lg:pt-0">
         <PresenceContext.Provider value={{ onlineUserIds }}>
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in relative">
             {children}
           </main>
         </PresenceContext.Provider>
-      </div>
-
-
-      {/* Print-only timestamp */}
-      <div className="print-only">
-        <p>Documento gerado em: <RealTimeClock className="inline-flex bg-transparent border-none p-0 shadow-none text-current font-sans text-[8pt]" /></p>
       </div>
 
       {/* Chat Widget */}

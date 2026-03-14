@@ -12,16 +12,31 @@ import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  FileText, ShoppingCart, Users, Factory, TrendingUp, CheckCircle, Truck,
-  Eye, Printer, Target, Save, Edit, ArrowLeft, Trash2, X,
-  ClipboardList,
+  FileText,
+  ShoppingCart,
+  Users,
+  Factory,
+  TrendingUp,
+  CheckCircle,
+  Truck,
+  Eye,
+  Printer,
+  ArrowLeft,
+  Trash2,
+  X,
   Package,
   Check,
-  Edit2
+  Edit2,
+  Bell,
+  LogOut,
+  User,
+  RefreshCw,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import VendorReportView from '@/components/VendorReportView';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import { toast } from 'sonner';
+import { RealTimeClock } from '@/components/RealTimeClock';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
 
@@ -155,6 +170,63 @@ export default function DashboardPage() {
   const isMaster = isFullAccess; // Keeping the name for compatibility with existing code where meaningful
   const currentUserName = currentUser?.nome || '';
   const { onlineUserIds } = usePresenceContext();
+
+  // Notification & UI States
+  const [showNotif, setShowNotif] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const autoCloseTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const notificacoes = store.getNotificacoes();
+  const naoLidas = notificacoes.filter(n => !n.lida).length + unreadChatCount;
+
+  const handleBellClick = () => setShowNotif(!showNotif);
+
+  const handleNotifClick = (n: any) => {
+    const updated = notificacoes.map(notif => notif.id === n.id ? { ...notif, lida: true } : notif);
+    store.saveNotificacoes(updated);
+    if (n.link) navigate(n.link);
+    setShowNotif(false);
+  };
+
+  const excluirNotif = (id: string) => {
+    const updated = notificacoes.filter(n => n.id !== id);
+    store.saveNotificacoes(updated);
+  };
+  const excluirTodas = () => {
+    store.saveNotificacoes([]);
+    setShowNotif(false);
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
+  // Poll for unread chat messages (migrated from AppLayout)
+  const checkUnreadMessages = useCallback(async () => {
+    if (!currentUser?.id) return;
+    const readKey = `rp_chat_read_${currentUser.id}`;
+    const lastRead = localStorage.getItem(readKey);
+    const lastReadTime = lastRead ? new Date(lastRead).getTime() : 0;
+    const { data: recentData } = await supabase
+      .from('chat_messages' as any)
+      .select('id, sender_id, created_at')
+      .neq('sender_id', currentUser.id)
+      .eq('deleted_for_all', false)
+      .gt('created_at', new Date(lastReadTime).toISOString());
+    if (recentData) {
+      const uniqueSenders = new Set((recentData as any[]).map(m => m.sender_id));
+      setUnreadChatCount(uniqueSenders.size);
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    checkUnreadMessages();
+    const interval = setInterval(checkUnreadMessages, 10000);
+    return () => clearInterval(interval);
+  }, [checkUnreadMessages]);
 
   /* ---------------------------------------------------------------- */
   /*  Data loading - Direct from Supabase DB only                      */
@@ -611,358 +683,358 @@ export default function DashboardPage() {
       
     const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 1000) : 0; // Allowing > 100% display but cap if needed for bar
     const displayPct = Math.min(metaPct, 100);
-
     return (
-      <Card key={usuario.id} className={`hover:shadow-md transition-shadow ${fullWidth ? 'col-span-full max-w-md' : ''}`}>
-        <CardContent className="p-4 space-y-2">
-          {/* Foto + Nome */}
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Avatar className="h-11 w-11">
-                {usuario.foto ? <AvatarImage src={usuario.foto} alt={usuario.nome} /> : null}
-                <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
-                  {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              {isOnline ? (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-success border-2 border-card"></span>
-                </span>
-              ) : (
-                <span className="absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-3.5 w-3.5 bg-muted-foreground/40 border-2 border-card"></span>
-              )}
-            </div>
-            <div>
-              <p className="font-semibold text-sm">{usuario.nome}</p>
-              <span className={`text-[11px] font-medium ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
-                {isOnline ? '● Online' : '● Offline'}
-              </span>
-            </div>
+      <div key={usuario.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-[#F8FAFC] transition-all group">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Avatar className="h-10 w-10 border border-[#E2E8F0] shadow-sm">
+              {usuario.foto ? <AvatarImage src={usuario.foto} alt={usuario.nome} /> : null}
+              <AvatarFallback className="text-xs font-bold bg-[#223c61] text-white">
+                {usuario.nome?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className={`absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-3 w-3 border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-300'}`}></span>
           </div>
-
-          <div className="space-y-2">
-            {/* Meta do Mês (Apenas para Vendas) */}
-            {usuario.nivel === 'Vendas' && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground font-medium">Meta do Mês</span>
-                  <div className="flex items-center gap-1.5">
-                    {isFullAccess && editingMeta?.vendedor === usuario.nome ? (
-                      <div className="flex items-center gap-1.5">
-                        <Input 
-                          type="text" 
-                          inputMode="numeric"
-                          className="h-6 w-24 font-semibold text-xs px-2 text-right" 
-                          value={formatCurrencyInput(editingMeta.valor)} 
-                          onChange={e => {
-                            const raw = e.target.value.replace(/\D/g, '');
-                            const cents = parseInt(raw || '0', 10);
-                            setEditingMeta({ ...editingMeta, valor: cents / 100 });
-                          }} 
-                          autoFocus 
-                        />
-                        <button onClick={() => saveMeta(usuario.nome, editingMeta.valor)} className="text-success hover:text-success/80 bg-success/10 p-1 rounded-sm"><Check className="h-3 w-3" /></button>
-                        <button onClick={() => setEditingMeta(null)} className="text-muted-foreground hover:text-foreground bg-muted p-1 rounded-sm"><X className="h-3 w-3" /></button>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="text-sm font-semibold text-foreground">
-                          {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'R$ 0,00'}
-                        </span>
-                        {isFullAccess && (
-                          <button 
-                            onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} 
-                            className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </button>
-                        )}
-                      </>
-                    )}
-                    <span className="text-xs font-semibold text-muted-foreground ml-1">
-                      {meta && meta.metaMensal > 0 ? ((totalVendido / meta.metaMensal) * 100).toFixed(0) : 0}%
-                    </span>
-                  </div>
-                </div>
-                <Progress value={displayPct} className="h-2 [&>div]:bg-primary bg-muted" />
-                <p className="text-[11px] text-muted-foreground">
-                  {fmt(totalVendido)} de {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'R$ 0,00'}
-                </p>
-              </div>
-            )}
+          <div>
+            <p className="font-bold text-sm text-[#223c61] leading-tight">{usuario.nome}</p>
+            <p className="text-[10px] text-[#64748B] font-medium uppercase tracking-wider">{usuario.nivel}</p>
           </div>
-
-            {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
-            <div className="flex flex-col gap-1.5 border-t pt-2">
-              <div className="flex gap-1.5">
-                {(isFullAccess || (usuario.id === loggedUserId && (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)))) && (
-                  <>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
-                      <Eye className="h-3.5 w-3.5" /> Ver Relatório
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-print'); }}>
-                      <Printer className="h-3.5 w-3.5" /> Imprimir
-                    </Button>
-                  </>
-                )}
-              </div>
-              
-              {/* Acompanhar Pedidos Button */}
-              {(isFullAccess || (usuario.id === loggedUserId && (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)))) && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full text-xs gap-1.5 h-8 border-dashed border-primary/50 text-primary hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" 
-                    onClick={() => {
-                       const isAdmin = usuario.nivel !== 'Vendas';
-                       setTrackingVendor(usuario.nome);
-                       setTrackingShowAll(isAdmin);
-                       setIsTrackingModalOpen(true);
-                    }}
-                  >
-                    <Package className="h-3.5 w-3.5" /> 
-                    {usuario.nivel === 'Vendas' ? 'Acompanhar Pedidos' : 'Monitorar Geral'}
-                  </Button>
-                )}
-            </div>
-          </CardContent>
-        </Card>
+        </div>
+        
+        <div className="flex flex-col items-end">
+          <Badge variant="outline" className={`text-[9px] px-1.5 h-4 border-none uppercase ${isOnline ? 'text-green-600' : 'text-gray-400'}`}>
+            {isOnline ? 'Online' : 'Offline'}
+          </Badge>
+        </div>
+      </div>
     );
   };
 
   /* ================================================================ */
   /*  MAIN DASHBOARD VIEW                                              */
   /* ================================================================ */
+  /*  MAIN DASHBOARD VIEW                                              */
+  /* ================================================================ */
   return (
-    <div>
-      {/* TOPO */}
-      <div className="mb-2">
-        <h1 className="page-header">Início</h1>
-        <p className="page-subtitle">Sistema Rollerport</p>
-      </div>
-
-      {/* Espaço de 2 linhas */}
-      <div className="h-8" />
-
-      {/* 4 Cards globais - contagens persistentes e clicáveis */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* ORÇAMENTOS */}
-        <StatCard 
-          icon={FileText} 
-          label="Orçamentos" 
-          value={(isMaster ? data.orcamentos : getUserOrcs(currentUserName)).length} 
-          color="bg-primary/10 text-primary" 
-          onViewAll={() => navigate(isMaster ? '/orcamentos' : `/orcamentos?vendedor=${currentUserName}`)}
-          items={(isMaster ? data.orcamentos : getUserOrcs(currentUserName))
-            .slice(-3).reverse()
-            .map((o: any) => ({ id: o.id, label: o.numero, user: o.vendedor || 'Sistema' }))}
-        />
-
-        {/* PEDIDOS */}
-        <StatCard 
-          icon={ShoppingCart} 
-          label="Pedidos" 
-          value={(isMaster ? data.pedidos : getUserPeds(currentUserName)).length} 
-          color="bg-secondary/20 text-secondary" 
-          onViewAll={() => navigate(isMaster ? '/pedidos' : `/pedidos?vendedor=${currentUserName}`)}
-          items={(isMaster ? data.pedidos : getUserPeds(currentUserName))
-            .slice(-3).reverse()
-            .map((p: any) => {
-              const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
-              return { id: p.id, label: p.numero, user: p.vendedor || orc?.vendedor || 'Sistema' };
-            })}
-        />
-
-        {/* CLIENTES */}
-        <StatCard 
-          icon={Users} 
-          label="Clientes" 
-          value={(isMaster ? data.clientes : data.clientes.filter(c => {
-            // ACL: For common users, show clients they have budgets/orders with
-            const hasOrc = data.orcamentos.some(o => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
-            const hasPed = data.pedidos.some(p => p.clienteNome === c.nome && getUserPeds(currentUserName).some(up => up.id === p.id));
-            return hasOrc || hasPed;
-          })).length} 
-          color="bg-info/10 text-info" 
-          onViewAll={() => navigate('/clientes')}
-          items={(isMaster ? data.clientes : data.clientes.filter((c: any) => {
-            const hasOrc = data.orcamentos.some((o: any) => o.clienteId === c.id && nameMatch(o.vendedor, currentUserName));
-            const hasPed = data.pedidos.some((p: any) => p.clienteNome === c.nome && getUserPeds(currentUserName).some((up: any) => up.id === p.id));
-            return hasOrc || hasPed;
-          }))
-            .slice(-3).reverse()
-            .map((c: any) => ({ id: c.id, label: c.nome?.split(' - ')[0] || c.nome || 'Cliente', user: c.vendedor || c.criadoPor || 'Sistema' }))}
-        />
-
-        {/* ORDENS DE SERVIÇO */}
-        <StatCard 
-          icon={Factory} 
-          label="Ordens O.S." 
-          value={(isMaster ? data.os : getUserOS(currentUserName)).length} 
-          color="bg-accent/10 text-accent" 
-          onViewAll={() => navigate('/producao')}
-          items={(isFullAccess ? data.os : getUserOS(currentUserName))
-            .slice(-3).reverse()
-            .map((os: any) => {
-              const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
-              const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
-              return { id: os.id, label: os.numero, user: os.responsavelTecnico || os.emitente || orc?.vendedor || 'Manual' };
-            })}
-        />
-      </div>
-
-      {/* Espaço de 2 linhas */}
-      <div className="h-8" />
-
-      {/* 4 Cards de Status - clicáveis */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
-          <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2 text-sm"><FileText className="h-4 w-4 text-primary" /> Status dos Orçamentos</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-muted-foreground" extra={avgDays(orcByStatus('RASCUNHO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=RASCUNHO'); }} />
-            <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-500" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO'), ...orcByStatus('AGUARDANDO')])} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=PENDENTE'); }} />
-            <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-success" extra={avgDays(orcByStatus('APROVADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/orcamentos?status=APROVADO'); }} />
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos')}>
-          <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2 text-sm"><ShoppingCart className="h-4 w-4 text-secondary" /> Status dos Pedidos</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatusBar label="Pendente" value={globalPed.pendente} max={globalPed.total} color="[&>div]:bg-muted-foreground" extra={avgDays(pedByStatus('PENDENTE'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=PENDENTE'); }} />
-            <StatusBar label="Em Produção" value={globalPed.producao} max={globalPed.total} color="[&>div]:bg-secondary" extra={avgDays(pedByStatus('EM_PRODUCAO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=EM_PRODUCAO'); }} />
-            <StatusBar label="Confirmado" value={globalPed.confirmado} max={globalPed.total} color="[&>div]:bg-info" extra={avgDays(pedByStatus('CONFIRMADO'))} onClick={(e) => { e?.stopPropagation(); navigate('/pedidos?status=CONFIRMADO'); }} />
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/producao')}>
-          <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2 text-sm"><Factory className="h-4 w-4 text-accent" /> Status das O.S.</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatusBar label="Aberta" value={globalOs.aberta} max={globalOs.total} color="[&>div]:bg-muted-foreground" extra={avgDays(osByStatus('ABERTA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=ABERTA'); }} />
-            <StatusBar label="Em Andamento" value={globalOs.emAndamento} max={globalOs.total} color="[&>div]:bg-secondary" extra={avgDays(osByStatus('EM_ANDAMENTO'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=EM_ANDAMENTO'); }} />
-            <StatusBar label="Concluída" value={globalOs.concluida} max={globalOs.total} color="[&>div]:bg-success" extra={avgDays(osByStatus('CONCLUIDA'))} onClick={(e) => { e?.stopPropagation(); navigate('/producao?status=CONCLUIDA'); }} />
-          </CardContent>
-        </Card>
-
-        {/* CARD PEDIDOS ENTREGUES - mesmo estilo dos cards de status */}
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pedidos?status=ENTREGUE')}>
-          <CardHeader className="pb-2">
-            <h2 className="font-semibold flex items-center gap-2 text-sm"><CheckCircle className="h-4 w-4 text-success" /> Pedidos Entregues</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatusBar label="Entregue" value={globalPed.entregue} max={globalPed.total} color="[&>div]:bg-success" extra={avgDays(pedByStatus('ENTREGUE'))} />
-            <div className="border-t pt-2 space-y-1">
-              {data.pedidos
-                .filter((p: any) => p.status === 'ENTREGUE')
-                .slice(-3).reverse()
-                .map((p: any) => (
-                  <p key={p.id} className="text-xs text-muted-foreground font-mono">Pedido {p.numero}</p>
-                ))}
-              {data.pedidos.filter((p: any) => p.status === 'ENTREGUE').length === 0 && (
-                <p className="text-xs text-muted-foreground italic">Nenhuma entrega registrada</p>
-              )}
+    <div className="space-y-6">
+      {/* COCKPIT INTEGRADO (NOVO TOPO) */}
+      <Card className="border-none shadow-sm overflow-visible bg-white">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            {/* Saudação Dinâmica */}
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-[#223c61] tracking-tight">
+                {getGreeting()}, {currentUser?.nome?.split(' ')[0]}!
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Aqui está o status atual da Rollerport hoje.
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Espaço de 2 linhas */}
-      <div className="h-8" />
+            {/* Controles do Cockpit */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Calendário Minimalista */}
+              <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl">
+                <CalendarIcon className="h-4 w-4 text-[#223c61]" />
+                <input 
+                  type="date" 
+                  className="bg-transparent border-none text-xs font-semibold text-[#223c61] focus:ring-0 cursor-pointer" 
+                  defaultValue={new Date().toISOString().split('T')[0]}
+                />
+              </div>
 
-      {/* Taxa de Conversão */}
-      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDashView('conversion-detail')}>
-        <CardHeader className="pb-2">
-          <h2 className="font-semibold flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" /> Taxa de Conversão
-            <span className="text-[10px] text-muted-foreground ml-2">(clique para relatório completo)</span>
-          </h2>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="flex items-center justify-center gap-2 mb-2"><CheckCircle className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Orçamento → Pedido</span></div>
-              <p className="text-3xl font-bold text-primary">{taxaConversao}%</p>
-              <p className="text-xs text-muted-foreground mt-1">{globalOrc.aprovado} aprovados de {globalOrc.total}</p>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="flex items-center justify-center gap-2 mb-2"><Truck className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">Pedidos Entregues</span></div>
-              <p className="text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
-              <p className="text-xs text-muted-foreground mt-1">{globalPed.entregue} de {globalPed.total} pedidos</p>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="flex items-center justify-center gap-2 mb-2"><Factory className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">O.S. Ativas</span></div>
-              <p className="text-3xl font-bold text-primary">{globalOs.total}</p>
-              <p className="text-xs text-muted-foreground mt-1">Ordens em andamento</p>
+              {/* Botão Sincronizar */}
+              <button 
+                onClick={() => {
+                  if(confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
+                    localStorage.removeItem('rp_orcamentos');
+                    localStorage.removeItem('rp_pedidos');
+                    localStorage.removeItem('rp_clientes');
+                    localStorage.removeItem('rp_produtos');
+                    localStorage.removeItem('rp_os');
+                    localStorage.removeItem('rp_estoque');
+                    localStorage.removeItem('rp_metas');
+                    window.location.reload();
+                  }
+                }} 
+                className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm"
+                title="Forçar Sincronização"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+
+              {/* Notificações (Sininho) */}
+              <div className="relative">
+                <button 
+                  onClick={handleBellClick}
+                  className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative"
+                >
+                  <Bell className={`h-4 w-4 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
+                  {naoLidas > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold border-2 border-white">
+                      {naoLidas}
+                    </span>
+                  )}
+                </button>
+
+                {showNotif && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-[#E2E8F0] rounded-2xl shadow-xl z-50 max-h-96 overflow-y-auto animate-fade-in">
+                    <div className="p-4 border-b border-[#F1F5F9] font-bold text-sm flex items-center justify-between text-[#223c61]">
+                      <span>Notificações</span>
+                      {notificacoes.length > 0 && (
+                        <button onClick={excluirTodas} className="text-[10px] text-red-500 hover:underline">Limpar tudo</button>
+                      )}
+                    </div>
+                    {notificacoes.length === 0 && unreadChatCount === 0 ? (
+                      <div className="p-8 text-sm text-muted-foreground text-center">Nenhuma notificação nova</div>
+                    ) : (
+                      <div className="divide-y divide-[#F1F5F9]">
+                        {unreadChatCount > 0 && (
+                          <div
+                            className="p-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors bg-[#223c61]/5"
+                            onClick={() => { setShowNotif(false); navigate('/chat'); }}
+                          >
+                            <p className="font-bold text-xs text-[#223c61]">💬 Novas mensagens</p>
+                            <p className="text-[11px] text-[#64748B] mt-1">{unreadChatCount} conversa(s) com mensagens novas</p>
+                          </div>
+                        )}
+                        {notificacoes.slice(-10).reverse().map(n => (
+                          <div
+                            key={n.id}
+                            className={`p-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors ${!n.lida ? 'bg-[#223c61]/5' : ''}`}
+                            onClick={() => handleNotifClick(n)}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-xs text-[#223c61] truncate">{n.titulo}</p>
+                                <p className="text-[11px] text-[#64748B] mt-1 line-clamp-2">{n.mensagem}</p>
+                              </div>
+                              <button onClick={(e) => { e.stopPropagation(); excluirNotif(n.id); }} className="p-1 rounded-lg hover:bg-red-50 text-red-400" title="Excluir">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Perfil e Logout */}
+              <div className="flex items-center gap-2 pl-2 border-l border-[#E2E8F0] ml-1">
+                <div className="flex items-center gap-2.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-1.5 pr-4 rounded-xl transition-all cursor-pointer">
+                  <Avatar className="h-8 w-8 border border-white shadow-sm">
+                    {currentUser?.foto ? <AvatarImage src={currentUser.foto} alt="" /> : null}
+                    <AvatarFallback className="bg-[#223c61] text-white text-[10px] font-bold">
+                      {currentUser?.nome?.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden sm:block">
+                    <p className="text-[11px] font-bold text-[#223c61] leading-none mb-0.5">{currentUser?.nome}</p>
+                    <p className="text-[9px] text-[#64748B] leading-none uppercase tracking-wider font-semibold">{currentUser?.nivel}</p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => {
+                    if (confirm('Deseja realmente sair do sistema?')) {
+                      localStorage.removeItem('rp_logged_user');
+                      window.location.reload();
+                    }
+                  }}
+                  className="p-2.5 rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                  title="Sair do Sistema"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Espaço de 2 linhas */}
-      <div className="h-8" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* COLUNA ESQUERDA: CONTEÚDO PRINCIPAL (9 COLUNAS) */}
+        <div className="lg:col-span-9 space-y-6">
+          
+          {/* 3 CARDS GLOBAIS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {/* COMERCIAL */}
+            <StatCard 
+              icon={TrendingUp} 
+              label="Comercial" 
+              value={(isMaster ? data.orcamentos : getUserOrcs(currentUserName)).length} 
+              color="bg-[#223c61]/10 text-[#223c61]" 
+              onViewAll={() => navigate(isMaster ? '/orcamentos' : `/orcamentos?vendedor=${currentUserName}`)}
+              items={(isMaster ? data.orcamentos : getUserOrcs(currentUserName))
+                .slice(-3).reverse()
+                .map((o: any) => ({ id: o.id, label: o.numero, user: o.vendedor || 'Sistema' }))}
+            />
 
-      {/* Cards dos Usuários */}
-      <div>
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" /> Equipe
-        </h2>
-        {usersLoading || !dataLoaded ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader className="pb-3"><div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-16" /></div></div></CardHeader>
-                <CardContent className="space-y-3 pt-0"><div className="grid grid-cols-3 gap-2"><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /><Skeleton className="h-16 rounded-lg" /></div></CardContent>
-              </Card>
-            ))}
+            {/* PEDIDOS */}
+            <StatCard 
+              icon={ShoppingCart} 
+              label="Pedidos" 
+              value={(isMaster ? data.pedidos : getUserPeds(currentUserName)).length} 
+              color="bg-[#223c61]/10 text-[#223c61]" 
+              onViewAll={() => navigate(isMaster ? '/pedidos' : `/pedidos?vendedor=${currentUserName}`)}
+              items={(isMaster ? data.pedidos : getUserPeds(currentUserName))
+                .slice(-3).reverse()
+                .map((p: any) => {
+                  const orc = data.orcamentos.find((o: any) => o.id === p.orcamentoId);
+                  return { id: p.id, label: p.numero, user: p.vendedor || orc?.vendedor || 'Sistema' };
+                })}
+            />
+
+            {/* FÁBRICA */}
+            <StatCard 
+              icon={Factory} 
+              label="Fábrica" 
+              value={(isMaster ? data.os : getUserOS(currentUserName)).length} 
+              color="bg-[#223c61]/10 text-[#223c61]" 
+              onViewAll={() => navigate('/producao')}
+              items={(isFullAccess ? data.os : getUserOS(currentUserName))
+                .slice(-3).reverse()
+                .map((os: any) => {
+                  const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
+                  const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
+                  return { id: os.id, label: os.numero, user: os.responsavelTecnico || os.emitente || orc?.vendedor || 'Manual' };
+                })}
+            />
           </div>
-        ) : (
-          <div className="space-y-8">
-            {/* 1ª Fileira: Gestão e Estratégia (SEO, administrador, adm/dono) */}
-            {(dbUsuarios.filter(u => u.ativo && u.nivel !== 'master' && (u.nivel === 'SEO' || u.nivel === 'administrador' || u.nivel === 'adm/dono' || u.nivel === 'admin' || u.nivel === 'Administrador')).length > 0) && (
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Gestão e Estratégia</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {dbUsuarios
-                    .filter(u => u.ativo && u.nivel !== 'master' && (u.nivel === 'SEO' || u.nivel === 'administrador' || u.nivel === 'adm/dono' || u.nivel === 'admin' || u.nivel === 'Administrador'))
-                    .filter(u => isFullAccess || u.id === loggedUserId)
-                    .map(u => renderUserCard(u))}
-                </div>
-              </div>
-            )}
 
-            {/* 2ª Fileira: Equipe de Vendas */}
-            {(dbUsuarios.filter(u => u.ativo && u.nivel !== 'master' && u.nivel === 'Vendas').length > 0) && (
-              <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Equipe de Vendas</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {dbUsuarios
-                    .filter(u => u.ativo && u.nivel !== 'master' && u.nivel === 'Vendas')
-                    .filter(u => isFullAccess || u.id === loggedUserId)
-                    .map(u => renderUserCard(u))}
-                </div>
+          {/* MONITOR DE PRODUÇÃO (TABELA LIMPA) */}
+          <Card className="border-none shadow-sm bg-white overflow-hidden">
+            <CardHeader className="pb-2 border-b border-[#F1F5F9]">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold text-[#223c61] flex items-center gap-2">
+                  <Factory className="h-4 w-4" /> Monitor de Produção
+                </h2>
+                <Button variant="ghost" size="sm" className="text-xs text-[#64748B]" onClick={() => navigate('/producao')}>
+                  Ver tudo
+                </Button>
               </div>
-            )}
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#F8FAFC]/50 text-[#64748B] uppercase tracking-wider text-[10px]">
+                      <th className="px-6 py-4 font-bold">O.S.</th>
+                      <th className="px-6 py-4 font-bold">Empresa / Cliente</th>
+                      <th className="px-6 py-4 font-bold">Status</th>
+                      <th className="px-6 py-4 font-bold text-right">Previsão</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F1F5F9]">
+                    {(isFullAccess ? data.os : getUserOS(currentUserName))
+                      .slice(-6).reverse()
+                      .map((os: any) => (
+                        <tr key={os.id} className="hover:bg-[#F8FAFC] transition-colors group">
+                          <td className="px-6 py-4 font-bold text-[#223c61] font-mono">{os.numero}</td>
+                          <td className="px-6 py-4 text-[#1E293B]">
+                            <div className="font-semibold">{os.empresa}</div>
+                            <div className="text-[10px] text-[#64748B]">Ped. {os.pedidoNumero}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border
+                              ${os.status === 'CONCLUIDA' ? 'bg-green-50 text-green-600 border-green-100' : 
+                                os.status === 'EM_ANDAMENTO' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
+                                'bg-gray-50 text-gray-500 border-gray-100'}`}
+                            >
+                              {os.status?.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right font-medium text-[#64748B]">
+                            {os.entrega || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    {(isFullAccess ? data.os : getUserOS(currentUserName)).length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground italic">
+                          Nenhuma ordem de serviço ativa no momento.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* 3ª Fileira: Equipe de Produção (Produção e Estoque) */}
-            {(dbUsuarios.filter(u => u.ativo && u.nivel !== 'master' && u.nivel !== 'Vendas' && u.nivel !== 'SEO' && u.nivel !== 'administrador' && u.nivel !== 'adm/dono' && u.nivel !== 'admin' && u.nivel !== 'Administrador').length > 0) && (
-              <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Equipe de Produção</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {dbUsuarios
-                    .filter(u => u.ativo && u.nivel !== 'master' && u.nivel !== 'Vendas' && u.nivel !== 'SEO' && u.nivel !== 'administrador' && u.nivel !== 'adm/dono' && u.nivel !== 'admin' && u.nivel !== 'Administrador')
-                    .filter(u => isFullAccess || u.id === loggedUserId)
-                    .map(u => renderUserCard(u))}
+          {/* INDICADORES ADICIONAIS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Card className="border-none shadow-sm bg-white cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
+              <CardHeader className="pb-2">
+                <h2 className="font-bold text-sm text-[#223c61] flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Status dos Orçamentos
+                </h2>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <StatusBar label="Rascunho" value={globalOrc.rascunho} max={globalOrc.total} color="[&>div]:bg-gray-300" extra={avgDays(orcByStatus('RASCUNHO'))} />
+                <StatusBar label="Pendente" value={globalOrc.pendente} max={globalOrc.total} color="[&>div]:bg-amber-400" extra={avgDays([...orcByStatus('PENDENTE'), ...orcByStatus('ENVIADO')])} />
+                <StatusBar label="Aprovado" value={globalOrc.aprovado} max={globalOrc.total} color="[&>div]:bg-[#223c61]" extra={avgDays(orcByStatus('APROVADO'))} />
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDashView('conversion-detail')}>
+              <CardHeader className="pb-2">
+                <h2 className="font-bold text-sm text-[#223c61] flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" /> Taxa de Conversão
+                </h2>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-4 mb-2">
+                  <span className="text-3xl font-bold text-[#223c61]">{taxaConversao}%</span>
+                  <span className="text-xs text-[#64748B] mb-1">{globalOrc.aprovado} aprovados de {globalOrc.total}</span>
                 </div>
-              </div>
-            )}
+                <Progress value={taxaConversao} className="h-2 [&>div]:bg-[#223c61]" />
+              </CardContent>
+            </Card>
           </div>
-        )}
+        </div>
+
+        {/* COLUNA DIREITA: EQUIPE / PRESENÇA (3 COLUNAS) */}
+        <div className="lg:col-span-3 space-y-6">
+          <Card className="border-none shadow-sm bg-white h-full min-h-[600px] flex flex-col">
+            <CardHeader className="pb-4 border-b border-[#F1F5F9] shrink-0">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold text-[#223c61] flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Equipe
+                </h2>
+                <Badge className="bg-[#223c61] text-white border-none px-2 py-0 h-5 rounded-full text-[10px]">
+                  {onlineUserIds.size} On
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-2 flex-1 overflow-y-auto">
+              <div className="space-y-1">
+                {usersLoading || !dataLoaded ? (
+                  [1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="flex items-center gap-3 p-3 animate-pulse">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <div className="flex-1 space-y-1">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-2 w-12" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  dbUsuarios
+                    .filter(u => u.ativo && u.nivel !== 'master')
+                    .sort((a, b) => {
+                      const aOn = onlineUserIds.has(a.id) ? 1 : 0;
+                      const bOn = onlineUserIds.has(b.id) ? 1 : 0;
+                      return bOn - aOn;
+                    })
+                    .map(u => renderUserCard(u))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <AcompanhamentoPedidosModal

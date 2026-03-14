@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 210 20% 96%;
+    --background: 210 40% 98%;
     --foreground: 215 30% 15%;
 
     --card: 0 0% 100%;
@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 30% 15%;
 
-    --primary: 215 60% 32%;
+    --primary: 215 48% 25.5%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 35 85% 55%;
@@ -34,7 +34,7 @@
     --input: 214 20% 85%;
     --ring: 215 60% 32%;
 
-    --radius: 0.5rem;
+    --radius: 1.5rem;
 
     --sidebar-background: 215 35% 18%;
     --sidebar-foreground: 210 15% 85%;
@@ -134,4 +134,22 @@
 
 .print-only {
   display: none;
+}
+
+html, body, #root {
+  overflow-x: hidden;
+  height: 100%;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch Friendly Utilities */
+@media (max-width: 1024px) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
