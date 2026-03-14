@@ -23,6 +23,11 @@ import { RealTimeClock } from '@/components/RealTimeClock';
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
   { to: '/', label: 'Início', icon: Home, modulo: 'inicio' },
@@ -240,15 +245,84 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     { to: '/', label: 'Início', icon: Home },
     { to: '/pedidos', label: 'Pedidos', icon: ShoppingCart },
     { to: '/producao', label: 'Produção', icon: Factory },
-    { to: '/agenda', label: 'Agenda', icon: Calendar },
-    { to: '/chat', label: 'Chat', icon: MessageSquare },
+    { to: '/agenda', label: 'CRM Rollerport', icon: Calendar },
+    { to: '/chat', label: 'Bate-Papo', icon: MessageSquare },
+    { to: '/clientes', label: 'Clientes', icon: Users },
+    { to: '/orcamentos', label: 'Orçamentos', icon: FileText },
   ];
 
   return (
     <div className="flex bg-[#F8FAFC] h-screen overflow-hidden">
       {/* MOBILE HEADER (TOP) */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#E2E8F0] z-40 flex items-center justify-between px-4">
-        <img src={logo} alt="Rollerport" className="h-8 w-8 object-contain" />
+        <div className="flex items-center gap-3">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <button className="p-2 text-[#223c61]">
+                <Menu className="h-6 w-6" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[92px] p-0 border-none bg-white flex flex-col items-center">
+              <div className="flex items-center justify-center py-8 border-b border-[#F1F5F9] w-full">
+                <img src={logo} alt="Rollerport" className="h-10 w-10 object-contain" />
+              </div>
+              <TooltipProvider delayDuration={0}>
+                <nav className="flex-1 overflow-y-auto w-full px-2 py-4 space-y-1 flex flex-col items-center">
+                  {visibleNavItems.map(item => {
+                    const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
+                    
+                    const NavItem = (
+                      <div className={`
+                        p-2.5 rounded-2xl transition-all duration-200
+                        ${active 
+                          ? 'bg-[#223c61]/10 text-[#223c61]' 
+                          : 'text-[#223c61] hover:bg-[#223c61]/10'
+                        }
+                      `}>
+                        <item.icon className="h-[26px] w-[26px]" />
+                      </div>
+                    );
+
+                    return (
+                      <Tooltip key={item.to}>
+                        <TooltipTrigger asChild>
+                          {item.modulo === 'chat' ? (
+                            <button
+                              onClick={() => { 
+                                setMobileOpen(false);
+                                setChatOpen(true); 
+                              }}
+                              className="relative"
+                            >
+                              {NavItem}
+                              {unreadChatCount > 0 && (
+                                <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-white">
+                                  {unreadChatCount}
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <Link
+                              to={item.to}
+                              onClick={() => setMobileOpen(false)}
+                            >
+                              {NavItem}
+                            </Link>
+                          )}
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="bg-[#223c61] text-white border-none text-xs font-bold py-1 px-3 mr-2">
+                          {item.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </nav>
+              </TooltipProvider>
+            </SheetContent>
+          </Sheet>
+          <img src={logo} alt="Rollerport" className="h-8 w-8 object-contain" />
+        </div>
+        
         <div className="flex items-center gap-2">
            <button onClick={handleBellClick} className="p-2 relative text-[#223c61]">
              <Bell className="h-5 w-5" />
@@ -264,7 +338,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
       </div>
 
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:flex flex-col bg-[#F8FAFC] border-r border-[#E2E8F0] w-[92px] shrink-0">
+      <aside className="hidden lg:flex flex-col bg-[#F8FAFC] border-r border-[#E2E8F0] w-[92px] fixed inset-y-0 left-0 z-50">
         <div className="flex items-center justify-center py-6">
           <img src={logo} alt="Rollerport" className="h-11 w-11 object-contain" />
         </div>
@@ -304,7 +378,6 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                     ) : (
                       <Link
                         to={item.to}
-                        onClick={() => setMobileOpen(false)}
                       >
                         {NavItem}
                       </Link>
@@ -320,35 +393,11 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
         </TooltipProvider>
 
         <div className="py-4 border-t border-[#E2E8F0] opacity-0 pointer-events-none">
-          {/* Espaçador para manter proporção se necessário */}
+          {/* Espaçador */}
         </div>
       </aside>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-[#E2E8F0] z-40 flex items-center justify-around px-2">
-        {mobileNavItems.map(item => {
-          const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
-          return (
-            <Link 
-              key={item.to} 
-              to={item.to}
-              className={`flex flex-col items-center gap-1 px-3 py-1.5 transition-all
-                ${active ? 'text-[#223c61]' : 'text-[#64748B]'}
-              `}
-              onClick={() => {
-                if(item.label === 'Chat') {
-                   setChatOpen(true);
-                }
-              }}
-            >
-              <item.icon className="h-6 w-6" />
-              <span className="text-[10px] font-bold">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="flex-1 flex flex-col min-w-0 pb-16 lg:pb-0 pt-14 lg:pt-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-[92px] pt-14 lg:pt-0">
         <PresenceContext.Provider value={{ onlineUserIds }}>
           <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in relative">
             {children}
