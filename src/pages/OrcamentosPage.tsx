@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 import { useCustos } from '@/hooks/useCustos';
 import { Button } from '@/components/ui/button';
@@ -175,6 +176,13 @@ export default function OrcamentosPage() {
   const [clientes, setClientes] = useState(store.getClientes());
   const [revendas, setRevendas] = useState(store.getFornecedores());
   const [produtos, setProdutos] = useState(store.getProdutos());
+
+  const { usuarios: dbUsuarios } = useUsuarios();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
+
+  const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : false;
 
   // Re-read from store when data syncs from other users
   useEffect(() => {
@@ -560,10 +568,22 @@ export default function OrcamentosPage() {
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
-  const filteredOrcamentos = orcamentos.filter(o =>
-    o.clienteNome.toLowerCase().includes(searchList.toLowerCase()) ||
-    o.numero.includes(searchList)
-  );
+  const nameMatch = (vendedorField: string, userName: string) => {
+    const a = (vendedorField || '').trim().toLowerCase();
+    const b = (userName || '').trim().toLowerCase();
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+  };
+
+  const filteredOrcamentos = orcamentos
+    .filter(o => {
+      if (isFullAccess) return true;
+      return nameMatch(o.vendedor, currentUser?.nome || '');
+    })
+    .filter(o =>
+      o.clienteNome.toLowerCase().includes(searchList.toLowerCase()) ||
+      o.numero.includes(searchList)
+    );
 
   // ========== PRINT VIEW ==========
   if (view === 'print' && viewOrc) {

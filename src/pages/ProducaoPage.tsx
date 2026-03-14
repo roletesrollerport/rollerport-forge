@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import type { OrdemServico, StatusOS, ItemOS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,13 @@ export default function ProducaoPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
+  const { usuarios: dbUsuarios } = useUsuarios();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
+
+  const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : false;
+
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
 
@@ -99,16 +107,31 @@ export default function ProducaoPage() {
       cli.telefone?.includes(s) || cli.endereco?.toLowerCase().includes(s.toLowerCase()) || compradorMatch;
   };
 
-  const filteredOrdens = ordens.filter(o => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    // Search by OS number, pedido number
-    if (o.numero.includes(search) || o.pedidoNumero.includes(search)) return true;
-    // Search by orcamento number
-    const pedido = store.getPedidos().find(p => p.id === o.pedidoId);
-    if (pedido?.orcamentoNumero?.includes(search)) return true;
-    return clienteMatchesSearch(o.empresa, search);
-  });
+  const nameMatch = (vendedorField: string, userName: string) => {
+    const a = (vendedorField || '').trim().toLowerCase();
+    const b = (userName || '').trim().toLowerCase();
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+  };
+
+  const filteredOrdens = ordens
+    .filter(o => {
+      if (isFullAccess) return true;
+      const pedido = store.getPedidos().find(p => p.id === o.pedidoId);
+      const orc = store.getOrcamentos().find(orc => orc.id === pedido?.orcamentoId);
+      const vendor = orc?.vendedor || '';
+      return nameMatch(vendor, currentUser?.nome || '');
+    })
+    .filter(o => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      // Search by OS number, pedido number
+      if (o.numero.includes(search) || o.pedidoNumero.includes(search)) return true;
+      // Search by orcamento number
+      const pedido = store.getPedidos().find(p => p.id === o.pedidoId);
+      if (pedido?.orcamentoNumero?.includes(search)) return true;
+      return clienteMatchesSearch(o.empresa, search);
+    });
 
   const etapas = ['corte', 'torno', 'fresa', 'solda', 'pintura', 'montagem'];
 

@@ -150,7 +150,9 @@ export default function DashboardPage() {
   const { usuarios: dbUsuarios, loading: usersLoading } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId) || null;
-  const isMaster = currentUser?.nivel === 'master' || currentUser?.nivel === 'adm/dono' || currentUser?.nivel === 'SEO' || currentUser?.nivel === 'admin';
+  const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : false;
+  const isMaster = isFullAccess; // Keeping the name for compatibility with existing code where meaningful
   const currentUserName = currentUser?.nome || '';
   const { onlineUserIds } = usePresenceContext();
 
@@ -313,10 +315,10 @@ export default function DashboardPage() {
     return nameMatch((orc as any)?.vendedor, nome);
   });
 
-  // Global stats
-  const globalOrc = getOrcStats(isMaster ? data.orcamentos : getUserOrcs(currentUserName));
-  const globalPed = getPedStats(isMaster ? data.pedidos : getUserPeds(currentUserName));
-  const globalOs = getOsStats(isMaster ? data.os : getUserOS(currentUserName));
+  // Global stats - strictly filtered by role
+  const globalOrc = getOrcStats(isFullAccess ? data.orcamentos : getUserOrcs(currentUserName));
+  const globalPed = getPedStats(isFullAccess ? data.pedidos : getUserPeds(currentUserName));
+  const globalOs = getOsStats(isFullAccess ? data.os : getUserOS(currentUserName));
 
   const taxaConversao = globalOrc.total > 0 ? +((globalOrc.aprovado / globalOrc.total) * 100).toFixed(1) : 0;
 
@@ -333,9 +335,9 @@ export default function DashboardPage() {
     return `~${Math.round(total / items.length)}d`;
   };
 
-  const orcByStatus = (status: string) => (isMaster ? data.orcamentos : getUserOrcs(currentUserName)).filter((o: any) => o.status === status);
-  const pedByStatus = (status: string) => (isMaster ? data.pedidos : getUserPeds(currentUserName)).filter((p: any) => p.status === status);
-  const osByStatus = (status: string) => (isMaster ? data.os : getUserOS(currentUserName)).filter((o: any) => o.status === status);
+  const orcByStatus = (status: string) => (isFullAccess ? data.orcamentos : getUserOrcs(currentUserName)).filter((o: any) => o.status === status);
+  const pedByStatus = (status: string) => (isFullAccess ? data.pedidos : getUserPeds(currentUserName)).filter((p: any) => p.status === status);
+  const osByStatus = (status: string) => (isFullAccess ? data.os : getUserOS(currentUserName)).filter((o: any) => o.status === status);
 
   /* ---------------------------------------------------------------- */
   /*  Meta helpers                                                     */
@@ -433,7 +435,7 @@ export default function DashboardPage() {
           <Button variant="outline" onClick={() => { setDashView('main'); setSelectedReportVendor(null); }} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
           {dashView === 'report-detail' && <Button variant="outline" onClick={() => setDashView('report-print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>}
           {dashView === 'report-print' && <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>}
-          {isMaster && (
+          {isFullAccess && (
             <select value={selectedReportVendor || ''} onChange={e => setSelectedReportVendor(e.target.value || null)}
               className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm">
               <option value="">Todos os Usuários</option>
@@ -646,7 +648,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground font-medium">Meta do Mês</span>
                   <div className="flex items-center gap-1.5">
-                    {isMaster && editingMeta?.vendedor === usuario.nome ? (
+                    {isFullAccess && editingMeta?.vendedor === usuario.nome ? (
                       <div className="flex items-center gap-1.5">
                         <Input 
                           type="text" 
@@ -668,7 +670,7 @@ export default function DashboardPage() {
                         <span className="text-sm font-semibold text-foreground">
                           {meta && meta.metaMensal > 0 ? fmt(meta.metaMensal) : 'R$ 0,00'}
                         </span>
-                        {isMaster && (
+                        {isFullAccess && (
                           <button 
                             onClick={() => setEditingMeta({ vendedor: usuario.nome, valor: meta?.metaMensal || 0 })} 
                             className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
@@ -694,8 +696,7 @@ export default function DashboardPage() {
             {/* Botões - Ver Relatório, Imprimir e Acompanhar Pedidos */}
             <div className="flex flex-col gap-1.5 border-t pt-2">
               <div className="flex gap-1.5">
-                {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && 
-                 (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && (
+                {(isFullAccess || (usuario.id === loggedUserId && (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)))) && (
                   <>
                     <Button variant="outline" size="sm" className="flex-1 text-xs gap-1.5 h-8" onClick={() => { setSelectedVendor(usuario.nome); setDashView('vendor-detail'); }}>
                       <Eye className="h-3.5 w-3.5" /> Ver Relatório
@@ -708,8 +709,7 @@ export default function DashboardPage() {
               </div>
               
               {/* Acompanhar Pedidos Button */}
-              {(isMaster || usuario.id === loggedUserId || ['SEO', 'adm/dono', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && 
-               (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)) && (
+              {(isFullAccess || (usuario.id === loggedUserId && (['Vendas', 'SEO', 'adm/dono', 'master', 'admin', 'Administrador', 'administrador'].includes(usuario.nivel)))) && (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -802,7 +802,7 @@ export default function DashboardPage() {
           value={(isMaster ? data.os : getUserOS(currentUserName)).length} 
           color="bg-accent/10 text-accent" 
           onViewAll={() => navigate('/producao')}
-          items={(isMaster ? data.os : getUserOS(currentUserName))
+          items={(isFullAccess ? data.os : getUserOS(currentUserName))
             .slice(-3).reverse()
             .map((os: any) => {
               const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
@@ -930,6 +930,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {dbUsuarios
                     .filter(u => u.ativo && u.nivel !== 'master' && (u.nivel === 'SEO' || u.nivel === 'administrador' || u.nivel === 'adm/dono' || u.nivel === 'admin' || u.nivel === 'Administrador'))
+                    .filter(u => isFullAccess || u.id === loggedUserId)
                     .map(u => renderUserCard(u))}
                 </div>
               </div>
@@ -942,6 +943,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {dbUsuarios
                     .filter(u => u.ativo && u.nivel !== 'master' && u.nivel === 'Vendas')
+                    .filter(u => isFullAccess || u.id === loggedUserId)
                     .map(u => renderUserCard(u))}
                 </div>
               </div>
@@ -954,6 +956,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {dbUsuarios
                     .filter(u => u.ativo && u.nivel !== 'master' && u.nivel !== 'Vendas' && u.nivel !== 'SEO' && u.nivel !== 'administrador' && u.nivel !== 'adm/dono' && u.nivel !== 'admin' && u.nivel !== 'Administrador')
+                    .filter(u => isFullAccess || u.id === loggedUserId)
                     .map(u => renderUserCard(u))}
                 </div>
               </div>

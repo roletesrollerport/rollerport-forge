@@ -134,17 +134,24 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     return () => { supabase.removeChannel(channel); };
   }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
 
-  const isMaster = currentUser.nivel === 'master';
-  const isAdmin = currentUser.nivel === 'admin';
+  const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+  const isFullAccess = fullAccessRoles.includes(currentUser.nivel);
+  
   const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios', 'agenda', 'gestao-dados'];
   const userPerms = currentUser.permissoes?.ver || allModulos;
 
-  const visibleNavItems = isMaster || isAdmin
+  const visibleNavItems = isFullAccess
     ? navItems
     : navItems.filter(item => {
+        // Restricted roles (Vendas, Estoque, Produção)
         if (item.modulo === 'chat') return true;
         if (item.modulo === 'agenda') return true;
-        if (item.modulo === 'usuarios' || item.modulo === 'gestao-dados') return false;
+        if (item.modulo === 'inicio') return true;
+        
+        // Block sensitive modules for non-full-access users
+        if (['usuarios', 'gestao-dados', 'custos'].includes(item.modulo)) return false;
+        
+        // Filter based on specific user permissions if available
         return userPerms.includes(item.modulo);
       });
 

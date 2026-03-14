@@ -33,6 +33,7 @@ import { AgendaDetailsSheet } from '@/components/AgendaDetailsSheet';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -85,6 +86,13 @@ export default function AgendaPage() {
   const [filterTypes, setFilterTypes] = useState<TipoCompromisso[]>(['Visita Técnica', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes']);
   const [agendaFilter, setAgendaFilter] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
   
+  const { usuarios: dbUsuarios } = useUsuarios();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
+
+  const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : false;
+
   const calendarRef = useRef<FullCalendar>(null);
 
   useEffect(() => {
@@ -121,6 +129,7 @@ export default function AgendaPage() {
       data_inicio: targetDate.toISOString(),
       data_fim: addDays(targetDate, 0).setHours(10, 0, 0, 0).toString(), // 1 hour duration
       status: false,
+      vendedor: currentUser?.nome,
       createdAt: new Date().toISOString()
     };
 
@@ -150,7 +159,8 @@ export default function AgendaPage() {
         cliente_id: clienteId,
         data_inicio: new Date().toISOString(),
         data_fim: new Date(Date.now() + 30 * 60000).toISOString(),
-        status: false
+        status: false,
+        vendedor: currentUser?.nome
       } as any);
       setInitialDate(new Date());
       setModalOpen(true);
@@ -167,9 +177,21 @@ export default function AgendaPage() {
     }
   }, [searchParams]);
 
+  const nameMatch = (vendedorField: string, userName: string) => {
+    const a = (vendedorField || '').trim().toLowerCase();
+    const b = (userName || '').trim().toLowerCase();
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+  };
+
   const overdueItems = useMemo(() => {
-    return items.filter(item => !item.status && isPast(new Date(item.data_inicio)));
-  }, [items]);
+    return items
+      .filter(item => {
+        if (isFullAccess) return true;
+        return nameMatch(item.vendedor || '', currentUser?.nome || '');
+      })
+      .filter(item => !item.status && isPast(new Date(item.data_inicio)));
+  }, [items, isFullAccess, currentUser]);
 
   const overdueCount = overdueItems.length;
 
@@ -198,10 +220,11 @@ export default function AgendaPage() {
     let updated;
     const existing = items.find(i => i.id === item.id);
     if (existing) {
-      updated = items.map(i => i.id === item.id ? item : i);
+      updated = items.map(i => i.id === item.id ? { ...item, vendedor: item.vendedor || currentUser?.nome } : i);
       toast.success('Compromisso atualizado!');
     } else {
-      updated = [...items, item];
+      const newItem = { ...item, vendedor: item.vendedor || currentUser?.nome };
+      updated = [...items, newItem];
       toast.success('Compromisso criado!');
     }
     setItems(updated);
@@ -227,6 +250,10 @@ export default function AgendaPage() {
 
   const filteredEvents = items
     .filter(item => filterTypes.includes(item.tipo))
+    .filter(item => {
+      if (isFullAccess) return true;
+      return nameMatch(item.vendedor || '', currentUser?.nome || '');
+    })
     .filter(item => {
       if (agendaFilter === 'pending') return !item.status;
       if (agendaFilter === 'completed') return item.status;

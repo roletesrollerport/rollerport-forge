@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { store } from '@/lib/store';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import type { Cliente, Comprador } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,13 @@ export default function ClientesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Cliente>(emptyCliente());
   const [viewCliente, setViewCliente] = useState<Cliente | null>(null);
+
+  const { usuarios: dbUsuarios } = useUsuarios();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
+
+  const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : false;
 
   useEffect(() => {
     const load = () => {
@@ -220,7 +228,7 @@ export default function ClientesPage() {
                 <div className="flex gap-1 ml-2 flex-shrink-0">
                   <button onClick={() => setViewCliente(c)} className="p-1 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5" /></button>
                   <button onClick={() => { setEditing({ ...c, compradores: c.compradores?.length ? c.compradores : [emptyComprador()] }); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => handleDelete(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                  {isFullAccess && <button onClick={() => handleDelete(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>}
                 </div>
               </div>
 

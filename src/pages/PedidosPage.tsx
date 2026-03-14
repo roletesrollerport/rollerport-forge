@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
+import { useUsuarios } from '@/hooks/useUsuarios';
 import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamento } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -170,6 +171,13 @@ export default function PedidosPage() {
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackingVendor, setTrackingVendor] = useState('');
 
+  const { usuarios: dbUsuarios } = useUsuarios();
+  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
+
+  const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : false;
+
   const clientes = store.getClientes();
   const produtos = store.getProdutos();
 
@@ -266,12 +274,32 @@ export default function PedidosPage() {
 
   const orcSemPedido = orcamentos.filter(o => !pedidos.find(p => p.orcamentoId === o.id));
 
-  const filteredOrcs = orcSemPedido.filter(o =>
-    o.numero.includes(search) || clienteMatchesSearch(o.clienteNome, search)
-  );
-  const filteredPedidos = pedidos.filter(p =>
-    p.numero.includes(search) || (p.orcamentoNumero || '').includes(search) || clienteMatchesSearch(p.clienteNome, search)
-  );
+  const nameMatch = (vendedorField: string, userName: string) => {
+    const a = (vendedorField || '').trim().toLowerCase();
+    const b = (userName || '').trim().toLowerCase();
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+  };
+
+  const filteredOrcs = orcSemPedido
+    .filter(o => {
+      if (isFullAccess) return true;
+      return nameMatch(o.vendedor, currentUser?.nome || '');
+    })
+    .filter(o =>
+      o.numero.includes(search) || clienteMatchesSearch(o.clienteNome, search)
+    );
+    
+  const filteredPedidos = pedidos
+    .filter(p => {
+      if (isFullAccess) return true;
+      const orc = orcamentos.find(o => o.id === p.orcamentoId);
+      const vendor = p.vendedor || orc?.vendedor || '';
+      return nameMatch(vendor, currentUser?.nome || '');
+    })
+    .filter(p =>
+      p.numero.includes(search) || (p.orcamentoNumero || '').includes(search) || clienteMatchesSearch(p.clienteNome, search)
+    );
 
   // ========== PRINT VIEW ==========
   if (view === 'print' && currentPedido) {

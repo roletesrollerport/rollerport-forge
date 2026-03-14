@@ -298,5 +298,6 @@ export interface AgendaItem {
   cliente_id?: string;
   clienteNome?: string;
   status: boolean;
+  vendedor?: string;
   createdAt: string;
 }
