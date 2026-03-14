@@ -722,32 +722,32 @@ export default function DashboardPage() {
       <Card className="border-none shadow-sm overflow-visible bg-white">
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            {/* Saudação Dinâmica */}
-            <div className="flex-1 flex flex-col xs:flex-row items-center gap-5">
-              <img src={logo} alt="Rollerport" className="h-14 w-14 sm:h-16 sm:w-16 object-contain shrink-0" />
-              <div className="text-center xs:text-left">
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#223c61] tracking-tight">
+            {/* Saudação Dinâmica + Logo (Horizontal) */}
+            <div className="flex flex-row items-center gap-4 lg:gap-6 text-left">
+              <img src={logo} alt="Rollerport" className="h-14 w-14 sm:h-18 sm:w-18 object-contain shrink-0" />
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#223c61] tracking-tight leading-none mb-1">
                   {getGreeting()}, {currentUser?.nome?.split(' ')[0]}!
                 </h1>
-                <p className="text-muted-foreground text-sm sm:text-base mt-1">
+                <p className="text-muted-foreground text-xs sm:text-sm">
                   Aqui está o status atual da Rollerport hoje.
                 </p>
               </div>
             </div>
 
-            {/* Controles do Cockpit */}
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Calendário Minimalista */}
-              <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl">
-                <CalendarIcon className="h-4 w-4 text-[#223c61]" />
+            {/* Controles do Cockpit (Unificados e Compactos) */}
+            <div className="flex flex-row items-center gap-2 lg:gap-3 flex-nowrap overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
+              {/* Calendário Compacto */}
+              <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shrink-0 shadow-sm">
+                <CalendarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#223c61]" />
                 <input 
                   type="date" 
-                  className="bg-transparent border-none text-xs font-semibold text-[#223c61] focus:ring-0 cursor-pointer" 
+                  className="bg-transparent border-none text-[10px] sm:text-xs font-semibold text-[#223c61] focus:ring-0 cursor-pointer p-0" 
                   defaultValue={new Date().toISOString().split('T')[0]}
                 />
               </div>
 
-              {/* Botão Sincronizar */}
+              {/* Botão Sincronizar Compacto */}
               <button 
                 onClick={() => {
                   if(confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
@@ -761,21 +761,21 @@ export default function DashboardPage() {
                     window.location.reload();
                   }
                 }} 
-                className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm"
+                className="p-2 sm:p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm shrink-0"
                 title="Forçar Sincronização"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
 
-              {/* Notificações (Sininho) */}
-              <div className="relative">
+              {/* Notificações (Compacto) */}
+              <div className="relative shrink-0">
                 <button 
                   onClick={handleBellClick}
-                  className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative"
+                  className="p-2 sm:p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative"
                 >
-                  <Bell className={`h-4 w-4 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
+                  <Bell className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
                   {naoLidas > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold border-2 border-white">
+                    <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold border-2 border-white">
                       {naoLidas}
                     </span>
                   )}
@@ -825,18 +825,18 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Perfil e Logout */}
-              <div className="flex items-center gap-2 pl-2 border-l border-[#E2E8F0] ml-1">
-                <div className="flex items-center gap-2.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-1.5 pr-4 rounded-xl transition-all cursor-pointer">
-                  <Avatar className="h-8 w-8 border border-white shadow-sm">
+              {/* Perfil e Logout (Ultra Compacto) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-[#E2E8F0] shrink-0">
+                <div className="flex items-center gap-2 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-1 rounded-xl transition-all cursor-pointer">
+                  <Avatar className="h-7 w-7 sm:h-8 sm:w-8 border border-white shadow-sm">
                     {currentUser?.foto ? <AvatarImage src={currentUser.foto} alt="" /> : null}
-                    <AvatarFallback className="bg-[#223c61] text-white text-[10px] font-bold">
+                    <AvatarFallback className="bg-[#223c61] text-white text-[9px] font-bold">
                       {currentUser?.nome?.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="hidden sm:block">
-                    <p className="text-[11px] font-bold text-[#223c61] leading-none mb-0.5">{currentUser?.nome}</p>
-                    <p className="text-[9px] text-[#64748B] leading-none uppercase tracking-wider font-semibold">{currentUser?.nivel}</p>
+                  <div className="hidden md:block pr-2">
+                    <p className="text-[10px] font-bold text-[#223c61] leading-none mb-0.5">{currentUser?.nome?.split(' ')[0]}</p>
+                    <p className="text-[8px] text-[#64748B] leading-none uppercase tracking-wider font-semibold">{currentUser?.nivel}</p>
                   </div>
                 </div>
                 
@@ -847,10 +847,10 @@ export default function DashboardPage() {
                       window.location.reload();
                     }
                   }}
-                  className="p-2.5 rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                  className="p-2 sm:p-2.5 rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm shrink-0"
                   title="Sair do Sistema"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
               </div>
             </div>

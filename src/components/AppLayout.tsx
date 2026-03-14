@@ -262,9 +262,9 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[92px] p-0 border-none bg-white flex flex-col items-center">
-              <div className="py-2 w-full">
-                {/* Espaço reduzido para foco total na navegação */}
+            <SheetContent side="left" className="w-[92px] p-0 border-none bg-white flex flex-col items-center">
+              <div className="py-6 w-full">
+                {/* Espaço otimizado para navegação Slim */}
               </div>
               <TooltipProvider delayDuration={0}>
                 <nav className="flex-1 overflow-y-auto w-full px-2 py-4 space-y-1 flex flex-col items-center">
