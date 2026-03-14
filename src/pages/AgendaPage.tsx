@@ -170,10 +170,26 @@ export default function AgendaPage() {
 
   useEffect(() => {
     const dateParam = searchParams.get('data');
+    const viewParam = searchParams.get('view');
+    const novoParam = searchParams.get('novo');
+
     if (dateParam && calendarRef.current) {
       const calendarApi = calendarRef.current.getApi();
       calendarApi.gotoDate(dateParam);
-      calendarApi.changeView('timeGridDay');
+
+      if (viewParam === 'list') {
+        calendarApi.changeView('listWeek');
+      } else {
+        calendarApi.changeView('timeGridDay');
+      }
+    }
+
+    // Open create modal if novo=1 and no events on that date
+    if (novoParam === '1' && dateParam) {
+      const targetDate = new Date(dateParam + 'T09:00:00');
+      setInitialDate(targetDate);
+      setEditingItem(undefined);
+      setModalOpen(true);
     }
     
     const filterParam = searchParams.get('filter');
