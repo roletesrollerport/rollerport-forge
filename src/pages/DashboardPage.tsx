@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsuarios } from '@/hooks/useUsuarios';
@@ -31,12 +31,17 @@ import {
   LogOut,
   User,
   RefreshCw,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Clock
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { parseISO, isSameDay, isBefore, startOfDay } from 'date-fns';
 import VendorReportView from '@/components/VendorReportView';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import { toast } from 'sonner';
 import { RealTimeClock } from '@/components/RealTimeClock';
+import { ptBR } from 'date-fns/locale';
 import logo from '@/assets/logo.png';
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.').replace(/\.(\d{2})$/, ',$1')}`;
@@ -147,6 +152,28 @@ type DashView = 'main' | 'vendor-detail' | 'vendor-print' | 'report-detail' | 'r
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [agendaItems, setAgendaItems] = useState<any[]>([]);
+  
+  // Hook para o Relógio em Tempo Real
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Carregar dados da Agenda para o Centro de Comando
+  useEffect(() => {
+    const loadAgendaData = () => {
+      const data = store.getAgenda();
+      setAgendaItems(data);
+    };
+    loadAgendaData();
+    window.addEventListener('rp-data-synced', loadAgendaData);
+    return () => window.removeEventListener('rp-data-synced', loadAgendaData);
+  }, []);
   const [data, setData] = useState({
     orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[],
   });
@@ -735,17 +762,86 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Controles do Cockpit (Unificados e Compactos) */}
+            {/* Centro de Comando de Tempo (Relógio + Data) */}
             <div className="flex flex-row items-center gap-2 lg:gap-3 flex-nowrap overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
-              {/* Calendário Compacto */}
-              <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shrink-0 shadow-sm">
-                <CalendarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#223c61]" />
-                <input 
-                  type="date" 
-                  className="bg-transparent border-none text-[10px] sm:text-xs font-semibold text-[#223c61] focus:ring-0 cursor-pointer p-0" 
-                  defaultValue={new Date().toISOString().split('T')[0]}
-                />
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shrink-0 shadow-sm hover:bg-white transition-all group">
+                    <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#223c61] group-hover:scale-110 transition-transform" />
+                    <div className="flex flex-col items-start leading-none">
+                      <span className="text-[10px] sm:text-xs font-bold text-[#223c61]">
+                        {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
+                      <span className="text-[8px] sm:text-[9px] font-semibold text-[#64748B] mt-0.5">
+                        {currentTime.toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0 border-none shadow-2xl rounded-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="bg-white p-4">
+                    <style>{`
+                      @keyframes pulse-urgency {
+                        0%, 100% { transform: scale(1); opacity: 1; }
+                        50% { transform: scale(1.15); opacity: 0.7; }
+                      }
+                      .animate-pulse-urgency {
+                        animation: pulse-urgency 1.2s ease-in-out infinite;
+                      }
+                    `}</style>
+                    <Calendar
+                      mode="single"
+                      selected={currentTime}
+                      onSelect={(date) => {
+                        if (date) {
+                          const hasOverdueItem = agendaItems.some(item => 
+                            isSameDay(parseISO(item.data_inicio), date) && 
+                            !item.status && 
+                            isBefore(startOfDay(parseISO(item.data_inicio)), startOfDay(new Date()))
+                          );
+
+                          if (hasOverdueItem) {
+                            navigate('/agenda?filter=overdue');
+                          } else {
+                            const formattedDate = date.toISOString().split('T')[0];
+                            navigate(`/agenda?data=${formattedDate}`);
+                          }
+                        }
+                      }}
+                      className="rounded-2xl border-none p-4"
+                      locale={ptBR}
+                      modifiers={{
+                        hasEvent: (date) => agendaItems.some(item => isSameDay(parseISO(item.data_inicio), date)),
+                        overdue: (date) => agendaItems.some(item => 
+                          isSameDay(parseISO(item.data_inicio), date) && 
+                          !item.status && 
+                          isBefore(startOfDay(parseISO(item.data_inicio)), startOfDay(new Date()))
+                        )
+                      }}
+                      classNames={{
+                        day_selected: "bg-[#223c61] text-white hover:bg-[#223c61] hover:text-white focus:bg-[#223c61] focus:text-white rounded-full shadow-lg",
+                        day_today: "text-[#223c61] font-extrabold border-2 border-[#223c61] rounded-full",
+                        day: "h-9 w-9 p-0 font-medium hover:bg-[#223c61]/10 rounded-full transition-all flex items-center justify-center cursor-pointer",
+                        cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+                        head_cell: "text-muted-foreground font-medium w-9 text-[0.8rem] pb-2",
+                      }}
+                      modifiersClassNames={{
+                        hasEvent: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-[#223c61] after:rounded-full",
+                        overdue: "text-red-600 font-bold after:bg-red-600 animate-pulse-urgency"
+                      }}
+                    />
+                    <div className="px-4 pb-4 pt-2 border-t border-[#F1F5F9]">
+                      <button 
+                        onClick={() => navigate('/agenda')}
+                        className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[#223c61] text-white text-xs font-bold hover:bg-[#1a2e4b] transition-all shadow-md active:scale-95"
+                      >
+                        <CalendarIcon className="h-3.5 w-3.5" />
+                        Ver Agenda Completa
+                      </button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Botão Sincronizar Compacto */}
               <button 

@@ -175,6 +175,11 @@ export default function AgendaPage() {
       calendarApi.gotoDate(dateParam);
       calendarApi.changeView('timeGridDay');
     }
+    
+    const filterParam = searchParams.get('filter');
+    if (filterParam === 'overdue') {
+      handleShowOverdue();
+    }
   }, [searchParams]);
 
   const nameMatch = (vendedorField: string, userName: string) => {
