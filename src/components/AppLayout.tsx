@@ -148,6 +148,21 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
     return () => { supabase.removeChannel(channel); };
   }, [currentUser?.id, location.pathname, chatOpen, allUsuarios]);
 
+  // Handle global event to open chat with specific user
+  useEffect(() => {
+    const handleOpenChat = (e: any) => {
+      const { userId } = e.detail || {};
+      if (userId) {
+        setChatInitialUserId(userId);
+        setChatOpen(true);
+      } else {
+        setChatOpen(true);
+      }
+    };
+    window.addEventListener('rp-open-chat' as any, handleOpenChat);
+    return () => window.removeEventListener('rp-open-chat' as any, handleOpenChat);
+  }, []);
+
   const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
   const isFullAccess = fullAccessRoles.includes(currentUser.nivel);
   

@@ -666,23 +666,19 @@ export default function DashboardPage() {
     );
   }
 
+
   /* ================================================================ */
-  /*  USER CARD COMPONENT (used for both Master and Common views)      */
+  /*  USER CARD COMPONENT                                              */
   /* ================================================================ */
   const renderUserCard = (usuario: any, fullWidth = false) => {
     const isOnline = onlineUserIds.has(usuario.id);
-    const userPeds = getUserPeds(usuario.nome);
-    const meta = metas.find(m => m.vendedor === usuario.nome);
     
-    // CALCULO DE META: Apenas pedidos com status 'ENTREGUE'
-    const totalVendido = userPeds
-      .filter(p => p.status === 'ENTREGUE')
-      .reduce((acc, p) => acc + (p.valorTotal || 0), 0);
-      
-    const metaPct = meta && meta.metaMensal > 0 ? Math.min((totalVendido / meta.metaMensal) * 100, 1000) : 0; // Allowing > 100% display but cap if needed for bar
-    const displayPct = Math.min(metaPct, 100);
     return (
-      <div key={usuario.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-[#F8FAFC] transition-all group">
+      <div 
+        key={usuario.id} 
+        className="flex items-center justify-between p-3 rounded-2xl hover:bg-[#F8FAFC] transition-all group cursor-pointer"
+        onClick={() => window.dispatchEvent(new CustomEvent('rp-open-chat', { detail: { userId: usuario.id } }))}
+      >
         <div className="flex items-center gap-3">
           <div className="relative">
             <Avatar className="h-10 w-10 border border-[#E2E8F0] shadow-sm">
@@ -708,8 +704,6 @@ export default function DashboardPage() {
     );
   };
 
-  /* ================================================================ */
-  /*  MAIN DASHBOARD VIEW                                              */
   /* ================================================================ */
   /*  MAIN DASHBOARD VIEW                                              */
   /* ================================================================ */
@@ -794,7 +788,11 @@ export default function DashboardPage() {
                     {(isFullAccess ? data.os : getUserOS(currentUserName))
                       .slice(-6).reverse()
                       .map((os: any) => (
-                        <tr key={os.id} className="hover:bg-[#F8FAFC] transition-colors group">
+                        <tr 
+                          key={os.id} 
+                          className="hover:bg-[#F8FAFC] transition-colors group cursor-pointer"
+                          onClick={() => navigate(`/producao/${os.id}`)}
+                        >
                           <td className="px-6 py-4 font-bold text-[#223c61] font-mono">{os.numero}</td>
                           <td className="px-6 py-4 text-[#1E293B]">
                             <div className="font-semibold">{os.empresa}</div>

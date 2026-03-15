@@ -193,6 +193,7 @@ function AppContent() {
           <Route path="/orcamentos" element={<OrcamentosPage />} />
           <Route path="/pedidos" element={<PedidosPage />} />
           <Route path="/producao" element={<ProducaoPage />} />
+          <Route path="/producao/:id" element={<ProducaoPage />} />
           <Route path="/estoque" element={<EstoquePage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/ia" element={<IAPage />} />

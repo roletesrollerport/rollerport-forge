@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import type { OrdemServico, StatusOS, ItemOS } from '@/lib/types';
@@ -25,6 +25,7 @@ const statusProgress: Record<string, number> = { 'ABERTA': 33, 'EM_ANDAMENTO': 6
 
 export default function ProducaoPage() {
   const navigate = useNavigate();
+  const { id: urlId } = useParams();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [view, setView] = useState<View>('list');
   const [current, setCurrent] = useState<OrdemServico | null>(null);
@@ -44,11 +45,22 @@ export default function ProducaoPage() {
   const orcamentos = store.getOrcamentos();
 
   useEffect(() => {
-    const load = () => setOrdens(store.getOrdensServico());
+    const load = () => {
+      const ordensServico = store.getOrdensServico();
+      setOrdens(ordensServico);
+
+      if (urlId) {
+        const os = ordensServico.find(o => o.id === urlId);
+        if (os) {
+          setCurrent(os);
+          setView('view');
+        }
+      }
+    };
     load();
     window.addEventListener('rp-data-synced', load);
     return () => window.removeEventListener('rp-data-synced', load);
-  }, []);
+  }, [urlId]);
 
   const saveOrdens = (updated: OrdemServico[]) => { store.saveOrdensServico(updated); setOrdens(updated); };
 
@@ -79,20 +91,33 @@ export default function ProducaoPage() {
 
   const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
 
-  const openView = (os: OrdemServico) => { setCurrent(os); setView('view'); };
+  const openView = (os: OrdemServico) => { navigate(`/producao/${os.id}`); };
   const openEdit = (os: OrdemServico) => { setCurrent(os); setEditItems([...os.itens]); setView('edit'); };
   const openPrint = (os: OrdemServico) => { setCurrent(os); setView('print'); };
 
   const saveEdit = () => {
     if (!current) return;
     saveOrdens(ordens.map(o => o.id === current.id ? { ...o, itens: editItems } : o));
-    setCurrent({ ...current, itens: editItems }); setView('list'); toast.success('O.S. atualizada!');
+    setCurrent({ ...current, itens: editItems });
+    setView('view');
+    toast.success('O.S. atualizada!');
   };
 
-  const toggleEtapa = (idx: number, etapa: string) => {
-    const items = [...editItems]; items[idx] = { ...items[idx], [etapa]: !(items[idx] as any)[etapa] }; setEditItems(items);
+  const handleBack = () => {
+    navigate('/producao');
+    setView('list');
+    setCurrent(null);
   };
-  const updateItemField = (idx: number, field: string, value: any) => {
+
+  type IndexableItemOS = ItemOS & { [key: string]: string | number | boolean };
+
+  const toggleEtapa = (idx: number, etapa: string) => {
+    const items = [...editItems];
+    const item = items[idx] as IndexableItemOS;
+    items[idx] = { ...item, [etapa]: !item[etapa] };
+    setEditItems(items);
+  };
+  const updateItemField = (idx: number, field: string, value: string | number) => {
     const items = [...editItems]; items[idx] = { ...items[idx], [field]: value }; setEditItems(items);
   };
 
@@ -182,7 +207,7 @@ export default function ProducaoPage() {
             {etapas.map(etapa => (
               <label key={etapa} className="flex items-center gap-1.5 text-xs">
                 <input type="checkbox"
-                  checked={(item as any)[etapa] || false}
+                  checked={(item as IndexableItemOS)[etapa] as boolean || false}
                   onChange={() => editable && toggleEtapa(itemIdx, etapa)}
                   readOnly={!editable}
                   className="h-4 w-4 rounded border-primary text-primary accent-primary"
@@ -235,12 +260,12 @@ export default function ProducaoPage() {
   if (view === 'print' && current) {
     const pedido = store.getPedidos().find(p => p.id === current.pedidoId);
     const orcamento = pedido ? store.getOrcamentos().find(o => o.id === pedido.orcamentoId) : null;
-    const vendedorNome = (orcamento as any)?.vendedor || 'Não informado';
+    const vendedorNome = orcamento?.vendedor || 'Não informado';
 
     return (
       <div>
         <div className="flex gap-2 mb-4 print:hidden">
-          <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+          <Button variant="outline" onClick={handleBack} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
           <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
         </div>
         <div className="bg-card border rounded-lg p-6 max-w-6xl mx-auto print:border-0 print:shadow-none print:max-w-none print:p-2">
@@ -271,12 +296,12 @@ export default function ProducaoPage() {
   if (view === 'view' && current) {
     const pedido = store.getPedidos().find(p => p.id === current.pedidoId);
     const orcamento = pedido ? store.getOrcamentos().find(o => o.id === pedido.orcamentoId) : null;
-    const vendedorNome = (orcamento as any)?.vendedor || 'Não informado';
+    const vendedorNome = orcamento?.vendedor || 'Não informado';
 
     return (
       <div className="space-y-4">
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+          <Button variant="outline" onClick={handleBack} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
           <Button variant="outline" onClick={() => openPrint(current)} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
         </div>
         <div className="bg-card border rounded-lg p-6">
@@ -304,7 +329,7 @@ export default function ProducaoPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Editar O.S. {current.numero}</h2>
-          <Button variant="outline" onClick={() => setView('list')}>Cancelar</Button>
+          <Button variant="outline" onClick={handleBack}>Cancelar</Button>
         </div>
         <div className="bg-card border rounded-lg p-6">
           <OSTable items={editItems} editable />
@@ -312,7 +337,7 @@ export default function ProducaoPage() {
           <MateriaisSection editable />
           <div className="flex gap-2 mt-4">
             <Button onClick={saveEdit}>Salvar Alterações</Button>
-            <Button variant="outline" onClick={() => setView('list')}>Cancelar</Button>
+            <Button variant="outline" onClick={handleBack}>Cancelar</Button>
           </div>
         </div>
       </div>
@@ -350,7 +375,7 @@ export default function ProducaoPage() {
               const lastStatusChange = os.statusHistory?.length ? os.statusHistory[os.statusHistory.length - 1] : null;
               const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
               return (
-                <tr key={os.id} className="border-b last:border-0 hover:bg-muted/30">
+                <tr key={os.id} onClick={() => openView(os)} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer">
                   <td className="p-3 font-mono font-medium">{os.numero}</td>
                   <td className="p-3">{os.empresa}</td>
                   <td className="p-3 hidden md:table-cell font-mono">{os.pedidoNumero}</td>
@@ -370,13 +395,12 @@ export default function ProducaoPage() {
                   </td>
                   <td className="p-3">
                     <div className="flex gap-1 justify-end">
-                      <button onClick={() => openView(os)} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
-                      <button onClick={() => openEdit(os)} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
-                      <button onClick={() => openPrint(os)} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
-                      {os.status === 'ABERTA' && <button onClick={() => updateStatus(os.id, 'EM_ANDAMENTO')} className="p-1.5 rounded hover:bg-muted text-primary" title="Aprovar"><CheckCircle className="h-4 w-4" /></button>}
-                      {os.status === 'EM_ANDAMENTO' && <button onClick={() => updateStatus(os.id, 'CONCLUIDA')} className="p-1.5 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-4 w-4" /></button>}
-                      <button onClick={() => cancelarOS(os)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
-                      <button onClick={() => deleteOS(os.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(os); }} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); openPrint(os); }} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
+                      {os.status === 'ABERTA' && <button onClick={(e) => { e.stopPropagation(); updateStatus(os.id, 'EM_ANDAMENTO'); }} className="p-1.5 rounded hover:bg-muted text-primary" title="Aprovar"><CheckCircle className="h-4 w-4" /></button>}
+                      {os.status === 'EM_ANDAMENTO' && <button onClick={(e) => { e.stopPropagation(); updateStatus(os.id, 'CONCLUIDA'); }} className="p-1.5 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-4 w-4" /></button>}
+                      <button onClick={(e) => { e.stopPropagation(); cancelarOS(os); }} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); deleteOS(os.id); }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
