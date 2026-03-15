@@ -1,45 +1,44 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useNavigate } from "react-router-dom";
-import { format, isSameDay, isPast, startOfDay } from "date-fns";
+import { format, isSameDay, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { store } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import type { AgendaItem } from '@/lib/types';
 
 export function RealTimeClock({ className = "" }: { className?: string }) {
   const [time, setTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [open, setOpen] = useState(false);
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const navigate = useNavigate();
 
-  // Load agenda items when popover opens
-  const agendaItems = useMemo(() => {
-    if (!open) return [];
-    return store.getAgenda();
+  // Reload agenda data every time popover opens
+  useEffect(() => {
+    if (open) {
+      setAgendaItems(store.getAgenda());
+    }
   }, [open]);
 
-  // Build sets of dates with events and overdue events
-  const { eventDates, overdueDates } = useMemo(() => {
-    const evDates = new Set<string>();
-    const odDates = new Set<string>();
-    const now = new Date();
+  // Build sets of dates with real events and overdue events
+  const eventDates = new Set<string>();
+  const overdueDates = new Set<string>();
+  const now = new Date();
 
-    agendaItems.forEach(item => {
-      if (!item.data_inicio) return;
-      const d = new Date(item.data_inicio);
-      const key = format(d, 'yyyy-MM-dd');
-      evDates.add(key);
+  agendaItems.forEach(item => {
+    if (!item.data_inicio) return;
+    const d = new Date(item.data_inicio);
+    const key = format(d, 'yyyy-MM-dd');
+    eventDates.add(key);
 
-      // Overdue: past date and not completed
-      if (isPast(d) && !isSameDay(d, now) && !item.status) {
-        odDates.add(key);
-      }
-    });
-
-    return { eventDates: evDates, overdueDates: odDates };
-  }, [agendaItems]);
+    // Overdue: past date and not completed
+    if (isPast(d) && !isSameDay(d, now) && !item.status) {
+      overdueDates.add(key);
+    }
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -48,27 +47,23 @@ export function RealTimeClock({ className = "" }: { className?: string }) {
     return () => clearInterval(timer);
   }, []);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-      setOpen(false);
-      const dateStr = format(date, 'yyyy-MM-dd');
+  const handleDateSelect = useCallback((date: Date | undefined) => {
+    if (!date) return;
+    setSelectedDate(date);
+    setOpen(false);
+    const dateStr = format(date, 'yyyy-MM-dd');
 
-      // Check if there are events on this date
-      const hasEvents = agendaItems.some(item => {
-        if (!item.data_inicio) return false;
-        return isSameDay(new Date(item.data_inicio), date);
-      });
+    // Check if there are real events on this date
+    const hasEvents = eventDates.has(dateStr);
 
-      if (hasEvents) {
-        // Go to agenda list view for that date
-        navigate(`/agenda?data=${dateStr}&view=list`);
-      } else {
-        // No events: go to agenda and open create modal
-        navigate(`/agenda?data=${dateStr}&view=list&novo=1`);
-      }
+    if (hasEvents) {
+      // Go directly to agenda list view filtered to that date
+      navigate(`/agenda?data=${dateStr}&view=list`);
+    } else {
+      // No events: go to agenda and open create modal for that date
+      navigate(`/agenda?data=${dateStr}&view=list&novo=1`);
     }
-  };
+  }, [eventDates, navigate]);
 
   const formattedTime = new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
