@@ -274,11 +274,11 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
           <Popover open={showNotif} onOpenChange={setShowNotif}>
             <PopoverTrigger asChild>
               <button 
-                className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative group"
+                className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative group min-h-0 min-w-0"
               >
-                <Bell className={`h-4 w-4 sm:h-5 sm:w-5 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
+                <Bell className={`h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
                 {naoLidas > 0 && (
-                  <span className="absolute top-2 right-2 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-white">
+                  <span className="absolute top-1 right-1 sm:top-2 sm:right-2 h-3.5 w-3.5 sm:h-4 sm:w-4 bg-red-500 text-white rounded-full text-[8px] sm:text-[9px] flex items-center justify-center font-bold border-2 border-white">
                     {naoLidas}
                   </span>
                 )}
