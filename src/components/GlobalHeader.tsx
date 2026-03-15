@@ -264,10 +264,10 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                 window.location.reload();
               }
             }} 
-            className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm shrink-0"
+            className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm shrink-0 min-h-0 min-w-0"
             title="Forçar Sincronização"
           >
-            <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+            <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
           </button>
 
           {/* Notifications */}
