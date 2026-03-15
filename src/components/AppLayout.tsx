@@ -16,6 +16,7 @@ import { useUsuarios } from '@/hooks/useUsuarios';
 import { usePresence } from '@/hooks/usePresence';
 import { PresenceContext } from '@/contexts/PresenceContext';
 import { RealTimeClock } from '@/components/RealTimeClock';
+import { GlobalHeader } from '@/components/GlobalHeader';
   import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,7 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  SheetClose,
 } from "@/components/ui/sheet";
 
 const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo }[] = [
@@ -252,99 +254,12 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   ];
 
   return (
-    <div className="flex bg-[#F8FAFC] h-screen overflow-hidden">
-      {/* MOBILE HEADER (TOP) */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#E2E8F0] z-40 flex items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <button className="p-2 text-[#223c61]">
-                <Menu className="h-6 w-6" />
-              </button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[92px] p-0 border-none bg-white flex flex-col items-center">
-              <div className="py-6 w-full">
-                {/* Espaço otimizado para navegação Slim */}
-              </div>
-              <TooltipProvider delayDuration={0}>
-                <nav className="flex-1 overflow-y-auto w-full px-2 py-4 space-y-1 flex flex-col items-center">
-                  {visibleNavItems.map(item => {
-                    const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
-                    
-                    const NavItem = (
-                      <div className={`
-                        p-2.5 rounded-2xl transition-all duration-200
-                        ${active 
-                          ? 'bg-[#223c61]/10 text-[#223c61]' 
-                          : 'text-[#223c61] hover:bg-[#223c61]/10'
-                        }
-                      `}>
-                        <item.icon className="h-[26px] w-[26px]" />
-                      </div>
-                    );
-
-                    return (
-                      <Tooltip key={item.to}>
-                        <TooltipTrigger asChild>
-                          {item.modulo === 'chat' ? (
-                            <button
-                              onClick={() => { 
-                                setMobileOpen(false);
-                                setChatOpen(true); 
-                              }}
-                              className="relative"
-                            >
-                              {NavItem}
-                              {unreadChatCount > 0 && (
-                                <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-white">
-                                  {unreadChatCount}
-                                </span>
-                              )}
-                            </button>
-                          ) : (
-                            <Link
-                              to={item.to}
-                              onClick={() => setMobileOpen(false)}
-                            >
-                              {NavItem}
-                            </Link>
-                          )}
-                        </TooltipTrigger>
-                        <TooltipContent side="left" className="bg-[#223c61] text-white border-none text-xs font-bold py-1 px-3 mr-2">
-                          {item.label}
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </nav>
-              </TooltipProvider>
-            </SheetContent>
-          </Sheet>
-          {/* Logo removida do header mobile para unificação */}
-        </div>
-        
-        <div className="flex items-center gap-2">
-           <button onClick={handleBellClick} className="p-2 relative text-[#223c61]">
-             <Bell className="h-5 w-5" />
-             {naoLidas > 0 && <span className="absolute top-1 right-1 h-3.5 w-3.5 bg-red-500 rounded-full border-2 border-white" />}
-           </button>
-           <Avatar className="h-8 w-8 border border-[#E2E8F0]">
-             {currentUser?.foto ? <AvatarImage src={currentUser.foto} /> : null}
-             <AvatarFallback className="bg-[#223c61] text-white text-[10px] font-bold">
-               {currentUser?.nome?.substring(0, 1).toUpperCase()}
-             </AvatarFallback>
-           </Avatar>
-        </div>
-      </div>
-
+    <div className="flex bg-[#F1F5F9] h-screen overflow-hidden p-[10px] gap-[10px] relative">
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:flex flex-col bg-[#F8FAFC] border-r border-[#E2E8F0] w-[92px] fixed inset-y-0 left-0 z-50">
-        <div className="py-4">
-          {/* Espaço removido para que os ícones subam */}
-        </div>
+      <aside className="hidden lg:flex flex-col bg-white border border-[#E2E8F0] w-[92px] rounded-2xl shadow-sm z-50 h-full shrink-0 overflow-hidden">
 
         <TooltipProvider delayDuration={0}>
-          <nav className="flex-1 overflow-y-auto px-2 space-y-1 flex flex-col items-center">
+          <nav className="flex-1 overflow-y-auto px-2 pt-[15px] gap-[10px] flex flex-col items-center">
             {visibleNavItems.map(item => {
               const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
               
@@ -356,7 +271,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
                     : 'text-[#223c61] hover:bg-[#223c61]/10'
                   }
                 `}>
-                  <item.icon className="h-[26px] w-[26px]" />
+                  <item.icon className="h-[22px] w-[22px]" />
                 </div>
               );
 
@@ -392,14 +307,82 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           </nav>
         </TooltipProvider>
 
-        <div className="py-4 border-t border-[#E2E8F0] opacity-0 pointer-events-none">
+        <div className="py-4 border-t border-[#E2E8F0] opacity-0 pointer-events-none shrink-0">
           {/* Espaçador */}
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-[92px] pt-14 lg:pt-0">
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" className="p-0 border-none w-[92px] bg-[#F8FAFC] [&>button:last-child]:hidden">
+          <div className="flex flex-col h-full">
+            {/* Header with styled close button and Menu title */}
+            <div className="flex flex-col items-center pt-6 pb-4 border-b border-[#E2E8F0] bg-white gap-4 shrink-0">
+              <SheetClose className="h-9 w-9 flex items-center justify-center rounded-full bg-[#223c61] text-white shadow-lg hover:bg-[#1a2e4b] transition-all hover:rotate-90 active:scale-90">
+                <X className="h-5 w-5" />
+              </SheetClose>
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.2em] opacity-50 leading-none">Menu</span>
+            </div>
+            <TooltipProvider delayDuration={0}>
+              <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1 flex flex-col items-center">
+                {visibleNavItems.map(item => {
+                  const active = item.modulo === 'chat' ? false : (location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)));
+                  
+                  const NavItem = (
+                    <div className={`
+                      p-2.5 rounded-2xl transition-all duration-200
+                      ${active 
+                        ? 'bg-[#223c61]/10 text-[#223c61]' 
+                        : 'text-[#223c61] hover:bg-[#223c61]/10'
+                      }
+                    `}>
+                      <item.icon className="h-[22px] w-[22px]" />
+                    </div>
+                  );
+
+                  return (
+                    <Tooltip key={item.to}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => {
+                            if (item.modulo === 'chat') {
+                              setChatOpen(true);
+                            } else {
+                              navigate(item.to);
+                            }
+                            setMobileOpen(false);
+                          }}
+                          className="relative"
+                        >
+                          {NavItem}
+                          {item.modulo === 'chat' && unreadChatCount > 0 && (
+                            <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-[#F8FAFC]">
+                              {unreadChatCount}
+                            </span>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="bg-[#223c61] text-white border-none text-xs font-bold py-1 px-3 ml-2">
+                        {item.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </nav>
+            </TooltipProvider>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex-1 flex flex-col min-w-0 gap-[10px] h-full">
+        <GlobalHeader 
+          currentUser={currentUser}
+          naoLidas={naoLidas}
+          unreadChatCount={unreadChatCount}
+          onLogout={onLogout}
+          onMenuOpen={() => setMobileOpen(true)}
+        />
         <PresenceContext.Provider value={{ onlineUserIds }}>
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in relative">
+          <main className="flex-1 overflow-y-auto p-[10px] animate-fade-in relative bg-white border border-[#E2E8F0] rounded-2xl shadow-sm">
             {children}
           </main>
         </PresenceContext.Provider>

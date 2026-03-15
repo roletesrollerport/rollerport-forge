@@ -34,13 +34,9 @@ import {
   Calendar as CalendarIcon,
   Clock
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { parseISO, isSameDay, isBefore, startOfDay } from 'date-fns';
 import VendorReportView from '@/components/VendorReportView';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import { toast } from 'sonner';
-import { RealTimeClock } from '@/components/RealTimeClock';
 import { ptBR } from 'date-fns/locale';
 import logo from '@/assets/logo.png';
 
@@ -86,7 +82,7 @@ function StatCard({
   onViewAll?: () => void;
 }) {
   return (
-    <Card className="flex flex-col h-full hover:shadow-md transition-all">
+    <Card className="flex flex-col h-full hover:shadow-md transition-all rounded-2xl border border-[#E2E8F0] shadow-sm bg-white">
       <CardHeader className="flex flex-row items-center gap-4 pb-2">
         <div className={`flex items-center justify-center h-12 w-12 rounded-lg ${color}`}>
           <Icon className="h-6 w-6" />
@@ -153,27 +149,7 @@ type DashView = 'main' | 'vendor-detail' | 'vendor-print' | 'report-detail' | 'r
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [agendaItems, setAgendaItems] = useState<any[]>([]);
-  
-  // Hook para o Relógio em Tempo Real
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
-  // Carregar dados da Agenda para o Centro de Comando
-  useEffect(() => {
-    const loadAgendaData = () => {
-      const data = store.getAgenda();
-      setAgendaItems(data);
-    };
-    loadAgendaData();
-    window.addEventListener('rp-data-synced', loadAgendaData);
-    return () => window.removeEventListener('rp-data-synced', loadAgendaData);
-  }, []);
   const [data, setData] = useState({
     orcamentos: [] as any[], pedidos: [] as any[], clientes: [] as any[], os: [] as any[],
   });
@@ -225,12 +201,6 @@ export default function DashboardPage() {
     setShowNotif(false);
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
-    return 'Boa noite';
-  };
 
   // Poll for unread chat messages (migrated from AppLayout)
   const checkUnreadMessages = useCallback(async () => {
@@ -745,214 +715,6 @@ export default function DashboardPage() {
   /* ================================================================ */
   return (
     <div className="space-y-6">
-      {/* COCKPIT INTEGRADO (NOVO TOPO) */}
-      <Card className="border-none shadow-sm overflow-visible bg-white">
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            {/* Saudação Dinâmica + Logo (Horizontal) */}
-            <div className="flex flex-row items-center gap-4 lg:gap-6 text-left">
-              <img src={logo} alt="Rollerport" className="h-14 w-14 sm:h-18 sm:w-18 object-contain shrink-0" />
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#223c61] tracking-tight leading-none mb-1">
-                  {getGreeting()}, {currentUser?.nome?.split(' ')[0]}!
-                </h1>
-                <p className="text-muted-foreground text-xs sm:text-sm">
-                  Aqui está o status atual da Rollerport hoje.
-                </p>
-              </div>
-            </div>
-
-            {/* Centro de Comando de Tempo (Relógio + Data) */}
-            <div className="flex flex-row items-center gap-2 lg:gap-3 flex-nowrap overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shrink-0 shadow-sm hover:bg-white transition-all group">
-                    <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#223c61] group-hover:scale-110 transition-transform" />
-                    <div className="flex flex-col items-start leading-none">
-                      <span className="text-[10px] sm:text-xs font-bold text-[#223c61]">
-                        {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </span>
-                      <span className="text-[8px] sm:text-[9px] font-semibold text-[#64748B] mt-0.5">
-                        {currentTime.toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0 border-none shadow-2xl rounded-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                  <div className="bg-white p-4">
-                    <style>{`
-                      @keyframes pulse-urgency {
-                        0%, 100% { transform: scale(1); opacity: 1; }
-                        50% { transform: scale(1.15); opacity: 0.7; }
-                      }
-                      .animate-pulse-urgency {
-                        animation: pulse-urgency 1.2s ease-in-out infinite;
-                      }
-                    `}</style>
-                    <Calendar
-                      mode="single"
-                      selected={currentTime}
-                      onSelect={(date) => {
-                        if (date) {
-                          const hasOverdueItem = agendaItems.some(item => 
-                            isSameDay(parseISO(item.data_inicio), date) && 
-                            !item.status && 
-                            isBefore(startOfDay(parseISO(item.data_inicio)), startOfDay(new Date()))
-                          );
-
-                          if (hasOverdueItem) {
-                            navigate('/agenda?filter=overdue');
-                          } else {
-                            const formattedDate = date.toISOString().split('T')[0];
-                            navigate(`/agenda?data=${formattedDate}`);
-                          }
-                        }
-                      }}
-                      className="rounded-2xl border-none p-4"
-                      locale={ptBR}
-                      modifiers={{
-                        hasEvent: (date) => agendaItems.some(item => isSameDay(parseISO(item.data_inicio), date)),
-                        overdue: (date) => agendaItems.some(item => 
-                          isSameDay(parseISO(item.data_inicio), date) && 
-                          !item.status && 
-                          isBefore(startOfDay(parseISO(item.data_inicio)), startOfDay(new Date()))
-                        )
-                      }}
-                      classNames={{
-                        day_selected: "bg-[#223c61] text-white hover:bg-[#223c61] hover:text-white focus:bg-[#223c61] focus:text-white rounded-full shadow-lg",
-                        day_today: "text-[#223c61] font-extrabold border-2 border-[#223c61] rounded-full",
-                        day: "h-9 w-9 p-0 font-medium hover:bg-[#223c61]/10 rounded-full transition-all flex items-center justify-center cursor-pointer",
-                        cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-                        head_cell: "text-muted-foreground font-medium w-9 text-[0.8rem] pb-2",
-                      }}
-                      modifiersClassNames={{
-                        hasEvent: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-[#223c61] after:rounded-full",
-                        overdue: "text-red-600 font-bold after:bg-red-600 animate-pulse-urgency"
-                      }}
-                    />
-                    <div className="px-4 pb-4 pt-2 border-t border-[#F1F5F9]">
-                      <button 
-                        onClick={() => navigate('/agenda')}
-                        className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[#223c61] text-white text-xs font-bold hover:bg-[#1a2e4b] transition-all shadow-md active:scale-95"
-                      >
-                        <CalendarIcon className="h-3.5 w-3.5" />
-                        Ver Agenda Completa
-                      </button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Botão Sincronizar Compacto */}
-              <button 
-                onClick={() => {
-                  if(confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
-                    localStorage.removeItem('rp_orcamentos');
-                    localStorage.removeItem('rp_pedidos');
-                    localStorage.removeItem('rp_clientes');
-                    localStorage.removeItem('rp_produtos');
-                    localStorage.removeItem('rp_os');
-                    localStorage.removeItem('rp_estoque');
-                    localStorage.removeItem('rp_metas');
-                    window.location.reload();
-                  }
-                }} 
-                className="p-2 sm:p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm shrink-0"
-                title="Forçar Sincronização"
-              >
-                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-
-              {/* Notificações (Compacto) */}
-              <div className="relative shrink-0">
-                <button 
-                  onClick={handleBellClick}
-                  className="p-2 sm:p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative"
-                >
-                  <Bell className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
-                  {naoLidas > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold border-2 border-white">
-                      {naoLidas}
-                    </span>
-                  )}
-                </button>
-
-                {showNotif && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-[#E2E8F0] rounded-2xl shadow-xl z-50 max-h-96 overflow-y-auto animate-fade-in">
-                    <div className="p-4 border-b border-[#F1F5F9] font-bold text-sm flex items-center justify-between text-[#223c61]">
-                      <span>Notificações</span>
-                      {notificacoes.length > 0 && (
-                        <button onClick={excluirTodas} className="text-[10px] text-red-500 hover:underline">Limpar tudo</button>
-                      )}
-                    </div>
-                    {notificacoes.length === 0 && unreadChatCount === 0 ? (
-                      <div className="p-8 text-sm text-muted-foreground text-center">Nenhuma notificação nova</div>
-                    ) : (
-                      <div className="divide-y divide-[#F1F5F9]">
-                        {unreadChatCount > 0 && (
-                          <div
-                            className="p-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors bg-[#223c61]/5"
-                            onClick={() => { setShowNotif(false); navigate('/chat'); }}
-                          >
-                            <p className="font-bold text-xs text-[#223c61]">💬 Novas mensagens</p>
-                            <p className="text-[11px] text-[#64748B] mt-1">{unreadChatCount} conversa(s) com mensagens novas</p>
-                          </div>
-                        )}
-                        {notificacoes.slice(-10).reverse().map(n => (
-                          <div
-                            key={n.id}
-                            className={`p-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors ${!n.lida ? 'bg-[#223c61]/5' : ''}`}
-                            onClick={() => handleNotifClick(n)}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-xs text-[#223c61] truncate">{n.titulo}</p>
-                                <p className="text-[11px] text-[#64748B] mt-1 line-clamp-2">{n.mensagem}</p>
-                              </div>
-                              <button onClick={(e) => { e.stopPropagation(); excluirNotif(n.id); }} className="p-1 rounded-lg hover:bg-red-50 text-red-400" title="Excluir">
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Perfil e Logout (Ultra Compacto) */}
-              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-[#E2E8F0] shrink-0">
-                <div className="flex items-center gap-2 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-1 rounded-xl transition-all cursor-pointer">
-                  <Avatar className="h-7 w-7 sm:h-8 sm:w-8 border border-white shadow-sm">
-                    {currentUser?.foto ? <AvatarImage src={currentUser.foto} alt="" /> : null}
-                    <AvatarFallback className="bg-[#223c61] text-white text-[9px] font-bold">
-                      {currentUser?.nome?.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="hidden md:block pr-2">
-                    <p className="text-[10px] font-bold text-[#223c61] leading-none mb-0.5">{currentUser?.nome?.split(' ')[0]}</p>
-                    <p className="text-[8px] text-[#64748B] leading-none uppercase tracking-wider font-semibold">{currentUser?.nivel}</p>
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={() => {
-                    if (confirm('Deseja realmente sair do sistema?')) {
-                      localStorage.removeItem('rp_logged_user');
-                      window.location.reload();
-                    }
-                  }}
-                  className="p-2 sm:p-2.5 rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm shrink-0"
-                  title="Sair do Sistema"
-                >
-                  <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* COLUNA ESQUERDA: CONTEÚDO PRINCIPAL (9 COLUNAS) */}
@@ -1005,7 +767,7 @@ export default function DashboardPage() {
           </div>
 
           {/* MONITOR DE PRODUÇÃO (TABELA LIMPA) */}
-          <Card className="border-none shadow-sm bg-white overflow-hidden">
+          <Card className="rounded-2xl border border-[#E2E8F0] shadow-sm bg-white overflow-hidden">
             <CardHeader className="pb-2 border-b border-[#F1F5F9]">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold text-[#223c61] flex items-center gap-2">
@@ -1022,7 +784,8 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="bg-[#F8FAFC]/50 text-[#64748B] uppercase tracking-wider text-[10px]">
                       <th className="px-6 py-4 font-bold">O.S.</th>
-                      <th className="px-6 py-4 font-bold">Empresa / Cliente</th>
+                      <th className="px-6 py-4 font-bold">Cliente</th>
+                      <th className="px-6 py-4 font-bold">Vendedor / Usuário</th>
                       <th className="px-6 py-4 font-bold">Status</th>
                       <th className="px-6 py-4 font-bold text-right">Previsão</th>
                     </tr>
@@ -1036,6 +799,13 @@ export default function DashboardPage() {
                           <td className="px-6 py-4 text-[#1E293B]">
                             <div className="font-semibold">{os.empresa}</div>
                             <div className="text-[10px] text-[#64748B]">Ped. {os.pedidoNumero}</div>
+                          </td>
+                          <td className="px-6 py-4 text-[#1E293B] font-medium">
+                            {(() => {
+                              const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
+                              const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
+                              return os.responsavelTecnico || os.emitente || orc?.vendedor || 'Sistema';
+                            })()}
                           </td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border
@@ -1053,7 +823,7 @@ export default function DashboardPage() {
                       ))}
                     {(isFullAccess ? data.os : getUserOS(currentUserName)).length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground italic">
+                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground italic">
                           Nenhuma ordem de serviço ativa no momento.
                         </td>
                       </tr>
@@ -1066,7 +836,7 @@ export default function DashboardPage() {
 
           {/* INDICADORES ADICIONAIS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Card className="border-none shadow-sm bg-white cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
+            <Card className="rounded-2xl border border-[#E2E8F0] shadow-sm bg-white cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/orcamentos')}>
               <CardHeader className="pb-2">
                 <h2 className="font-bold text-sm text-[#223c61] flex items-center gap-2">
                   <FileText className="h-4 w-4" /> Status dos Orçamentos
@@ -1079,7 +849,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-white cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDashView('conversion-detail')}>
+            <Card className="rounded-2xl border border-[#E2E8F0] shadow-sm bg-white cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDashView('conversion-detail')}>
               <CardHeader className="pb-2">
                 <h2 className="font-bold text-sm text-[#223c61] flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" /> Taxa de Conversão
@@ -1098,7 +868,7 @@ export default function DashboardPage() {
 
         {/* COLUNA DIREITA: EQUIPE / PRESENÇA (3 COLUNAS) */}
         <div className="lg:col-span-3 space-y-6">
-          <Card className="border-none shadow-sm bg-white h-full min-h-[600px] flex flex-col">
+          <Card className="rounded-2xl border border-[#E2E8F0] shadow-sm bg-white h-full min-h-[600px] flex flex-col">
             <CardHeader className="pb-4 border-b border-[#F1F5F9] shrink-0">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold text-[#223c61] flex items-center gap-2">
@@ -1123,7 +893,7 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   dbUsuarios
-                    .filter(u => u.ativo && u.nivel !== 'master')
+                    .filter(u => u.ativo)
                     .sort((a, b) => {
                       const aOn = onlineUserIds.has(a.id) ? 1 : 0;
                       const bOn = onlineUserIds.has(b.id) ? 1 : 0;

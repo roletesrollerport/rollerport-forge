@@ -170,16 +170,35 @@ export default function AgendaPage() {
 
   useEffect(() => {
     const dateParam = searchParams.get('data');
-    if (dateParam && calendarRef.current) {
-      const calendarApi = calendarRef.current.getApi();
-      calendarApi.gotoDate(dateParam);
-      calendarApi.changeView('timeGridDay');
-    }
-    
     const filterParam = searchParams.get('filter');
-    if (filterParam === 'overdue') {
-      handleShowOverdue();
-    }
+    
+    // Function to apply view settings once calendar is ready
+    const applyViewSettings = () => {
+      if (calendarRef.current) {
+        const calendarApi = calendarRef.current.getApi();
+        
+        if (dateParam) {
+          calendarApi.gotoDate(dateParam);
+          calendarApi.changeView('listDay');
+        }
+        
+        if (filterParam === 'overdue') {
+          handleShowOverdue();
+        } else if (filterParam === 'pending') {
+          setAgendaFilter('pending');
+          calendarApi.changeView('listWeek');
+        } else if (filterParam === 'today') {
+          setAgendaFilter('all');
+          calendarApi.gotoDate(new Date());
+          calendarApi.changeView('listDay');
+        }
+      }
+    };
+
+    applyViewSettings();
+    // Also try with a tiny delay just in case of race conditions during initial mounting
+    const timer = setTimeout(applyViewSettings, 100);
+    return () => clearTimeout(timer);
   }, [searchParams]);
 
   const nameMatch = (vendedorField: string, userName: string) => {
@@ -304,22 +323,6 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-5">
-      {/* ===== HEADER ===== */}
-      <div className="flex items-center justify-between flex-wrap gap-4 no-print">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
-            <Target className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">CRM Rollerport</h1>
-              <Badge variant="secondary" className="text-[10px] h-5 font-bold uppercase tracking-wider gap-1 bg-secondary/15 text-secondary border-0">
-                <Zap className="h-3 w-3" /> Pro
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground font-medium">Pipeline comercial · Compromissos · Follow-ups</p>
-          </div>
-        </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* IA HUNTER BUTTONS */}
@@ -462,7 +465,6 @@ export default function AgendaPage() {
             <Plus className="h-3.5 w-3.5" /> Novo
           </Button>
         </div>
-      </div>
 
       {/* ===== SUMMARY CARDS ===== */}
       <AgendaSummary items={items} onFilter={(f) => {
@@ -504,7 +506,7 @@ export default function AgendaPage() {
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-          initialView="dayGridMonth"
+          initialView={(searchParams.get('data') || searchParams.get('filter') === 'overdue') ? 'listWeek' : 'dayGridMonth'}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
