@@ -47,27 +47,23 @@ export function RealTimeClock({ className = "" }: { className?: string }) {
     return () => clearInterval(timer);
   }, []);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-      setOpen(false);
-      const dateStr = format(date, 'yyyy-MM-dd');
+  const handleDateSelect = useCallback((date: Date | undefined) => {
+    if (!date) return;
+    setSelectedDate(date);
+    setOpen(false);
+    const dateStr = format(date, 'yyyy-MM-dd');
 
-      // Check if there are events on this date
-      const hasEvents = agendaItems.some(item => {
-        if (!item.data_inicio) return false;
-        return isSameDay(new Date(item.data_inicio), date);
-      });
+    // Check if there are real events on this date
+    const hasEvents = eventDates.has(dateStr);
 
-      if (hasEvents) {
-        // Go to agenda list view for that date
-        navigate(`/agenda?data=${dateStr}&view=list`);
-      } else {
-        // No events: go to agenda and open create modal
-        navigate(`/agenda?data=${dateStr}&view=list&novo=1`);
-      }
+    if (hasEvents) {
+      // Go directly to agenda list view filtered to that date
+      navigate(`/agenda?data=${dateStr}&view=list`);
+    } else {
+      // No events: go to agenda and open create modal for that date
+      navigate(`/agenda?data=${dateStr}&view=list&novo=1`);
     }
-  };
+  }, [eventDates, navigate]);
 
   const formattedTime = new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
