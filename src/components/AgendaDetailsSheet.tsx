@@ -47,7 +47,7 @@ export function AgendaDetailsSheet({
   const navigate = useNavigate();
   if (!item) return null;
 
-  const config = TYPE_CONFIG[item.tipo] || TYPE_CONFIG['Visita'];
+  const config = TYPE_CONFIG[item.tipo] || { color: 'text-amber-500', bg: 'bg-amber-50', icon: Calendar };
   const cliente = item.cliente_id ? store.getClientes().find(c => c.id === item.cliente_id) : null;
 
   const handleWhatsApp = () => {
