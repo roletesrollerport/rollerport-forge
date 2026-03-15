@@ -329,14 +329,14 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
           </Popover>
 
           {/* Profile & Logout */}
-          <div className="flex items-center gap-2 lg:gap-3 pl-2 sm:pl-3 border-l border-[#E2E8F0] shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 pl-1.5 sm:pl-2 lg:pl-3 border-l border-[#E2E8F0] shrink-0">
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-1 h-10 sm:h-12 rounded-xl transition-all cursor-pointer">
-                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border border-white shadow-sm">
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-0.5 sm:p-1 h-8 sm:h-10 lg:h-12 rounded-lg sm:rounded-xl transition-all cursor-pointer min-h-0 min-w-0">
+                    <Avatar className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 border border-white shadow-sm">
                       {currentUser?.foto ? <AvatarImage src={currentUser.foto} alt="" /> : null}
-                      <AvatarFallback className="bg-[#223c61] text-white text-xs sm:text-sm font-bold">
+                      <AvatarFallback className="bg-[#223c61] text-white text-[10px] sm:text-xs lg:text-sm font-bold">
                         {currentUser?.nome?.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -357,10 +357,10 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                   onLogout();
                 }
               }}
-              className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm shrink-0"
+              className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm shrink-0 min-h-0 min-w-0"
               title="Sair do Sistema"
             >
-              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
+              <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
             </button>
           </div>
         </div>
