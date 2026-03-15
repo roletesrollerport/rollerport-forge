@@ -521,6 +521,7 @@ export default function AgendaPage() {
             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
           }}
           locale={ptBrLocale}
+          allDayText="Dia"
           events={filteredEvents}
           editable={true}
           selectable={true}
@@ -605,7 +606,28 @@ export default function AgendaPage() {
           --fc-border-color: hsl(var(--border) / 0.5);
           --fc-page-bg-color: transparent;
           --fc-today-bg-color: hsl(var(--primary) / 0.04);
+          --fc-timegrid-axis-width: 150px;
           font-family: inherit;
+        }
+        .fc .fc-timegrid-axis,
+        .fc col.fc-timegrid-axis {
+          width: 150px !important;
+          min-width: 150px !important;
+          max-width: 150px !important;
+          text-align: left !important;
+          overflow: visible !important;
+        }
+        .fc .fc-timegrid-axis-cushion,
+        .fc .fc-timegrid-slot-label-cushion {
+          white-space: nowrap !important;
+          padding-left: 12px !important;
+          padding-right: 8px !important;
+          text-align: left !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          width: 100% !important;
+          overflow: visible !important;
         }
         .fc .fc-toolbar-title {
           font-size: 1rem;
