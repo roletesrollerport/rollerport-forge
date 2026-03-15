@@ -124,18 +124,18 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
         </div>
 
         {/* Tools Section (BOTTOM on mobile, RIGHT on desktop) */}
-        <div className="flex flex-row items-center gap-2 lg:gap-3 flex-nowrap overflow-x-auto pb-1 lg:pb-0 scrollbar-hide w-full lg:w-auto">
+        <div className="flex flex-row items-center gap-1.5 sm:gap-2 lg:gap-3 flex-nowrap pb-1 lg:pb-0 w-full lg:w-auto">
           {/* Time Command Center */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="flex items-center gap-2.5 bg-[#F8FAFC] border border-[#E2E8F0] px-3 sm:px-4 h-10 sm:h-12 rounded-xl shrink-0 shadow-sm hover:bg-white transition-all group">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-[#223c61] group-hover:scale-110 transition-transform" />
-                <div className="flex flex-row items-center gap-2 leading-none whitespace-nowrap">
-                  <span className="text-xs sm:text-base font-bold text-[#223c61] tabular-nums inline-block min-w-[70px] sm:min-w-[85px]">
+              <button className="flex items-center gap-1 sm:gap-2.5 bg-[#F8FAFC] border border-[#E2E8F0] px-1.5 sm:px-3 lg:px-4 h-8 sm:h-10 lg:h-12 rounded-lg sm:rounded-xl shrink-0 shadow-sm hover:bg-white transition-all group min-h-0 min-w-0">
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5 text-[#223c61] group-hover:scale-110 transition-transform" />
+                <div className="flex flex-row items-center gap-1 sm:gap-2 leading-none whitespace-nowrap">
+                  <span className="text-[10px] sm:text-xs lg:text-base font-bold text-[#223c61] tabular-nums">
                     {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                   <span className="hidden sm:inline-block w-px h-3 bg-[#E2E8F0]" />
-                  <span className="text-[10px] sm:text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                  <span className="text-[8px] sm:text-[10px] lg:text-xs font-semibold text-[#64748B] uppercase tracking-wider">
                     {currentTime.toLocaleDateString('pt-BR')}
                   </span>
                 </div>
@@ -264,21 +264,21 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                 window.location.reload();
               }
             }} 
-            className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm shrink-0"
+            className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm shrink-0 min-h-0 min-w-0"
             title="Forçar Sincronização"
           >
-            <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+            <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
           </button>
 
           {/* Notifications */}
           <Popover open={showNotif} onOpenChange={setShowNotif}>
             <PopoverTrigger asChild>
               <button 
-                className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative group"
+                className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative group min-h-0 min-w-0"
               >
-                <Bell className={`h-4 w-4 sm:h-5 sm:w-5 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
+                <Bell className={`h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
                 {naoLidas > 0 && (
-                  <span className="absolute top-2 right-2 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-white">
+                  <span className="absolute top-1 right-1 sm:top-2 sm:right-2 h-3.5 w-3.5 sm:h-4 sm:w-4 bg-red-500 text-white rounded-full text-[8px] sm:text-[9px] flex items-center justify-center font-bold border-2 border-white">
                     {naoLidas}
                   </span>
                 )}
@@ -329,14 +329,14 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
           </Popover>
 
           {/* Profile & Logout */}
-          <div className="flex items-center gap-2 lg:gap-3 pl-2 sm:pl-3 border-l border-[#E2E8F0] shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 pl-1.5 sm:pl-2 lg:pl-3 border-l border-[#E2E8F0] shrink-0">
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-1 h-10 sm:h-12 rounded-xl transition-all cursor-pointer">
-                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border border-white shadow-sm">
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] p-0.5 sm:p-1 h-8 sm:h-10 lg:h-12 rounded-lg sm:rounded-xl transition-all cursor-pointer min-h-0 min-w-0">
+                    <Avatar className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 border border-white shadow-sm">
                       {currentUser?.foto ? <AvatarImage src={currentUser.foto} alt="" /> : null}
-                      <AvatarFallback className="bg-[#223c61] text-white text-xs sm:text-sm font-bold">
+                      <AvatarFallback className="bg-[#223c61] text-white text-[10px] sm:text-xs lg:text-sm font-bold">
                         {currentUser?.nome?.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -357,10 +357,10 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                   onLogout();
                 }
               }}
-              className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm shrink-0"
+              className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm shrink-0 min-h-0 min-w-0"
               title="Sair do Sistema"
             >
-              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
+              <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
             </button>
           </div>
         </div>
