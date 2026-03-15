@@ -473,7 +473,7 @@ export default function AgendaPage() {
         </div>
 
       {/* ===== SUMMARY CARDS ===== */}
-      <AgendaSummary items={items} onFilter={(f) => {
+      <AgendaSummary items={items} currentUser={currentUser || undefined} onFilter={(f) => {
         setAgendaFilter(f);
         if (calendarRef.current) {
           calendarRef.current.getApi().changeView('listWeek');

@@ -3,24 +3,41 @@ import { CheckCircle2, Clock, ListTodo, Eye, AlertTriangle, TrendingUp } from "l
 import { AgendaItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isPast, format, isSameDay, startOfDay, isBefore } from "date-fns";
+import { isPast, format, isSameDay, startOfDay, isBefore, parseISO } from "date-fns";
+import type { Usuario } from "@/lib/types";
 
 interface AgendaSummaryProps {
   items: AgendaItem[];
+  currentUser?: { nome: string; nivel: string };
   currentFilter?: 'all' | 'today' | 'pending' | 'completed' | 'overdue';
   onFilter?: (filter: 'all' | 'today' | 'pending' | 'completed' | 'overdue') => void;
 }
 
-export function AgendaSummary({ items, currentFilter = 'all', onFilter }: AgendaSummaryProps) {
+export function AgendaSummary({ items, currentUser, currentFilter = 'all', onFilter }: AgendaSummaryProps) {
   const now = new Date();
-  const todayStr = format(now, 'yyyy-MM-dd');
-  const todayItems = items.filter(item => item.data_inicio.startsWith(todayStr));
   
-  const total = todayItems.length;
-  const completed = todayItems.filter(item => item.status).length;
-  const pending = total - completed;
-  const overdue = items.filter(item => 
-    !item.status && isBefore(startOfDay(new Date(item.data_inicio)), startOfDay(now))
+  const nameMatch = (vendedorField: string, userName: string) => {
+    const a = (vendedorField || '').trim().toLowerCase();
+    const b = (userName || '').trim().toLowerCase();
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+  };
+
+  const filteredItems = items.filter(item => {
+    if (!currentUser) return false;
+    const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+    if (fullAccessRoles.includes(currentUser.nivel)) return true;
+    return nameMatch(item.vendedor || '', currentUser.nome || '');
+  });
+
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const todayItems = filteredItems.filter(item => isSameDay(parseISO(item.data_inicio), now));
+  
+  const totalToday = todayItems.length;
+  const completedToday = todayItems.filter(item => item.status).length;
+  const pendingTotal = filteredItems.filter(item => !item.status).length;
+  const overdueTotal = filteredItems.filter(item => 
+    !item.status && isBefore(startOfDay(parseISO(item.data_inicio)), startOfDay(now))
   ).length;
 
   const handleFilterClick = (filter: 'all' | 'today' | 'pending' | 'completed' | 'overdue') => {
@@ -33,7 +50,7 @@ export function AgendaSummary({ items, currentFilter = 'all', onFilter }: Agenda
     {
       key: 'today' as const,
       label: 'Hoje',
-      value: total,
+      value: totalToday,
       icon: ListTodo,
       btnLabel: 'Ver Todas',
       active: { border: 'border-primary', bg: 'bg-primary/5', iconBg: 'bg-primary/15', iconColor: 'text-primary' },
@@ -44,7 +61,7 @@ export function AgendaSummary({ items, currentFilter = 'all', onFilter }: Agenda
     {
       key: 'pending' as const,
       label: 'Pendentes',
-      value: pending,
+      value: pendingTotal,
       icon: Clock,
       btnLabel: 'Ver Lista',
       active: { border: 'border-orange-400', bg: 'bg-orange-50', iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
@@ -55,7 +72,7 @@ export function AgendaSummary({ items, currentFilter = 'all', onFilter }: Agenda
     {
       key: 'completed' as const,
       label: 'Concluídas',
-      value: completed,
+      value: completedToday,
       icon: CheckCircle2,
       btnLabel: 'Ver Lista',
       active: { border: 'border-emerald-400', bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600' },
@@ -66,7 +83,7 @@ export function AgendaSummary({ items, currentFilter = 'all', onFilter }: Agenda
     {
       key: 'overdue' as const,
       label: 'Em Atraso',
-      value: overdue,
+      value: overdueTotal,
       icon: AlertTriangle,
       btnLabel: 'Ver Atrasados',
       active: { border: 'border-destructive', bg: 'bg-destructive/5', iconBg: 'bg-destructive/15', iconColor: 'text-destructive' },

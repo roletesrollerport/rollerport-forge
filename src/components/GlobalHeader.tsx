@@ -8,7 +8,7 @@ import { store } from '@/lib/store';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { parseISO, isSameDay, isBefore, startOfDay } from 'date-fns';
+import { parseISO, isSameDay, isBefore, startOfDay, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Usuario } from '@/lib/types';
 import logo from '@/assets/logo.png';
@@ -82,6 +82,20 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
     store.saveNotificacoes([]);
     setShowNotif(false);
   };
+
+  const nameMatch = (vendedorField: string, userName: string) => {
+    const a = (vendedorField || '').trim().toLowerCase();
+    const b = (userName || '').trim().toLowerCase();
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a) || a.split(' ')[0] === b.split(' ')[0];
+  };
+
+  const filteredAgendaItems = agendaItems.filter(item => {
+    if (!currentUser) return false;
+    const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
+    if (fullAccessRoles.includes(currentUser.nivel)) return true;
+    return nameMatch(item.vendedor || '', currentUser.nome || '');
+  });
 
   return (
     <header className="bg-white border border-[#E2E8F0] px-4 py-2 sm:px-6 sm:py-3 z-40 w-full font-sans rounded-2xl shadow-sm">
@@ -196,7 +210,7 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                   className="rounded-2xl border-none p-4"
                   locale={ptBR}
                   modifiers={{
-                    overdue: (date) => agendaItems.some(item => 
+                    overdue: (date) => filteredAgendaItems.some(item => 
                       isSameDay(parseISO(item.data_inicio), date) && 
                       !item.status && 
                       isBefore(startOfDay(parseISO(item.data_inicio)), startOfDay(new Date()))
@@ -206,13 +220,13 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                       // Exclude today — today always stays navy blue
                       if (isSameDay(date, today)) return false;
                       // Exclude overdue — red takes priority
-                      const isOverdue = agendaItems.some(item => 
+                      const isOverdue = filteredAgendaItems.some(item => 
                         isSameDay(parseISO(item.data_inicio), date) && 
                         !item.status && 
                         isBefore(startOfDay(parseISO(item.data_inicio)), startOfDay(new Date()))
                       );
                       if (isOverdue) return false;
-                      return agendaItems.some(item => 
+                      return filteredAgendaItems.some(item => 
                         isSameDay(parseISO(item.data_inicio), date) && !item.status
                       );
                     },
@@ -257,21 +271,21 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
           </button>
 
           {/* Notifications */}
-          <div className="relative shrink-0">
-            <button 
-              onClick={handleBellClick}
-              className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative group"
-            >
-              <Bell className={`h-4 w-4 sm:h-5 sm:w-5 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
-              {naoLidas > 0 && (
-                <span className="absolute top-2 right-2 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-white">
-                  {naoLidas}
-                </span>
-              )}
-            </button>
-
-            {showNotif && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-[#E2E8F0] rounded-2xl shadow-xl z-50 max-h-96 overflow-y-auto animate-fade-in">
+          <Popover open={showNotif} onOpenChange={setShowNotif}>
+            <PopoverTrigger asChild>
+              <button 
+                className="w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm relative group"
+              >
+                <Bell className={`h-4 w-4 sm:h-5 sm:w-5 ${naoLidas > 0 ? 'animate-bounce text-[#223c61]' : ''}`} />
+                {naoLidas > 0 && (
+                  <span className="absolute top-2 right-2 h-4 w-4 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center font-bold border-2 border-white">
+                    {naoLidas}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0 border-none shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in duration-200 z-[100]">
+              <div className="bg-white border border-[#E2E8F0]">
                 <div className="p-4 border-b border-[#F1F5F9] font-bold text-sm flex items-center justify-between text-[#223c61]">
                   <span>Notificações</span>
                   {notificacoes.length > 0 && (
@@ -281,7 +295,7 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                 {notificacoes.length === 0 && unreadChatCount === 0 ? (
                   <div className="p-8 text-sm text-muted-foreground text-center">Nenhuma notificação nova</div>
                 ) : (
-                  <div className="divide-y divide-[#F1F5F9]">
+                  <div className="divide-y divide-[#F1F5F9] max-h-96 overflow-y-auto">
                     {unreadChatCount > 0 && (
                       <div
                         className="p-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors bg-[#223c61]/5"
@@ -291,7 +305,7 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                         <p className="text-[11px] text-[#64748B] mt-1">{unreadChatCount} conversa(s) com mensagens novas</p>
                       </div>
                     )}
-                    {notificacoes.slice(-10).reverse().map(n => (
+                    {[...notificacoes].slice(-10).reverse().map(n => (
                       <div
                         key={n.id}
                         className={`p-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors ${!n.lida ? 'bg-[#223c61]/5' : ''}`}
@@ -311,8 +325,8 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Profile & Logout */}
           <div className="flex items-center gap-2 lg:gap-3 pl-2 sm:pl-3 border-l border-[#E2E8F0] shrink-0">
