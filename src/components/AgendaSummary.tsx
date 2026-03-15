@@ -3,24 +3,27 @@ import { CheckCircle2, Clock, ListTodo, Eye, AlertTriangle, TrendingUp } from "l
 import { AgendaItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isPast } from "date-fns";
+import { isPast, format, isSameDay, startOfDay, isBefore } from "date-fns";
 
 interface AgendaSummaryProps {
   items: AgendaItem[];
-  currentFilter?: 'all' | 'pending' | 'completed' | 'overdue';
-  onFilter?: (filter: 'all' | 'pending' | 'completed' | 'overdue') => void;
+  currentFilter?: 'all' | 'today' | 'pending' | 'completed' | 'overdue';
+  onFilter?: (filter: 'all' | 'today' | 'pending' | 'completed' | 'overdue') => void;
 }
 
 export function AgendaSummary({ items, currentFilter = 'all', onFilter }: AgendaSummaryProps) {
-  const today = new Date().toISOString().split('T')[0];
-  const todayItems = items.filter(item => item.data_inicio.startsWith(today));
+  const now = new Date();
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const todayItems = items.filter(item => item.data_inicio.startsWith(todayStr));
   
   const total = todayItems.length;
   const completed = todayItems.filter(item => item.status).length;
   const pending = total - completed;
-  const overdue = items.filter(item => !item.status && isPast(new Date(item.data_inicio))).length;
+  const overdue = items.filter(item => 
+    !item.status && isBefore(startOfDay(new Date(item.data_inicio)), startOfDay(now))
+  ).length;
 
-  const handleFilterClick = (filter: 'all' | 'pending' | 'completed' | 'overdue') => {
+  const handleFilterClick = (filter: 'all' | 'today' | 'pending' | 'completed' | 'overdue') => {
     if (onFilter) {
       onFilter(currentFilter === filter ? 'all' : filter);
     }
@@ -28,7 +31,7 @@ export function AgendaSummary({ items, currentFilter = 'all', onFilter }: Agenda
 
   const cards = [
     {
-      key: 'all' as const,
+      key: 'today' as const,
       label: 'Hoje',
       value: total,
       icon: ListTodo,

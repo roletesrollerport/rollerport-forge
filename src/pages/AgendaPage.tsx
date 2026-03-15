@@ -42,7 +42,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { isPast, format } from 'date-fns';
+import { isPast, format, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Popover,
@@ -84,7 +84,7 @@ export default function AgendaPage() {
   const [editingItem, setEditingItem] = useState<AgendaItem | undefined>();
   const [initialDate, setInitialDate] = useState<Date | undefined>();
   const [filterTypes, setFilterTypes] = useState<TipoCompromisso[]>(['Visita Técnica', 'Ligação', 'Retorno de Orçamento', 'Entrega de Roletes']);
-  const [agendaFilter, setAgendaFilter] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
+  const [agendaFilter, setAgendaFilter] = useState<'all' | 'today' | 'pending' | 'completed' | 'overdue'>('all');
   
   const { usuarios: dbUsuarios } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -188,9 +188,10 @@ export default function AgendaPage() {
           setAgendaFilter('pending');
           calendarApi.changeView('listWeek');
         } else if (filterParam === 'today') {
-          setAgendaFilter('all');
+          // Navigate to today, activate "Hoje" card, and show today's events
+          setAgendaFilter('today');
           calendarApi.gotoDate(new Date());
-          calendarApi.changeView('listDay');
+          calendarApi.changeView('listWeek');
         }
       }
     };
@@ -209,12 +210,13 @@ export default function AgendaPage() {
   };
 
   const overdueItems = useMemo(() => {
+    const now = new Date();
     return items
       .filter(item => {
         if (isFullAccess) return true;
         return nameMatch(item.vendedor || '', currentUser?.nome || '');
       })
-      .filter(item => !item.status && isPast(new Date(item.data_inicio)));
+      .filter(item => !item.status && isBefore(startOfDay(new Date(item.data_inicio)), startOfDay(now)));
   }, [items, isFullAccess, currentUser]);
 
   const overdueCount = overdueItems.length;
@@ -279,6 +281,10 @@ export default function AgendaPage() {
       return nameMatch(item.vendedor || '', currentUser?.nome || '');
     })
     .filter(item => {
+      if (agendaFilter === 'today') {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        return item.data_inicio.startsWith(todayStr);
+      }
       if (agendaFilter === 'pending') return !item.status;
       if (agendaFilter === 'completed') return item.status;
       if (agendaFilter === 'overdue') return !item.status && isPast(new Date(item.data_inicio));
@@ -479,10 +485,12 @@ export default function AgendaPage() {
         <div className="flex items-center gap-2">
           <div className={cn(
             "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border",
+            agendaFilter === 'today' && "bg-[#223c61]/10 text-[#223c61] border-[#223c61]/20",
             agendaFilter === 'pending' && "bg-orange-50 text-orange-700 border-orange-200",
             agendaFilter === 'completed' && "bg-emerald-50 text-emerald-700 border-emerald-200",
             agendaFilter === 'overdue' && "bg-destructive/10 text-destructive border-destructive/20"
           )}>
+            {agendaFilter === 'today' && <><CalendarIcon className="h-3 w-3" /> Mostrando: Hoje</>}
             {agendaFilter === 'pending' && <><Clock className="h-3 w-3" /> Mostrando: Pendentes</>}
             {agendaFilter === 'completed' && <><CheckCircle2 className="h-3 w-3" /> Mostrando: Concluídas</>}
             {agendaFilter === 'overdue' && <><AlertCircle className="h-3 w-3" /> Mostrando: Atrasados</>}
@@ -506,7 +514,7 @@ export default function AgendaPage() {
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-          initialView={(searchParams.get('data') || searchParams.get('filter') === 'overdue') ? 'listWeek' : 'dayGridMonth'}
+          initialView={(searchParams.get('data') || ['overdue', 'today', 'pending'].includes(searchParams.get('filter') || '')) ? 'listWeek' : 'dayGridMonth'}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
