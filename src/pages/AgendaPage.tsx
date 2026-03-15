@@ -611,16 +611,16 @@ export default function AgendaPage() {
         .fc .fc-timegrid-axis,
         .fc col.fc-timegrid-axis,
         .fc td.fc-timegrid-axis {
-          width: 65px !important;
-          min-width: 65px !important;
+          width: 75px !important;
+          min-width: 75px !important;
         }
         .fc .fc-timegrid-axis-cushion {
           white-space: nowrap !important;
           overflow: visible !important;
         }
         .fc .fc-timegrid-slot-label {
-          width: 65px !important;
-          min-width: 65px !important;
+          width: 75px !important;
+          min-width: 75px !important;
         }
         .fc .fc-toolbar-title {
           font-size: 1rem;
