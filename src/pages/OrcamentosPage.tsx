@@ -491,8 +491,13 @@ export default function OrcamentosPage() {
       createdAt: new Date().toISOString().split('T')[0],
     };
     const existingProds = store.getProdutos();
-    // Não duplicar se já existir com mesmo código
-    if (!existingProds.some(p => p.codigo === novoProduto.codigo && p.tipo === novoProduto.tipo)) {
+    // Se já existir com mesmo código, atualizar
+    const existingIdx = existingProds.findIndex(p => p.codigo === novoProduto.codigo);
+    if (existingIdx !== -1) {
+      const updatedProds = [...existingProds];
+      updatedProds[existingIdx] = { ...existingProds[existingIdx], ...novoProduto, id: existingProds[existingIdx].id };
+      store.saveProdutos(updatedProds);
+    } else {
       store.saveProdutos([...existingProds, novoProduto]);
     }
     setShowRoleteForm(false);
@@ -556,6 +561,12 @@ export default function OrcamentosPage() {
 
   // Cadastrar produto rápido
   const salvarProduto = () => {
+    // Check for duplicate code
+    if (cadProduto.codigo && produtos.some(p => p.codigo === cadProduto.codigo)) {
+      toast.error(`O código "${cadProduto.codigo}" já está em uso.`);
+      return;
+    }
+
     const id = store.nextId('prod');
     const novo: Produto = {
       id, ...cadProduto, tipo: 'GENERICO',
@@ -1293,44 +1304,10 @@ export default function OrcamentosPage() {
                 <label className="text-xs text-primary font-medium">NCM</label>
                 <Input placeholder="Digite o NCM" value={produtoNcm} onChange={e => setProdutoNcm(e.target.value)} />
               </div>
-              <div className="col-span-3 sm:col-span-4 h-px bg-muted my-1" />
-              <div>
-                <label className="text-xs text-primary font-medium">PIS (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqPIS} onChange={e => setProdutoAliqPIS(+e.target.value)} />
               </div>
-              <div>
-                <label className="text-xs text-primary font-medium">COFINS (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqCOFINS} onChange={e => setProdutoAliqCOFINS(+e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">ICMS (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqICMS} onChange={e => setProdutoAliqICMS(+e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">IPI (%)</label>
-                <Input type="number" step="0.01" value={produtoAliqIPI} onChange={e => setProdutoAliqIPI(+e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-primary font-medium">Descrição da Peça</label>
-              <Input value={selectedProduto.nome} readOnly className="bg-muted/30" />
-            </div>
-            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-4 gap-3 text-sm">
+            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-2 gap-3 text-sm">
               <div><span className="text-xs text-primary">Valor Unit. Final</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100))}</strong></div>
               <div><span className="text-xs text-primary">Total Item</span><br /><strong>{fmt(selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd)}</strong></div>
-              <div>
-                <span className="text-xs text-primary">Impostos (Destaque)</span><br />
-                <span className="text-[10px] text-muted-foreground">
-                  {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (produtoAliqPIS + produtoAliqCOFINS + produtoAliqICMS)) / 100)}
-                </span>
-                <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt(((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * produtoAliqIPI) / 100)}</span>
-              </div>
-              <div className="bg-primary/5 p-1 rounded border border-primary/10">
-                <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
-                <strong className="text-primary">
-                  {fmt((selectedProduto.valor * (1 - produtoDesconto / 100) * produtoQtd) * (1 - (produtoAliqPIS + produtoAliqCOFINS + produtoAliqICMS) / 100))}
-                </strong>
-              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <Button onClick={insertProduto} className="gap-2">✓ Inserir no Orçamento</Button>
