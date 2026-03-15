@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import type { Cliente, Comprador } from '@/lib/types';
@@ -19,6 +20,7 @@ const emptyCliente = (): Cliente => ({
 type Categoria = 'clientes' | 'revenda';
 
 export default function ClientesPage() {
+  const navigate = useNavigate();
   const [categoria, setCategoria] = useState<Categoria>('clientes');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [revendas, setRevendas] = useState<Cliente[]>([]);
@@ -107,7 +109,19 @@ export default function ClientesPage() {
   };
   const getUltimaCompra = (clienteNome: string) => {
     const peds = pedidos.filter(p => p.clienteNome === clienteNome && p.status === 'ENTREGUE');
-    return peds.length > 0 ? peds[peds.length - 1].createdAt : '-';
+    return peds.length > 0 ? peds[peds.length - 1].createdAt.split('T')[0] : '-';
+  };
+  const getUltimoInteracao = (clienteId: string, clienteNome: string) => {
+    const orcs = orcamentos.filter(o => o.clienteId === clienteId).map(o => ({ v: o.vendedor, d: o.createdAt }));
+    const peds = pedidos.filter(p => p.clienteNome === clienteNome).map(p => ({ v: p.vendedor, d: p.createdAt }));
+    const combined = [...orcs, ...peds].sort((a, b) => b.d.localeCompare(a.d));
+    return combined.length > 0 ? combined[0].v || '-' : '-';
+  };
+  const getUltimoCRM = (clienteId: string) => {
+    const agenda = store.getAgenda().filter(a => a.cliente_id === clienteId);
+    if (agenda.length === 0) return '-';
+    const last = agenda.sort((a, b) => b.data_inicio.localeCompare(a.data_inicio))[0];
+    return `${last.titulo} (${new Date(last.data_inicio).toLocaleDateString('pt-BR')})`;
   };
 
   return (
@@ -248,13 +262,48 @@ export default function ClientesPage() {
               </div>
 
               <div className="mt-3 pt-3 border-t space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Último Orçamento:</span>
+                <div 
+                  className="flex justify-between cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded transition-colors group"
+                  onClick={() => navigate(`/orcamentos?q=${encodeURIComponent(c.nome)}`)}
+                >
+                  <span className="text-muted-foreground group-hover:text-primary">Último Orçamento:</span>
                   <span className="font-medium">{getUltimoOrcamento(c.id)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Última Compra:</span>
+                <div 
+                  className="flex justify-between cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded transition-colors group"
+                  onClick={() => navigate(`/pedidos?q=${encodeURIComponent(c.nome)}`)}
+                >
+                  <span className="text-muted-foreground group-hover:text-primary">Última Compra:</span>
                   <span className="font-medium">{getUltimaCompra(c.nome)}</span>
+                </div>
+                <div 
+                  className="flex justify-between cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded transition-colors group"
+                  onClick={() => {
+                    const user = dbUsuarios.find(u => u.nome === getUltimoInteracao(c.id, c.nome));
+                    if (user) {
+                      window.dispatchEvent(new CustomEvent('rp-open-chat', { detail: { userId: user.id } }));
+                    } else {
+                      toast.info('Vendedor não encontrado para iniciar chat.');
+                    }
+                  }}
+                >
+                  <span className="text-muted-foreground group-hover:text-primary">Última Interação (Usuário):</span>
+                  <span className="font-medium">{getUltimoInteracao(c.id, c.nome)}</span>
+                </div>
+                <div 
+                  className="flex justify-between cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded transition-colors group"
+                  onClick={() => {
+                    const agenda = store.getAgenda().filter(a => a.cliente_id === c.id);
+                    if (agenda.length > 0) {
+                      const last = agenda.sort((a, b) => b.data_inicio.localeCompare(a.data_inicio))[0];
+                      navigate(`/agenda?data=${last.data_inicio.split('T')[0]}&filter=all`);
+                    } else {
+                      navigate('/agenda');
+                    }
+                  }}
+                >
+                  <span className="text-muted-foreground group-hover:text-primary">Último CRM:</span>
+                  <span className="font-medium truncate ml-2 max-w-[120px]" title={getUltimoCRM(c.id)}>{getUltimoCRM(c.id)}</span>
                 </div>
               </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
@@ -100,6 +100,7 @@ type View = 'list' | 'form' | 'view' | 'print';
 
 export default function OrcamentosPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [view, setView] = useState<View>('list');
   const [viewOrc, setViewOrc] = useState<Orcamento | null>(null);
@@ -241,6 +242,11 @@ export default function OrcamentosPage() {
     window.addEventListener('rp-data-synced', load);
     return () => window.removeEventListener('rp-data-synced', load);
   }, []);
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) setSearchList(q);
+  }, [searchParams]);
 
   // Restore draft from session on mount
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamento } from '@/lib/types';
@@ -160,6 +160,7 @@ type View = 'list' | 'view' | 'print';
 
 export default function PedidosPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [search, setSearch] = useState('');
@@ -187,6 +188,11 @@ export default function PedidosPage() {
     window.addEventListener('rp-data-synced', load);
     return () => window.removeEventListener('rp-data-synced', load);
   }, []);
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) setSearch(q);
+  }, [searchParams]);
 
   // Comprehensive search helper
   const matchesSearch = (text: string, s: string) => text?.toLowerCase().includes(s.toLowerCase());

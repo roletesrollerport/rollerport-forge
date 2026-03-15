@@ -225,6 +225,13 @@ export default function CustosPage() {
         </div>
       </div>
 
+      {/* Delete All button */}
+      <div className="flex justify-end">
+        <Button variant="destructive" size="sm" onClick={handleDeleteAll} disabled={saving} className="gap-2">
+          <Trash2 className="h-4 w-4" /> Excluir Tudo ({tabs.find(t => t.key === activeTab)?.label})
+        </Button>
+      </div>
+
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -232,13 +239,6 @@ export default function CustosPage() {
               activeTab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             }`}>{t.label}</button>
         ))}
-      </div>
-
-      {/* Delete All button */}
-      <div className="flex justify-end">
-        <Button variant="destructive" size="sm" onClick={handleDeleteAll} disabled={saving} className="gap-2">
-          <Trash2 className="h-4 w-4" /> Excluir Tudo ({tabs.find(t => t.key === activeTab)?.label})
-        </Button>
       </div>
 
       <div className="bg-card rounded-lg border overflow-x-auto">
