@@ -690,9 +690,9 @@ export default function OrcamentosPage() {
     };
     const taxaICMSOrig = isSimplesNacional ? 0 : (icmsInterMap[destinoUF] || 0.12);
     const taxaICMSDest = isSimplesNacional ? 0 : (origemUF === destinoUF ? 0 : Math.max(0, (icmsInternoMap[destinoUF] || 0.18) - taxaICMSOrig));
-    const taxaPIS = isSimplesNacional ? 0 : 0.0165;
-    const taxaCOFINS = isSimplesNacional ? 0 : 0.076;
-    const taxaIPI = isSimplesNacional ? 0 : 0.05;
+    const taxaPIS = isSimplesNacional ? 0 : 0.0065;
+    const taxaCOFINS = isSimplesNacional ? 0 : 0.03;
+    const taxaIPI = 0; // Isento for both regimes
 
     // Build all items for the table
     const allPrintItems: Array<{
