@@ -902,7 +902,8 @@ export default function OrcamentosPage() {
           <div className="h-2" />
 
           {/* ===== TABLE ===== */}
-          <table className="w-full text-[8px] border-collapse">
+          <div className="mobile-table-scroll">
+          <table className="w-full text-[8px] border-collapse min-w-[700px]">
             <thead>
               <tr className="bg-gray-100 uppercase text-[7px] font-bold">
                 <th className="border p-1 text-center whitespace-nowrap">ITEM</th>
