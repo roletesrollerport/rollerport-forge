@@ -685,7 +685,7 @@ export default function OrcamentosPage() {
       'SP': 0.18,
     };
     const taxaICMSDest = icmsDestinoMap[destinoUF] ?? 0.07;
-    const isSimplesNacional = empPrint.regimeTributario === 'simples_nacional';
+    // isSimplesNacional already declared above
     const taxaPIS = isSimplesNacional ? 0.0249 : 0.0065;
     const taxaCOFINS = isSimplesNacional ? 0.1151 : 0.03;
     const taxaIPI = 0; // Isento for both regimes
