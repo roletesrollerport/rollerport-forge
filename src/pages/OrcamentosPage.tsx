@@ -813,13 +813,13 @@ export default function OrcamentosPage() {
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
-              <img src={logo} alt={empPrint.nome} className="h-16 object-contain" />
+              <img src={empPrint.logo} alt={empPrint.nome} className="h-16 object-contain" />
               <div>
                 <h2 className="text-base font-bold leading-tight">{empPrint.nome}</h2>
                 <p className="text-[10px] font-semibold">{empPrint.subtitulo}</p>
                 <p className="text-[10px]">{empPrint.endereco}</p>
                 <p className="text-[10px]">{empPrint.cidadeEstado}</p>
-                <p className="text-[10px]">CNPJ: {empPrint.cnpj}</p>
+                <p className="text-[10px]">CNPJ: {empPrint.cnpj} | IE: {empPrint.ie}</p>
                 <p className="text-[10px]">Tel: {empPrint.telefone} • {empPrint.email}</p>
               </div>
               <div className="flex flex-col items-center ml-2">
