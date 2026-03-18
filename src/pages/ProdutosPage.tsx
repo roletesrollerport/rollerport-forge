@@ -151,11 +151,11 @@ export default function ProdutosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Código</th>
-              <th className="text-left p-3 font-medium">Nome</th>
-              <th className="text-left p-3 font-medium">Tipo</th>
-              <th className="text-right p-3 font-medium">Valor</th>
-              <th className="p-3 w-20">Ações</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Código</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Nome</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm hidden sm:table-cell">Tipo</th>
+              <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm hidden sm:table-cell">Valor</th>
+              <th className="p-2 sm:p-3 w-20">Ações</th>
             </tr>
           </thead>
           <tbody>
