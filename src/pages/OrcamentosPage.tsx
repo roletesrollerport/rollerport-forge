@@ -883,37 +883,43 @@ export default function OrcamentosPage() {
           <div className="h-2" />
 
           {/* ===== TABLE ===== */}
-          <table className="w-full text-[8px] border-collapse table-fixed">
+          <table className="w-full text-[8px] border-collapse">
             <thead>
               <tr className="bg-gray-100 uppercase text-[7px] font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[30px]">ITEM</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[60px]">CÓDIGO</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[50px]">CÓD. CLI.</th>
-                <th className="border p-1 text-left">DESCRIÇÃO</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[30px]">QTD</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[70px]">VLR UNIT.</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[80px]">VLR TOTAL</th>
+                <th className="border p-1 text-center whitespace-nowrap">ITEM</th>
+                <th className="border p-1 text-center whitespace-nowrap">CÓDIGO</th>
+                <th className="border p-1 text-center whitespace-nowrap">CÓDIGO CLIENTE</th>
+                <th className="border p-1 text-left" style={{ minWidth: '120px' }}>DESCRIÇÃO</th>
+                <th className="border p-1 text-center whitespace-nowrap">QTD</th>
+                <th className="border p-1 text-right whitespace-nowrap">VLR UNIT.</th>
+                <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR TOTAL S/ IMP.</th>
+                <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR TOTAL C/ IMP.</th>
+                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL</th>
               </tr>
             </thead>
             <tbody>
               {allPrintItems.map((row) => (
                 <tr key={row.item}>
                   <td className="border p-1 text-center whitespace-nowrap">{String(row.item).padStart(2, '0')}</td>
-                  <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codigo}>{row.codigo}</td>
-                  <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codExterno}>{row.codExterno || '-'}</td>
-                  <td className="border p-1 text-left whitespace-nowrap">{row.descricao}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{row.codigo}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{row.codExterno || '-'}</td>
+                  <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-bold">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell font-bold">{fmt(row.valorTotalComImpostos)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold print:hidden">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-gray-100 font-bold uppercase">
-                <td className="border p-1 text-center" colSpan={4}>TOTAL</td>
+              <tr className="bg-gray-100 font-bold">
+                <td className="border p-1 text-right" colSpan={4}>Valor Total</td>
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalComImpostos)}</td>
+                <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalSemImpostos)}</td>
               </tr>
             </tfoot>
           </table>
