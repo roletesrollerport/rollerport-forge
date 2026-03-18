@@ -730,11 +730,12 @@ export default function OrcamentosPage() {
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
+        valorTotalBase: ip.valorUnitario * ip.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: ip.valorTotal + valorIPITotal,
+        valorTotalComImpostos: (ip.valorUnitario * ip.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
       });
     });
     (viewOrc.itensRolete || []).forEach((ir) => {
