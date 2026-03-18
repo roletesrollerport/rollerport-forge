@@ -1789,7 +1789,7 @@ export default function OrcamentosPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border overflow-x-auto">
+      <div className="bg-card rounded-lg border mobile-table-scroll">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
