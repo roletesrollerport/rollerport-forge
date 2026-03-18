@@ -923,17 +923,7 @@ export default function OrcamentosPage() {
                 {/* Coluna 1 - Condições de Pagamento */}
                 <div className="space-y-1">
                   <p className="font-bold text-[10px] underline mb-1">Condições de Pagamento</p>
-                  <select
-                    className="print:appearance-none print:border-none print:bg-transparent print:p-0 print:font-bold w-full text-[9px] border rounded px-1 py-0.5 font-bold bg-background"
-                    value={viewOrc.condicaoPagamento || ''}
-                    onChange={(e) => {
-                      const updated = { ...viewOrc, condicaoPagamento: e.target.value };
-                      setViewOrc(updated);
-                      const all = orcamentos.map(o => o.id === updated.id ? updated : o);
-                      setOrcamentos(all);
-                      store.saveOrcamentos(all);
-                    }}
-                  >
+                  <p><strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
                     <option value="">Selecione...</option>
                     <option value="Boleto">Boleto</option>
                     <option value="PIX">PIX</option>
