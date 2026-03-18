@@ -850,22 +850,22 @@ export default function OrcamentosPage() {
           </Select>
         </div>
 
-        <div className="bg-white text-black border p-3 mx-auto print:border-0 print:shadow-none print:p-2" style={{ maxWidth: '1200px' }}>
+        <div className="bg-white text-black border p-3 mx-auto print:border-0 print:shadow-none print:p-2 overflow-x-hidden" style={{ maxWidth: '1200px' }}>
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <img src={empPrint.logo} alt={empPrint.nome} className="h-24 w-auto object-contain" />
-              <div>
-                <h2 className="text-base font-bold leading-tight">{empPrint.nome}</h2>
-                <p className="text-[10px] font-semibold">{empPrint.subtitulo}</p>
-                <p className="text-[10px]">{empPrint.endereco}</p>
-                <p className="text-[10px]">{empPrint.cidadeEstado}</p>
-                <p className="text-[10px]">CNPJ: {empPrint.cnpj} | IE: {empPrint.ie}</p>
-                <p className="text-[10px]">Tel: {empPrint.telefone} • {empPrint.email}</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <img src={empPrint.logo} alt={empPrint.nome} className="h-16 sm:h-24 w-auto object-contain print-header-logo shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-bold leading-tight truncate">{empPrint.nome}</h2>
+                <p className="text-[9px] sm:text-[10px] font-semibold">{empPrint.subtitulo}</p>
+                <p className="text-[9px] sm:text-[10px]">{empPrint.endereco}</p>
+                <p className="text-[9px] sm:text-[10px]">{empPrint.cidadeEstado}</p>
+                <p className="text-[9px] sm:text-[10px]">CNPJ: {empPrint.cnpj} | IE: {empPrint.ie}</p>
+                <p className="text-[9px] sm:text-[10px]">Tel: {empPrint.telefone} • {empPrint.email}</p>
               </div>
-              <div className="flex flex-col items-center ml-2">
-                <img src={qrcode} alt={`QR Code ${empPrint.nome}`} className="h-14 w-14 object-contain" />
-                <p className="text-[7px] text-gray-500 mt-0.5 text-center leading-tight">Aponte a câmera<br/>para nossas redes</p>
+              <div className="flex flex-col items-center ml-1 sm:ml-2 shrink-0">
+                <img src={qrcode} alt={`QR Code ${empPrint.nome}`} className="h-10 w-10 sm:h-14 sm:w-14 object-contain print-qr-code" />
+                <p className="text-[6px] sm:text-[7px] text-gray-500 mt-0.5 text-center leading-tight">Aponte a câmera<br/>para nossas redes</p>
               </div>
             </div>
             {cli && (
