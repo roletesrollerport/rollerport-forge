@@ -617,20 +617,20 @@ export default function DashboardPage() {
         <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none space-y-6">
           <h2 className="text-xl font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Relatório de Taxa de Conversão</h2>
 
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="border rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Orçamento → Pedido</p>
-              <p className="text-3xl font-bold text-primary">{taxaConversao}%</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div className="border rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">Orçamento → Pedido</p>
+              <p className="text-2xl sm:text-3xl font-bold text-primary">{taxaConversao}%</p>
               <p className="text-xs text-muted-foreground">{globalOrc.aprovado} de {globalOrc.total}</p>
             </div>
-            <div className="border rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Pedidos Entregues</p>
-              <p className="text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
+            <div className="border rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">Pedidos Entregues</p>
+              <p className="text-2xl sm:text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
               <p className="text-xs text-muted-foreground">{globalPed.entregue} de {globalPed.total}</p>
             </div>
-            <div className="border rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">O.S. Ativas</p>
-              <p className="text-3xl font-bold text-primary">{globalOs.total}</p>
+            <div className="border rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">O.S. Ativas</p>
+              <p className="text-2xl sm:text-3xl font-bold text-primary">{globalOs.total}</p>
             </div>
           </div>
 
