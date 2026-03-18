@@ -919,11 +919,27 @@ export default function OrcamentosPage() {
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
             <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
-              <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+              <div className="grid grid-cols-3 gap-x-4">
                 {/* Coluna 1 - Condições de Pagamento */}
                 <div className="space-y-1">
                   <p className="font-bold text-[10px] underline mb-1">Condições de Pagamento</p>
-                  <p><strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
+                  <select
+                    className="print:appearance-none print:border-none print:bg-transparent print:p-0 print:font-bold w-full text-[9px] border rounded px-1 py-0.5 font-bold bg-background"
+                    value={viewOrc.condicaoPagamento || ''}
+                    onChange={(e) => {
+                      const updated = { ...viewOrc, condicaoPagamento: e.target.value };
+                      setViewOrc(updated);
+                      const all = orcamentos.map(o => o.id === updated.id ? updated : o);
+                      setOrcamentos(all);
+                      store.setOrcamentos(all);
+                    }}
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="Boleto">Boleto</option>
+                    <option value="PIX">PIX</option>
+                    <option value="Transferência Bancária">Transferência Bancária</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
                   {viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento && (
                     <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
                   )}
@@ -931,7 +947,7 @@ export default function OrcamentosPage() {
                     <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
                   )}
                   {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
-                    <div className="mt-1 pt-1 border-t border-gray-300 space-y-0.5">
+                    <div className="space-y-0.5">
                       <p className="font-semibold">Dados Bancários:</p>
                       <p>{empPrint.banco}</p>
                       <p>{empPrint.razaoSocial}</p>
