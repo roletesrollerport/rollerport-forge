@@ -771,7 +771,7 @@ export default function OrcamentosPage() {
     });
 
     const totals = allPrintItems.reduce((acc, i) => ({
-      valorTotalSemImpostos: acc.valorTotalSemImpostos + (i.valorLiquidoUnit * i.qtd),
+      valorTotalSemImpostos: acc.valorTotalSemImpostos + i.valorTotalBase,
       valorPIS: acc.valorPIS + i.valorPIS,
       valorCOFINS: acc.valorCOFINS + i.valorCOFINS,
       valorICMS: acc.valorICMS + i.valorICMS,
