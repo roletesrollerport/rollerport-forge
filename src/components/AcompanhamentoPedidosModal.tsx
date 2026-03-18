@@ -21,7 +21,6 @@ interface AcompanhamentoPedidosModalProps {
   clientes?: Cliente[];
   onMetaUpdate: (valorSoma: number) => void;
   showAll?: boolean;
-  currentUser?: any;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -64,32 +63,23 @@ export function AcompanhamentoPedidosModal({
   clientes: clientesProp,
   onMetaUpdate,
   showAll = false,
-  currentUser,
 }: AcompanhamentoPedidosModalProps) {
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [selectedPedidoId, setSelectedPedidoId] = useState<string | null>(null);
-  const [deliveryLogs, setDeliveryLogs] = useState<any[]>([]);
-
-  const isFullAccess = useMemo(() => {
-    if (!currentUser) return false;
-    const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
-    return fullAccessRoles.includes(currentUser.nivel);
-  }, [currentUser]);
 
   const ordensServico = useMemo(() => osProp && osProp.length > 0 ? osProp : store.getOrdensServico(), [osProp]);
   const clientes = useMemo(() => clientesProp && clientesProp.length > 0 ? clientesProp : store.getClientes(), [clientesProp]);
 
   const allRelevantPedidos = useMemo(() => {
-    if (showAll || isFullAccess) return pedidos;
+    if (showAll) return pedidos;
     return pedidos.filter((p) => {
       const orc = orcamentos.find((o) => o.id === p.orcamentoId);
-      const vendorName = p.vendedor || orc?.vendedor || '';
-      return nameMatch(vendorName, currentUser?.nome || '');
+      return orc && nameMatch(orc.vendedor, vendedor);
     });
-  }, [pedidos, orcamentos, currentUser, showAll, isFullAccess]);
+  }, [pedidos, orcamentos, vendedor, showAll]);
 
   const matchesSearch = (p: Pedido) => {
     if (!searchTerm) return true;
@@ -148,27 +138,11 @@ export function AcompanhamentoPedidosModal({
         setSelectedPedidoId(null);
       }
     } else {
+      setSelectedPedidoId(null);
+      setSearchTerm('');
       setShowFullHistory(false);
     }
   }, [isOpen, activePedidos, deliveredPedidos]);
-
-  useEffect(() => {
-    if (isOpen) {
-      const fetchLogs = async () => {
-        try {
-          const { data, error } = await (supabase as any)
-            .from('logs_entrega')
-            .select('*')
-            .order('created_at', { ascending: false });
-          if (error) throw error;
-          setDeliveryLogs(data || []);
-        } catch (err) {
-          console.error('Error fetching logs:', err);
-        }
-      };
-      fetchLogs();
-    }
-  }, [isOpen]);
 
   const selectedPedido = useMemo(() =>
     allRelevantPedidos.find(p => p.id === selectedPedidoId) || null,
@@ -234,43 +208,39 @@ export function AcompanhamentoPedidosModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[90vh] sm:h-[85vh] flex flex-col p-0 overflow-hidden gap-0">
-        <DialogHeader className="p-4 sm:p-6 pb-2 border-b">
-          <DialogTitle className="text-lg flex items-center gap-2">
-            <Truck className="h-5 w-5 text-primary" />
-            Acompanhamento de Pedidos {isFullAccess ? '— Geral' : `— ${currentUser?.nome || vendedor}`}
-          </DialogTitle>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-base">Acompanhamento de Pedidos — {vendedor}</DialogTitle>
           <DialogDescription className="text-xs">
-            {allRelevantPedidos.length} pedido(s) vinculados • {activePedidos.length} em aberto • {deliveredPedidos.length} entregue(s)
+            {allRelevantPedidos.length} pedido(s) • {activePedidos.length} ativo(s) • {deliveredPedidos.length} entregue(s)
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 flex flex-col min-h-0">
-          {/* ===== FIXED TIMELINE SECTION (Sticky inside scrollable) ===== */}
-          <div className="shrink-0 border rounded-xl bg-card p-5 space-y-4 shadow-md border-primary/10 transition-all">
+        {/* ===== FIXED TIMELINE SECTION ===== */}
+        <div className="shrink-0 border rounded-lg bg-card p-4 space-y-3 shadow-sm">
           {selectedPedido && selectedEnriched ? (
             <>
               {/* Info row */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs">
-                <div className="space-y-0.5">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-tighter">Orçamento</span>
-                  <span className="font-mono font-bold text-sm">{selectedEnriched.orc?.numero || '—'}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground block">Orçamento</span>
+                  <span className="font-bold">{selectedEnriched.orc?.numero || '—'}</span>
                 </div>
-                <div className="space-y-0.5">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-tighter">Pedido</span>
-                  <span className="font-mono font-bold text-sm text-primary">{selectedPedido.numero}</span>
+                <div>
+                  <span className="text-muted-foreground block">Pedido</span>
+                  <span className="font-bold">{selectedPedido.numero}</span>
                 </div>
-                <div className="space-y-0.5">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-tighter">O.S.</span>
-                  <span className="font-mono font-bold text-sm text-blue-600">{(selectedEnriched.os as any)?.numero || '—'}</span>
+                <div>
+                  <span className="text-muted-foreground block">O.S.</span>
+                  <span className="font-bold">{(selectedEnriched.os as any)?.numero || '—'}</span>
                 </div>
-                <div className="space-y-0.5">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-tighter">Cliente</span>
-                  <span className="font-bold text-sm truncate block" title={selectedPedido.clienteNome}>{selectedPedido.clienteNome}</span>
+                <div>
+                  <span className="text-muted-foreground block">Cliente</span>
+                  <span className="font-bold truncate block max-w-[140px]">{selectedPedido.clienteNome}</span>
                 </div>
-                <div className="space-y-0.5">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-tighter">Valor Total</span>
-                  <span className="font-mono font-bold text-sm text-emerald-600">{formatCurrency(selectedPedido.valorTotal)}</span>
+                <div>
+                  <span className="text-muted-foreground block">Valor</span>
+                  <span className="font-mono font-bold text-primary">{formatCurrency(selectedPedido.valorTotal)}</span>
                 </div>
               </div>
 
@@ -282,14 +252,13 @@ export function AcompanhamentoPedidosModal({
                 <span className="text-[10px] text-muted-foreground">Previsão: {selectedPedido.dataEntrega}</span>
               </div>
 
-                      <div className="flex items-center justify-between relative pt-6 pb-2 px-1">
-                <div className="absolute left-[5%] right-[5%] top-[50%] -translate-y-[13px] h-1.5 bg-muted rounded-full z-0 overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-1000 ease-in-out"
-                    style={{ width: `${(displayStepIndex / (STEPS.length - 1)) * 100}%` }}
-                  />
-                </div>
-                
+              {/* Timeline stepper */}
+              <div className="flex items-center justify-between relative pt-2 pb-1">
+                <div className="absolute left-[10%] top-1/2 -translate-y-1/2 w-[80%] h-1 bg-muted rounded-full z-0" />
+                <div
+                  className="absolute left-[10%] top-1/2 -translate-y-1/2 h-1 bg-primary rounded-full transition-all duration-500 z-0"
+                  style={{ width: `${Math.max(0, displayStepIndex / (STEPS.length - 1)) * 80}%` }}
+                />
                 {STEPS.map((step, idx) => {
                   const isActive = displayStepIndex >= idx;
                   const isCurrent = displayStepIndex === idx;
@@ -299,15 +268,15 @@ export function AcompanhamentoPedidosModal({
                       key={step.key}
                       disabled={updatingId === selectedPedido.id}
                       onClick={() => handleStatusChange(selectedPedido, step.key)}
-                      className={`relative z-10 flex flex-col items-center gap-2 group outline-none transition-transform active:scale-95 ${updatingId === selectedPedido.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      className={`relative z-10 flex flex-col items-center gap-2 group outline-none ${updatingId === selectedPedido.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 shadow-md border-2
-                        ${isActive ? 'bg-primary border-primary text-primary-foreground transform scale-110' : 'bg-background border-muted-foreground/30 text-muted-foreground'}
-                        ${isCurrent ? 'ring-4 ring-primary/30' : ''}
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm border-2
+                        ${isActive ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-muted-foreground/30 text-muted-foreground'}
+                        ${isCurrent ? 'ring-4 ring-primary/20 scale-110' : ''}
                       `}>
-                        <Icon className={`w-5 h-5 ${isCurrent ? 'animate-pulse' : ''}`} />
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <span className={`text-[11px] whitespace-nowrap font-bold uppercase tracking-tight ${isActive ? 'text-foreground' : 'text-muted-foreground opacity-60'}`}>
+                      <span className={`text-[10px] whitespace-nowrap font-semibold ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
                         {step.label}
                       </span>
                     </button>
@@ -343,19 +312,16 @@ export function AcompanhamentoPedidosModal({
               )}
             </>
           ) : (
-            <div className="text-center py-12 border-2 border-dashed rounded-xl bg-muted/5">
-              <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">
-                Selecione um pedido na lista abaixo para acompanhar o progresso.
-              </p>
+            <div className="text-center py-6 text-sm text-muted-foreground">
+              Nenhum pedido selecionado. Selecione um pedido abaixo.
             </div>
           )}
         </div>
 
         {/* ===== SCROLLABLE LIST ===== */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-2 space-y-6">
+        <div className="flex-1 overflow-y-auto space-y-4 mt-2 pb-2">
           {/* Search */}
-          <div className="relative sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-3">
+          <div className="relative sticky top-0 z-10 bg-background pb-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Filtrar por Pedido, Cliente, CNPJ, Telefone, Email..."
@@ -427,54 +393,47 @@ export function AcompanhamentoPedidosModal({
               )}
             </div>
             {displayedHistory.length === 0 ? (
-              <div className="text-center py-6 bg-muted/5 rounded-xl border border-dashed">
-                <p className="text-xs text-muted-foreground italic">Nenhuma entrega registrada.</p>
+              <div className="text-center py-3 bg-muted/10 rounded-lg">
+                <p className="text-[11px] text-muted-foreground italic">Nenhuma entrega registrada ainda.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="space-y-1">
                 {displayedHistory.map(pedido => {
                   const { orc, os } = getEnrichedData(pedido);
                   const isSelected = selectedPedidoId === pedido.id;
-                  const log = deliveryLogs.find(l => l.pedido_id === pedido.id && l.acao === 'ENTREGUE');
                   return (
                     <button
                       key={pedido.id}
                       onClick={() => setSelectedPedidoId(pedido.id)}
-                      className={`w-full text-left flex items-center justify-between p-4 rounded-xl border transition-all duration-300
+                      className={`w-full text-left flex items-center justify-between p-3 rounded-lg border transition-all
                         ${isSelected
-                          ? 'border-emerald-500 bg-emerald-500/10 ring-4 ring-emerald-500/10 shadow-md transform scale-[1.01]'
-                          : 'border-border bg-card hover:bg-muted/50'}
+                          ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-200 shadow-sm'
+                          : 'border-border bg-muted/30 hover:bg-muted/50'}
                       `}
                     >
-                      <div className="flex flex-col gap-1.5 min-w-0">
+                      <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm tracking-tight">PED. {pedido.numero}</span>
-                          <Badge className="text-[9px] font-bold h-4 px-2 uppercase bg-emerald-500 text-white border-none">Concluído</Badge>
-                          {log && <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5"><CheckCircle2 className="h-3 w-3" /> {new Date(log.created_at).toLocaleDateString()} {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                          <span className="font-bold text-xs">Ped. {pedido.numero}</span>
+                          {orc && <span className="text-[10px] text-muted-foreground">Orc. {orc.numero}</span>}
+                          {os && <span className="text-[10px] text-blue-600">O.S. {(os as any).numero}</span>}
+                          <Badge className="text-[9px] h-4 px-1.5 bg-emerald-100 text-emerald-700">Entregue</Badge>
                         </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-bold text-foreground truncate max-w-[280px]">{pedido.clienteNome}</span>
-                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                            {orc && <span>Orc. {orc.numero}</span>}
-                            {os && <span className="text-blue-600 font-medium">O.S. {(os as any).numero}</span>}
-                          </div>
-                        </div>
+                        <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">{pedido.clienteNome}</span>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <p className="text-sm font-mono font-bold text-emerald-700">{formatCurrency(pedido.valorTotal)}</p>
-                        <div
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <p className="text-xs font-mono font-bold text-muted-foreground">{formatCurrency(pedido.valorTotal)}</p>
+                        <span
                           onClick={(e) => { e.stopPropagation(); notifyWhatsApp(pedido); }}
-                          className="h-9 w-9 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 active:scale-90"
+                          className="inline-flex items-center justify-center h-7 w-7 rounded-full border border-green-200 text-green-600 hover:bg-green-50 cursor-pointer"
                         >
-                          <MessageCircle className="h-4 w-4" />
-                        </div>
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </span>
                       </div>
                     </button>
                   );
                 })}
               </div>
             )}
-          </div>
           </div>
         </div>
       </DialogContent>
