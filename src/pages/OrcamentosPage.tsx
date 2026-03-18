@@ -930,16 +930,29 @@ export default function OrcamentosPage() {
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
             <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                {/* Coluna 1 */}
+              <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                {/* Coluna 1 - Condições de Pagamento */}
                 <div className="space-y-1">
-                  <p>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}{viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}{viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}</strong></p>
+                  <p className="font-bold text-[10px] underline mb-1">Condições de Pagamento</p>
+                  <p><strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
+                  {viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento && (
+                    <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
+                  )}
+                  {viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento && (
+                    <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
+                  )}
+                </div>
+                {/* Coluna 2 - Informativos do Orçamento */}
+                <div className="space-y-1">
+                  <p className="font-bold text-[10px] underline mb-1">Informativos do Orçamento</p>
                   <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
                   <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
                   {viewOrc.observacao && <p>Observação: <strong>{viewOrc.observacao}</strong></p>}
                 </div>
-                {/* Coluna 2 */}
+                {/* Coluna 3 - Tributos */}
                 <div className="space-y-1">
+                  <p className="font-bold text-[10px] underline mb-1">Tributos</p>
+                  <p>Regime Tributário: <strong>{isSimplesNacional ? 'Simples Nacional' : 'Lucro Presumido'}</strong></p>
                   <p>NCM: <strong>8431.39.00</strong></p>
                   <p>CST: <strong>00</strong></p>
                   {isSimplesNacional ? (
