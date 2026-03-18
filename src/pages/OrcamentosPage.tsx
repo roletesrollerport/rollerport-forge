@@ -1530,40 +1530,10 @@ export default function OrcamentosPage() {
                 <label className="text-xs text-primary font-medium">Desconto (%)</label>
                 <Input type="number" value={roleteItem.desconto || ''} onChange={e => updateRoleteField({ desconto: e.target.value ? +e.target.value : '' as any })} />
               </div>
-              <div className="col-span-2 sm:col-span-6 h-px bg-muted my-1" />
-              <div>
-                <label className="text-xs text-primary font-medium">PIS (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqPIS || 0} onChange={e => updateRoleteField({ aliqPIS: +e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">COFINS (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqCOFINS || 0} onChange={e => updateRoleteField({ aliqCOFINS: +e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">ICMS (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqICMS || 0} onChange={e => updateRoleteField({ aliqICMS: +e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-primary font-medium">IPI (%)</label>
-                <Input type="number" step="0.01" value={roleteItem.aliqIPI || 0} onChange={e => updateRoleteField({ aliqIPI: +e.target.value })} />
-              </div>
             </div>
-            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-4 gap-3 text-sm">
+            <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-2 gap-3 text-sm">
               <div><span className="text-xs text-primary">Preço Unit. Final</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
               <div><span className="text-xs text-primary">Total Item</span><br /><strong>{fmt(roleteItem.valorTotal)}</strong></div>
-              <div>
-                <span className="text-xs text-primary">Impostos (Destaque)</span><br />
-                <span className="text-[10px] text-muted-foreground">
-                  {fmt((roleteItem.valorTotal * ((roleteItem.aliqPIS || 0) + (roleteItem.aliqCOFINS || 0) + (roleteItem.aliqICMS || 0))) / 100)}
-                </span>
-                <span className="text-[9px] block text-muted-foreground">+ IPI: {fmt((roleteItem.valorTotal * (roleteItem.aliqIPI || 0)) / 100)}</span>
-              </div>
-              <div className="bg-primary/5 p-1 rounded border border-primary/10">
-                <span className="text-xs text-primary font-bold">Valor Líquido Interno</span><br />
-                <strong className="text-primary">
-                  {fmt(roleteItem.valorTotal * (1 - ((roleteItem.aliqPIS || 0) + (roleteItem.aliqCOFINS || 0) + (roleteItem.aliqICMS || 0)) / 100))}
-                </strong>
-              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <Button onClick={insertRolete} className="gap-2">✓ Inserir no Orçamento</Button>
