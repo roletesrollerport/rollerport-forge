@@ -126,9 +126,9 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="page-header">Clientes & Revendas</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="min-w-0">
+          <h1 className="page-header text-lg sm:text-2xl">Clientes & Revendas</h1>
           <p className="page-subtitle">Cadastro de clientes e revendas</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
