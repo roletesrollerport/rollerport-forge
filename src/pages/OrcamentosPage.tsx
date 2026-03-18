@@ -852,11 +852,11 @@ export default function OrcamentosPage() {
 
         <div className="bg-white text-black border p-3 mx-auto print:border-0 print:shadow-none print:p-2 overflow-x-hidden" style={{ maxWidth: '1200px' }}>
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+          <div className="flex flex-col lg:flex-row justify-between items-start gap-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img src={empPrint.logo} alt={empPrint.nome} className="h-16 sm:h-24 w-auto object-contain print-header-logo shrink-0" />
               <div className="min-w-0">
-                <h2 className="text-sm sm:text-base font-bold leading-tight truncate">{empPrint.nome}</h2>
+                <h2 className="text-sm sm:text-base font-bold leading-tight">{empPrint.nome}</h2>
                 <p className="text-[9px] sm:text-[10px] font-semibold">{empPrint.subtitulo}</p>
                 <p className="text-[9px] sm:text-[10px]">{empPrint.endereco}</p>
                 <p className="text-[9px] sm:text-[10px]">{empPrint.cidadeEstado}</p>
@@ -869,7 +869,7 @@ export default function OrcamentosPage() {
               </div>
             </div>
             {cli && (
-              <div className="text-right text-xs">
+              <div className="text-left lg:text-right text-xs w-full lg:w-auto border-t lg:border-t-0 pt-2 lg:pt-0">
                 <p className="font-bold text-sm">{cli.nome}</p>
                 <p>CNPJ: {cli.cnpj}</p>
                 <p>{cli.endereco}</p>
