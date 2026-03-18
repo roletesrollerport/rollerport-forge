@@ -446,14 +446,14 @@ export default function PedidosPage() {
         <div className="bg-card rounded-lg border overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Nº Pedido</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Nº Orçamento</th>
-              <th className="text-left p-3 font-medium">Empresa</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
-              <th className="text-left p-3 font-medium min-w-[180px]">Status</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Dias</th>
-              <th className="text-right p-3 font-medium">Valor</th>
-              <th className="p-3 w-52">Ações</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Nº Pedido</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Nº Orçamento</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Empresa</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Data</th>
+              <th className="text-left p-2 sm:p-3 font-medium min-w-[120px] sm:min-w-[180px] text-xs sm:text-sm">Status</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Dias</th>
+              <th className="text-right p-2 sm:p-3 font-medium hidden sm:table-cell">Valor</th>
+              <th className="p-2 sm:p-3 w-auto sm:w-52">Ações</th>
             </tr></thead>
             <tbody>
               {filteredPedidos.map(p => {
