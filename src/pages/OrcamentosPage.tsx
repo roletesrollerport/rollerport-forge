@@ -813,7 +813,7 @@ export default function OrcamentosPage() {
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
-              <img src={empPrint.logo} alt={empPrint.nome} className="h-16 object-contain" />
+              <img src={empPrint.logo} alt={empPrint.nome} className="h-24 w-auto object-contain" />
               <div>
                 <h2 className="text-base font-bold leading-tight">{empPrint.nome}</h2>
                 <p className="text-[10px] font-semibold">{empPrint.subtitulo}</p>
@@ -864,26 +864,13 @@ export default function OrcamentosPage() {
           <table className="w-full text-[8px] border-collapse table-fixed">
             <thead>
               <tr className="bg-gray-100 uppercase text-[7px] font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[28px]" rowSpan={2}>ITEM</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[44px]" rowSpan={2}>CÓD.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[40px]" rowSpan={2}>CÓD. CLI.</th>
-                <th className="border p-1 text-left w-[31%]" rowSpan={2}>DESCRIÇÃO</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[25px]" rowSpan={2}>QTD</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[55px]" rowSpan={2}>VLR UNIT.<br/>(SEM IMP)</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[55px]" rowSpan={2}>VLR TOTAL<br/>(SEM IMP)</th>
-                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>PIS</th>
-                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>COFINS</th>
-                <th className="border p-1 text-center whitespace-nowrap" colSpan={2}>ICMS</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[40px]" rowSpan={2}>IPI</th>
-                <th className="border p-1 text-right whitespace-nowrap w-[80px] bg-green-200" rowSpan={2}>VLR TOTAL<br/>COM IMPOS.</th>
-              </tr>
-              <tr className="bg-gray-100 text-[6px] uppercase font-bold">
-                <th className="border p-1 text-center whitespace-nowrap w-[13px]">ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[42px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[13px]">ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[42px]">VALOR</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[13px]">ALÍQ.</th>
-                <th className="border p-1 text-center whitespace-nowrap w-[42px]">VALOR</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[30px]">ITEM</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[60px]">CÓDIGO</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[50px]">CÓD. CLI.</th>
+                <th className="border p-1 text-left">DESCRIÇÃO</th>
+                <th className="border p-1 text-center whitespace-nowrap w-[30px]">QTD</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[70px]">VLR UNIT.</th>
+                <th className="border p-1 text-right whitespace-nowrap w-[80px]">VLR TOTAL</th>
               </tr>
             </thead>
             <tbody>
@@ -895,19 +882,7 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-left break-words whitespace-pre-wrap">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
-                  
-                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqPIS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorPIS)}</td>
-                  
-                  <td className="border p-1 text-center whitespace-nowrap">{row.aliqCOFINS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorCOFINS)}</td>
-                  
-                  <td className="border p-1 text-center whitespace-nowrap bg-blue-50/50">{row.aliqICMS.toFixed(2)}%</td>
-                  <td className="border p-1 text-right whitespace-nowrap bg-blue-50/50 font-medium">{fmt(row.valorICMS)}</td>
-                  
-                  <td className="border p-1 text-right whitespace-nowrap font-medium">{fmt(row.valorIPI)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-bold bg-green-100">{fmt(row.valorTotalComImpostos)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
                 </tr>
               ))}
             </tbody>
@@ -917,14 +892,6 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
                 <td className="border p-1"></td>
                 <td className="border p-1 text-right">{fmt(totals.valorTotalSemImpostos)}</td>
-                <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorPIS)}</td>
-                <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorCOFINS)}</td>
-                <td className="border p-1"></td>
-                <td className="border p-1 text-right">{fmt(totals.valorICMS)}</td>
-                <td className="border p-1 text-right">{fmt(totals.valorIPI)}</td>
-                <td className="border p-1 text-right bg-green-200">{fmt(totals.valorTotalComImpostos)}</td>
               </tr>
             </tfoot>
           </table>
@@ -944,45 +911,36 @@ export default function OrcamentosPage() {
             </div>
           )}
 
-          {/* Boleto conditions */}
-          {viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento && (
-            <div className="mt-3 border rounded p-3 text-[10px]">
-              <p className="font-bold mb-1">Condições do Boleto:</p>
-              <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
-            </div>
-          )}
-
-          {/* Cheque conditions */}
-          {viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento && (
-            <div className="mt-3 border rounded p-3 text-[10px]">
-              <p className="font-bold mb-1">Condições do Cheque:</p>
-              <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
-            </div>
-          )}
-
-          {viewOrc.observacao && (
-            <div className="text-[10px] mt-2 border rounded p-2 bg-muted/20">Observação do Vendedor: <strong>{viewOrc.observacao}</strong></div>
-          )}
-
           {/* ===== Informações Complementares ===== */}
           <div className="mt-2 border rounded p-2 text-[10px]">
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
-            {/* Fiscal summary per company */}
             <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <p>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
-                <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
-                <p>CST: <strong>00</strong></p>
-                <p>NCM: <strong>8431.39.00</strong></p>
-                <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
-                {isSimplesNacional ? (
-                  <p>Tributos: <strong>PIS/PASEP: 2,49% | COFINS: 11,51%</strong></p>
-                ) : (
-                  <>
-                    <p>ICMS: <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong> | PIS: <strong>0,65%</strong> | COFINS: <strong>3%</strong> | IPI: <strong>Isento</strong></p>
-                  </>
-                )}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                {/* Coluna 1 */}
+                <div className="space-y-1">
+                  <p>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}{viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}{viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}</strong></p>
+                  <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
+                  <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
+                  {viewOrc.observacao && <p>Observação: <strong>{viewOrc.observacao}</strong></p>}
+                </div>
+                {/* Coluna 2 */}
+                <div className="space-y-1">
+                  <p>NCM: <strong>8431.39.00</strong></p>
+                  <p>CST: <strong>00</strong></p>
+                  {isSimplesNacional ? (
+                    <>
+                      <p>PIS/PASEP: <strong>2,49%</strong></p>
+                      <p>COFINS: <strong>11,51%</strong></p>
+                    </>
+                  ) : (
+                    <>
+                      <p>PIS: <strong>0,65%</strong></p>
+                      <p>COFINS: <strong>3%</strong></p>
+                      <p>ICMS: <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong> | IPI: <strong>Isento</strong></p>
+                    </>
+                  )}
+                </div>
               </div>
               <p className="text-[8px] mt-1 italic text-gray-600">{empPrint.fiscalNota}</p>
             </div>
