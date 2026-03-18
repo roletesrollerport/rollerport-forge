@@ -831,7 +831,7 @@ export default function OrcamentosPage() {
           </Select>
         </div>
 
-        <div className="bg-white text-black border rounded-lg p-3 mx-auto print:border-0 print:shadow-none print:p-2" style={{ maxWidth: '1200px' }}>
+        <div className="bg-white text-black border p-3 mx-auto print:border-0 print:shadow-none print:p-2" style={{ maxWidth: '1200px' }}>
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
