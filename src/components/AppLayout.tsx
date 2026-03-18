@@ -269,7 +269,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   ];
 
   return (
-    <div className="flex bg-[#F1F5F9] h-screen overflow-hidden p-[10px] gap-[10px] relative">
+    <div className="flex bg-[#F1F5F9] h-screen overflow-hidden p-1.5 sm:p-[10px] gap-1.5 sm:gap-[10px] relative">
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex flex-col bg-white border border-[#E2E8F0] w-[92px] rounded-2xl shadow-sm z-50 h-full shrink-0 overflow-hidden">
 
@@ -397,7 +397,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           onMenuOpen={() => setMobileOpen(true)}
         />
         <PresenceContext.Provider value={{ onlineUserIds }}>
-          <main className="flex-1 overflow-y-auto p-[10px] animate-fade-in relative bg-white border border-[#E2E8F0] rounded-2xl shadow-sm">
+          <main className="flex-1 overflow-y-auto p-2 sm:p-[10px] animate-fade-in relative bg-white border border-[#E2E8F0] rounded-2xl shadow-sm overflow-x-hidden">
             {children}
           </main>
         </PresenceContext.Provider>

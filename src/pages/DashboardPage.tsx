@@ -617,20 +617,20 @@ export default function DashboardPage() {
         <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none space-y-6">
           <h2 className="text-xl font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Relatório de Taxa de Conversão</h2>
 
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="border rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Orçamento → Pedido</p>
-              <p className="text-3xl font-bold text-primary">{taxaConversao}%</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div className="border rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">Orçamento → Pedido</p>
+              <p className="text-2xl sm:text-3xl font-bold text-primary">{taxaConversao}%</p>
               <p className="text-xs text-muted-foreground">{globalOrc.aprovado} de {globalOrc.total}</p>
             </div>
-            <div className="border rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Pedidos Entregues</p>
-              <p className="text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
+            <div className="border rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">Pedidos Entregues</p>
+              <p className="text-2xl sm:text-3xl font-bold text-primary">{globalPed.total > 0 ? ((globalPed.entregue / globalPed.total) * 100).toFixed(1) : 0}%</p>
               <p className="text-xs text-muted-foreground">{globalPed.entregue} de {globalPed.total}</p>
             </div>
-            <div className="border rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">O.S. Ativas</p>
-              <p className="text-3xl font-bold text-primary">{globalOs.total}</p>
+            <div className="border rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">O.S. Ativas</p>
+              <p className="text-2xl sm:text-3xl font-bold text-primary">{globalOs.total}</p>
             </div>
           </div>
 
@@ -777,11 +777,11 @@ export default function DashboardPage() {
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-[#F8FAFC]/50 text-[#64748B] uppercase tracking-wider text-[10px]">
-                      <th className="px-6 py-4 font-bold">O.S.</th>
-                      <th className="px-6 py-4 font-bold">Cliente</th>
-                      <th className="px-6 py-4 font-bold">Vendedor / Usuário</th>
-                      <th className="px-6 py-4 font-bold">Status</th>
-                      <th className="px-6 py-4 font-bold text-right">Previsão</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold">O.S.</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold">Cliente</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold hidden sm:table-cell">Vendedor / Usuário</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold">Status</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-right hidden sm:table-cell">Previsão</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F1F5F9]">
@@ -793,20 +793,20 @@ export default function DashboardPage() {
                           className="hover:bg-[#F8FAFC] transition-colors group cursor-pointer"
                           onClick={() => navigate(`/producao/${os.id}`)}
                         >
-                          <td className="px-6 py-4 font-bold text-[#223c61] font-mono">{os.numero}</td>
-                          <td className="px-6 py-4 text-[#1E293B]">
-                            <div className="font-semibold">{os.empresa}</div>
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-[#223c61] font-mono text-xs">{os.numero}</td>
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-[#1E293B]">
+                            <div className="font-semibold text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{os.empresa}</div>
                             <div className="text-[10px] text-[#64748B]">Ped. {os.pedidoNumero}</div>
                           </td>
-                          <td className="px-6 py-4 text-[#1E293B] font-medium">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-[#1E293B] font-medium hidden sm:table-cell">
                             {(() => {
                               const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
                               const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
                               return os.responsavelTecnico || os.emitente || orc?.vendedor || 'Sistema';
                             })()}
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
+                            <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold border
                               ${os.status === 'CONCLUIDA' ? 'bg-green-50 text-green-600 border-green-100' : 
                                 os.status === 'EM_ANDAMENTO' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
                                 'bg-gray-50 text-gray-500 border-gray-100'}`}
@@ -814,7 +814,7 @@ export default function DashboardPage() {
                               {os.status?.replace('_', ' ')}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-right font-medium text-[#64748B]">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-right font-medium text-[#64748B] hidden sm:table-cell">
                             {os.entrega || '—'}
                           </td>
                         </tr>

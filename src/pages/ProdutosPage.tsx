@@ -81,16 +81,16 @@ export default function ProdutosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="page-header">Produtos</h1>
           <p className="page-subtitle">Catálogo de roletes e produtos</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => { setEditing(emptyRolete()); setOpenRolete(true); }} variant="outline" className="gap-2">
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+          <Button onClick={() => { setEditing(emptyRolete()); setOpenRolete(true); }} variant="outline" className="gap-2 text-xs sm:text-sm flex-1 sm:flex-none">
             <Settings2 className="h-4 w-4" /> Cadastrar Rolete
           </Button>
-          <Button onClick={() => { setEditing(emptyProduto()); setOpenProduto(true); }} className="gap-2">
+          <Button onClick={() => { setEditing(emptyProduto()); setOpenProduto(true); }} className="gap-2 text-xs sm:text-sm flex-1 sm:flex-none">
             <Package className="h-4 w-4" /> Cadastrar Produto
           </Button>
         </div>
@@ -151,32 +151,32 @@ export default function ProdutosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Código</th>
-              <th className="text-left p-3 font-medium">Nome</th>
-              <th className="text-left p-3 font-medium">Tipo</th>
-              <th className="text-right p-3 font-medium">Valor</th>
-              <th className="p-3 w-20">Ações</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Código</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Nome</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm hidden sm:table-cell">Tipo</th>
+              <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm hidden sm:table-cell">Valor</th>
+              <th className="p-2 sm:p-3 w-20">Ações</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(p => (
               <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="p-3 font-mono text-xs">{p.codigo}</td>
-                <td className="p-3 font-medium">
-                  {p.nome}
-                  {p.nomeCompleto && <span className="text-xs text-muted-foreground ml-2">({p.nomeCompleto})</span>}
-                  {!p.nomeCompleto && p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
+                <td className="p-2 sm:p-3 font-mono text-[10px] sm:text-xs">{p.codigo}</td>
+                <td className="p-2 sm:p-3 font-medium text-xs sm:text-sm">
+                  <span className="truncate block max-w-[150px] sm:max-w-none">{p.nome}</span>
+                  {p.nomeCompleto && <span className="text-[10px] sm:text-xs text-muted-foreground block sm:inline sm:ml-2">({p.nomeCompleto})</span>}
+                  {!p.nomeCompleto && p.miniDescricao && <span className="text-[10px] sm:text-xs text-muted-foreground block sm:inline sm:ml-2">({p.miniDescricao})</span>}
                 </td>
-                <td className="p-3">
+                <td className="p-2 sm:p-3 hidden sm:table-cell">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                     p.tipo === 'GENERICO' ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'
                   }`}>{p.tipo === 'GENERICO' ? 'Produto' : `Rolete ${p.tipo}`}</span>
                 </td>
-                <td className="p-3 text-right font-mono">{p.tipo === 'GENERICO' ? fmt(p.valor) : 'Calculado'}</td>
-                <td className="p-3">
+                <td className="p-2 sm:p-3 text-right font-mono hidden sm:table-cell">{p.tipo === 'GENERICO' ? fmt(p.valor) : 'Calculado'}</td>
+                <td className="p-2 sm:p-3">
                   <div className="flex gap-1">
-                    <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                   </div>
                 </td>
               </tr>

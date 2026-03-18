@@ -446,14 +446,14 @@ export default function PedidosPage() {
         <div className="bg-card rounded-lg border overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Nº Pedido</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Nº Orçamento</th>
-              <th className="text-left p-3 font-medium">Empresa</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
-              <th className="text-left p-3 font-medium min-w-[180px]">Status</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Dias</th>
-              <th className="text-right p-3 font-medium">Valor</th>
-              <th className="p-3 w-52">Ações</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Nº Pedido</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Nº Orçamento</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Empresa</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Data</th>
+              <th className="text-left p-2 sm:p-3 font-medium min-w-[120px] sm:min-w-[180px] text-xs sm:text-sm">Status</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Dias</th>
+              <th className="text-right p-2 sm:p-3 font-medium hidden sm:table-cell">Valor</th>
+              <th className="p-2 sm:p-3 w-auto sm:w-52">Ações</th>
             </tr></thead>
             <tbody>
               {filteredPedidos.map(p => {
@@ -462,48 +462,48 @@ export default function PedidosPage() {
                 const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
                 return (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-3 font-mono font-medium">{p.numero}</td>
-                  <td className="p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
-                  <td className="p-3">{p.clienteNome}</td>
-                  <td className="p-3 hidden md:table-cell">{p.createdAt}</td>
-                  <td className="p-3"><StatusProgressBar status={p.status} /></td>
-                  <td className="p-3 hidden md:table-cell">
+                  <td className="p-2 sm:p-3 font-mono font-medium text-xs sm:text-sm">{p.numero}</td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
+                  <td className="p-2 sm:p-3 text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{p.clienteNome}</td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell">{p.createdAt}</td>
+                  <td className="p-2 sm:p-3"><StatusProgressBar status={p.status} /></td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell">
                     <div className="flex flex-col text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Total: {days}d</span>
                       <span className="text-[10px]">No status: {daysInStatus}d</span>
                     </div>
                   </td>
-                  <td className="p-3 text-right font-mono">{fmt(p.valorTotal)}</td>
-                  <td className="p-3">
-                    <div className="flex gap-1 justify-end">
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
-                      <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
-                      {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-4 w-4" /></button>}
-                      {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-xs h-7">Concluir</Button>}
-                      {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-xs h-7">Entregar</Button>}
-                      <button 
-                        onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })} 
-                        className="p-1.5 rounded hover:bg-muted text-violet-500" 
-                        title="Agendar Follow-up"
-                      >
-                        <Calendar className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const orc = orcamentos.find(o => o.id === p.orcamentoId);
-                          const vendor = p.vendedor || orc?.vendedor || 'Sistema';
-                          setTrackingVendor(vendor);
-                          setIsTrackingOpen(true);
-                        }} 
-                        className="p-1.5 rounded hover:bg-muted text-primary" 
-                        title="Rastrear Pedido"
-                      >
-                        <Truck className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
-                      <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
-                    </div>
+                  <td className="p-2 sm:p-3 text-right font-mono hidden sm:table-cell">{fmt(p.valorTotal)}</td>
+                  <td className="p-2 sm:p-3">
+                    <div className="flex gap-0.5 sm:gap-1 justify-end flex-wrap">
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>}
+                        {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Concluir</Button>}
+                        {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Entregar</Button>}
+                        <button 
+                          onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })} 
+                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-violet-500" 
+                          title="Agendar Follow-up"
+                        >
+                          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const orc = orcamentos.find(o => o.id === p.orcamentoId);
+                            const vendor = p.vendedor || orc?.vendedor || 'Sistema';
+                            setTrackingVendor(vendor);
+                            setIsTrackingOpen(true);
+                          }} 
+                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" 
+                          title="Rastrear Pedido"
+                        >
+                          <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                        <button onClick={() => cancelarPedido(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => deletePedido(p.id)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                      </div>
                   </td>
                 </tr>
                 );
