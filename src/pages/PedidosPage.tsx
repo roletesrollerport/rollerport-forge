@@ -475,35 +475,35 @@ export default function PedidosPage() {
                   </td>
                   <td className="p-3 text-right font-mono">{fmt(p.valorTotal)}</td>
                   <td className="p-3">
-                    <div className="flex gap-1 justify-end">
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
-                      <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
-                      {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-4 w-4" /></button>}
-                      {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-xs h-7">Concluir</Button>}
-                      {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-xs h-7">Entregar</Button>}
-                      <button 
-                        onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })} 
-                        className="p-1.5 rounded hover:bg-muted text-violet-500" 
-                        title="Agendar Follow-up"
-                      >
-                        <Calendar className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const orc = orcamentos.find(o => o.id === p.orcamentoId);
-                          const vendor = p.vendedor || orc?.vendedor || 'Sistema';
-                          setTrackingVendor(vendor);
-                          setIsTrackingOpen(true);
-                        }} 
-                        className="p-1.5 rounded hover:bg-muted text-primary" 
-                        title="Rastrear Pedido"
-                      >
-                        <Truck className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
-                      <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
-                    </div>
+                    <div className="flex gap-0.5 sm:gap-1 justify-end flex-wrap">
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>}
+                        {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Concluir</Button>}
+                        {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Entregar</Button>}
+                        <button 
+                          onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })} 
+                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-violet-500" 
+                          title="Agendar Follow-up"
+                        >
+                          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const orc = orcamentos.find(o => o.id === p.orcamentoId);
+                            const vendor = p.vendedor || orc?.vendedor || 'Sistema';
+                            setTrackingVendor(vendor);
+                            setIsTrackingOpen(true);
+                          }} 
+                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" 
+                          title="Rastrear Pedido"
+                        >
+                          <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                        <button onClick={() => cancelarPedido(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => deletePedido(p.id)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                      </div>
                   </td>
                 </tr>
                 );
