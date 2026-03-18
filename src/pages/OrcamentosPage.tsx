@@ -852,11 +852,11 @@ export default function OrcamentosPage() {
 
         <div className="bg-white text-black border p-3 mx-auto print:border-0 print:shadow-none print:p-2 overflow-x-hidden" style={{ maxWidth: '1200px' }}>
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+          <div className="flex flex-col lg:flex-row justify-between items-start gap-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img src={empPrint.logo} alt={empPrint.nome} className="h-16 sm:h-24 w-auto object-contain print-header-logo shrink-0" />
               <div className="min-w-0">
-                <h2 className="text-sm sm:text-base font-bold leading-tight truncate">{empPrint.nome}</h2>
+                <h2 className="text-sm sm:text-base font-bold leading-tight">{empPrint.nome}</h2>
                 <p className="text-[9px] sm:text-[10px] font-semibold">{empPrint.subtitulo}</p>
                 <p className="text-[9px] sm:text-[10px]">{empPrint.endereco}</p>
                 <p className="text-[9px] sm:text-[10px]">{empPrint.cidadeEstado}</p>
@@ -869,7 +869,7 @@ export default function OrcamentosPage() {
               </div>
             </div>
             {cli && (
-              <div className="text-right text-xs">
+              <div className="text-left lg:text-right text-xs w-full lg:w-auto border-t lg:border-t-0 pt-2 lg:pt-0">
                 <p className="font-bold text-sm">{cli.nome}</p>
                 <p>CNPJ: {cli.cnpj}</p>
                 <p>{cli.endereco}</p>
@@ -972,7 +972,7 @@ export default function OrcamentosPage() {
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
             <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
-              <div className="grid grid-cols-3 gap-x-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
                 {/* Coluna 1 - Condições de Pagamento */}
                 <div className="space-y-1">
                   <p className="font-bold text-[10px] underline mb-1">Condições de Pagamento</p>
@@ -1033,9 +1033,9 @@ export default function OrcamentosPage() {
               <li>As opções de pagamento ou de faturamento, assim como os parcelamentos, também interferem nos descontos e valores repassados em orçamento;</li>
               <li><span className="text-red-600 font-bold">OBS: ORÇAMENTO SUJEITO A ALTERAÇÃO MEDIANTE A ANÁLISE DE CRÉDITO NO ATO DO FECHAMENTO DO PEDIDO.</span></li>
             </ol>
-            <div className="mt-1 bg-yellow-300 p-2 text-[8.5px] font-bold text-left border border-yellow-500 rounded">
-              <p className="underline mb-1 whitespace-nowrap">CONFERIR O ORÇAMENTO ANTES DO FECHAMENTO DO PEDIDO, E ATENÇÃO AS MEDIDAS SOLICITADAS. NO CASO DE PEÇAS DESENHADAS, CONFERIR O DESENHO ENVIADO ANTES DO FECHAMENTO DO PEDIDO.</p>
-              <p className="underline whitespace-nowrap">ATENÇÃO: OS VALORES DESTE ORÇAMENTO SÃO VÁLIDOS APENAS PARA A QUANTIDADE TOTAL SOLICITADA. PARA QUANTIDADES MENORES, OS PREÇOS SOFRERÃO ALTERAÇÕES.</p>
+            <div className="mt-1 bg-yellow-300 p-2 text-[8.5px] font-bold text-left border border-yellow-500 rounded overflow-hidden">
+              <p className="underline mb-1 whitespace-normal break-words">CONFERIR O ORÇAMENTO ANTES DO FECHAMENTO DO PEDIDO, E ATENÇÃO AS MEDIDAS SOLICITADAS. NO CASO DE PEÇAS DESENHADAS, CONFERIR O DESENHO ENVIADO ANTES DO FECHAMENTO DO PEDIDO.</p>
+              <p className="underline whitespace-normal break-words">ATENÇÃO: OS VALORES DESTE ORÇAMENTO SÃO VÁLIDOS APENAS PARA A QUANTIDADE TOTAL SOLICITADA. PARA QUANTIDADES MENORES, OS PREÇOS SOFRERÃO ALTERAÇÕES.</p>
             </div>
           </div>
 
