@@ -690,11 +690,16 @@ export default function OrcamentosPage() {
     const taxaCOFINS = isSimplesNacional ? 0.1151 : 0.03;
     const taxaIPI = 0; // Isento for both regimes
 
+    const aliqPISPadrao = taxaPIS * 100;
+    const aliqCOFINSPadrao = taxaCOFINS * 100;
+    const aliqICMSPadrao = isSimplesNacional ? 0 : (taxaICMSOrig + taxaICMSDest) * 100;
+    const aliqIPIPadrao = taxaIPI * 100;
+
     // Build all items for the table
     const allPrintItems: Array<{
       item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
       valorLiquidoUnit: number;
-      valorTotalBase: number;
+      valorTotalSemImpostos: number;
       valorUnitComImpostos: number;
       aliqPIS: number; valorPIS: number;
       aliqCOFINS: number; valorCOFINS: number;
@@ -706,77 +711,79 @@ export default function OrcamentosPage() {
     let idx = 1;
     (viewOrc.itensProduto || []).forEach((ip) => {
       const prod = produtos.find(p => p.id === ip.produtoId);
-      const vliq = ip.valorUnitario;
-      const aliqPIS = ip.aliqPIS !== undefined ? ip.aliqPIS : (taxaPIS * 100);
-      const aliqCOFINS = ip.aliqCOFINS !== undefined ? ip.aliqCOFINS : (taxaCOFINS * 100);
-      const aliqICMS = ip.aliqICMS !== undefined ? ip.aliqICMS : (taxaICMSOrig * 100);
-      
-      const aliqIPI = ip.aliqIPI !== undefined ? ip.aliqIPI : 0;
-      
-      const valorPISTotal = ip.valorPIS !== undefined ? ip.valorPIS : +((ip.valorUnitario * ip.quantidade) * (aliqPIS / 100)).toFixed(2);
-      const valorCOFINSTotal = ip.valorCOFINS !== undefined ? ip.valorCOFINS : +((ip.valorUnitario * ip.quantidade) * (aliqCOFINS / 100)).toFixed(2);
-      const valorICMSTotal = ip.valorICMS !== undefined ? ip.valorICMS : +((ip.valorUnitario * ip.quantidade) * (aliqICMS / 100)).toFixed(2);
-      const valorIPITotal = ip.valorIPI !== undefined ? ip.valorIPI : +((ip.valorUnitario * ip.quantidade) * (aliqIPI / 100)).toFixed(2);
+      const valorUnitComImpostos = ip.valorUnitario;
+      const valorTotalComImpostos = valorUnitComImpostos * ip.quantidade;
 
-      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal;
-      const valorLiquidoTotal = (ip.valorUnitario * ip.quantidade) - impostosTotaisItem;
-      const valorLiquidoUnit = valorLiquidoTotal / ip.quantidade;
+      const aliqPIS = aliqPISPadrao;
+      const aliqCOFINS = aliqCOFINSPadrao;
+      const aliqICMS = aliqICMSPadrao;
+      const aliqIPI = aliqIPIPadrao;
+
+      const valorPISTotal = +(valorTotalComImpostos * (aliqPIS / 100)).toFixed(2);
+      const valorCOFINSTotal = +(valorTotalComImpostos * (aliqCOFINS / 100)).toFixed(2);
+      const valorICMSTotal = +(valorTotalComImpostos * (aliqICMS / 100)).toFixed(2);
+      const valorIPITotal = +(valorTotalComImpostos * (aliqIPI / 100)).toFixed(2);
+
+      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
+      const valorTotalSemImpostos = +(valorTotalComImpostos - impostosTotaisItem).toFixed(2);
+      const valorLiquidoUnit = +(valorTotalSemImpostos / ip.quantidade).toFixed(2);
 
       let desc = ip.produtoNome;
       if (ip.ncm || (prod as any)?.ncm) {
         desc += ` (NCM: ${ip.ncm || (prod as any)?.ncm})`;
       }
 
-      const totalComImp = (ip.valorUnitario * ip.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
       allPrintItems.push({
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
-        valorTotalBase: ip.valorUnitario * ip.quantidade,
-        valorUnitComImpostos: totalComImp / ip.quantidade,
+        valorTotalSemImpostos,
+        valorUnitComImpostos,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: totalComImp,
+        valorTotalComImpostos,
       });
     });
-    (viewOrc.itensRolete || []).forEach((ir) => {
-      const aliqPIS = ir.aliqPIS !== undefined ? ir.aliqPIS : (taxaPIS * 100);
-      const aliqCOFINS = ir.aliqCOFINS !== undefined ? ir.aliqCOFINS : (taxaCOFINS * 100);
-      const aliqICMS = ir.aliqICMS !== undefined ? ir.aliqICMS : (taxaICMSOrig * 100);
-      
-      const aliqIPI = ir.aliqIPI !== undefined ? ir.aliqIPI : 0;
-      
-      const valorPISTotal = ir.valorPIS !== undefined ? ir.valorPIS : +((ir.valorPorPeca * ir.quantidade) * (aliqPIS / 100)).toFixed(2);
-      const valorCOFINSTotal = ir.valorCOFINS !== undefined ? ir.valorCOFINS : +((ir.valorPorPeca * ir.quantidade) * (aliqCOFINS / 100)).toFixed(2);
-      const valorICMSTotal = ir.valorICMS !== undefined ? ir.valorICMS : +((ir.valorPorPeca * ir.quantidade) * (aliqICMS / 100)).toFixed(2);
-      const valorIPITotal = ir.valorIPI !== undefined ? ir.valorIPI : +((ir.valorPorPeca * ir.quantidade) * (aliqIPI / 100)).toFixed(2);
 
-      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal;
-      const valorLiquidoTotal = (ir.valorPorPeca * ir.quantidade) - impostosTotaisItem;
-      const valorLiquidoUnit = valorLiquidoTotal / ir.quantidade;
+    (viewOrc.itensRolete || []).forEach((ir) => {
+      const valorUnitComImpostos = ir.valorPorPeca;
+      const valorTotalComImpostos = valorUnitComImpostos * ir.quantidade;
+
+      const aliqPIS = aliqPISPadrao;
+      const aliqCOFINS = aliqCOFINSPadrao;
+      const aliqICMS = aliqICMSPadrao;
+      const aliqIPI = aliqIPIPadrao;
+
+      const valorPISTotal = +(valorTotalComImpostos * (aliqPIS / 100)).toFixed(2);
+      const valorCOFINSTotal = +(valorTotalComImpostos * (aliqCOFINS / 100)).toFixed(2);
+      const valorICMSTotal = +(valorTotalComImpostos * (aliqICMS / 100)).toFixed(2);
+      const valorIPITotal = +(valorTotalComImpostos * (aliqIPI / 100)).toFixed(2);
+
+      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
+      const valorTotalSemImpostos = +(valorTotalComImpostos - impostosTotaisItem).toFixed(2);
+      const valorLiquidoUnit = +(valorTotalSemImpostos / ir.quantidade).toFixed(2);
 
       let desc = `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`;
       if (ir.ncm) desc += `\n(NCM: ${ir.ncm})`;
 
-      const totalComImpR = (ir.valorPorPeca * ir.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
         codExterno: ir.codigoExterno || '-', descricao: desc,
         valorLiquidoUnit,
-        valorTotalBase: ir.valorPorPeca * ir.quantidade,
-        valorUnitComImpostos: totalComImpR / ir.quantidade,
+        valorTotalSemImpostos,
+        valorUnitComImpostos,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: totalComImpR,
+        valorTotalComImpostos,
       });
     });
 
     const totals = allPrintItems.reduce((acc, i) => ({
-      valorTotalSemImpostos: acc.valorTotalSemImpostos + i.valorTotalBase,
+      valorTotalSemImpostos: acc.valorTotalSemImpostos + i.valorTotalSemImpostos,
       valorPIS: acc.valorPIS + i.valorPIS,
       valorCOFINS: acc.valorCOFINS + i.valorCOFINS,
       valorICMS: acc.valorICMS + i.valorICMS,
@@ -915,12 +922,12 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
-                  <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell">{fmt(row.valorLiquidoUnit)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell">{fmt(row.valorUnitComImpostos)}</td>
                   <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorLiquidoUnit)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorTotalBase)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorTotalSemImpostos)}</td>
                   <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorUnitComImpostos)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold print:hidden">{fmt(row.valorTotalComImpostos)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorTotalBase)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorTotalComImpostos)}</td>
                 </tr>
               ))}
             </tbody>
@@ -933,7 +940,7 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalSemImpostos)}</td>
                 <td className="border p-1 print:hidden"></td>
                 <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalComImpostos)}</td>
-                <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalComImpostos)}</td>
               </tr>
             </tfoot>
           </table>
