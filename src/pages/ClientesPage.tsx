@@ -6,8 +6,9 @@ import type { Cliente, Comprador } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, Building2, Cake, Calendar, Users, Store, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const emptyComprador = (): Comprador => ({ nome: '', telefone: '', email: '', whatsapp: '', aniversario: '', redesSociais: '' });
 
@@ -28,6 +29,9 @@ export default function ClientesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Cliente>(emptyCliente());
   const [viewCliente, setViewCliente] = useState<Cliente | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteBlockedInfo, setDeleteBlockedInfo] = useState('');
 
   const { usuarios: dbUsuarios } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
@@ -92,7 +96,29 @@ export default function ClientesPage() {
       const updated = clientes.filter(c => c.id !== id);
       store.saveClientes(updated); setClientes(updated);
     }
+    setDeleteTarget(null);
     toast.success(`${isRevenda ? 'Revenda' : 'Cliente'} removido!`);
+  };
+
+  const requestDelete = (c: Cliente) => {
+    // Check for linked orçamentos/pedidos
+    const linkedOrcs = orcamentos.filter(o => o.clienteId === c.id);
+    const linkedPeds = pedidos.filter(p => p.clienteNome === c.nome);
+    const activeOrcs = linkedOrcs.filter(o => o.status !== 'REPROVADO');
+    const activePeds = linkedPeds.filter(p => !p.motivoCancelamento && p.status !== 'ENTREGUE');
+
+    if (activeOrcs.length > 0 || activePeds.length > 0) {
+      const parts: string[] = [];
+      if (activeOrcs.length > 0) parts.push(`${activeOrcs.length} orçamento(s) ativo(s)`);
+      if (activePeds.length > 0) parts.push(`${activePeds.length} pedido(s) em andamento`);
+      setDeleteBlockedInfo(`Este cliente possui ${parts.join(' e ')}. Exclua ou finalize os vínculos antes de remover o cadastro, ou considere inativá-lo.`);
+      setDeleteBlocked(true);
+      setDeleteTarget(c);
+    } else {
+      setDeleteBlocked(false);
+      setDeleteBlockedInfo('');
+      setDeleteTarget(c);
+    }
   };
 
   const updateComprador = (idx: number, partial: Partial<Comprador>) => {
@@ -242,7 +268,7 @@ export default function ClientesPage() {
                 <div className="flex gap-1 ml-2 flex-shrink-0">
                   <button onClick={() => setViewCliente(c)} className="p-1 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5" /></button>
                   <button onClick={() => { setEditing({ ...c, compradores: c.compradores?.length ? c.compradores : [emptyComprador()] }); setOpen(true); }} className="p-1 rounded hover:bg-muted text-primary" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
-                  {isFullAccess && <button onClick={() => handleDelete(c.id)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>}
+                  {isFullAccess && <button onClick={() => requestDelete(c)} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>}
                 </div>
               </div>
 
@@ -341,6 +367,23 @@ export default function ClientesPage() {
           <div className="col-span-full text-center py-12 text-muted-foreground">Nenhum(a) {isRevenda ? 'revenda' : 'cliente'} encontrado(a).</div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!deleteTarget && !deleteBlocked}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Confirmar Exclusão"
+        description={`Tem certeza que deseja excluir o cadastro de "${deleteTarget?.nome}"? Esta ação é permanente e não pode ser desfeita.`}
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget.id); }}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget && deleteBlocked}
+        onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteBlocked(false); } }}
+        title="⚠️ Exclusão Bloqueada"
+        description={deleteBlockedInfo}
+        confirmLabel="Entendi"
+        variant="warning"
+        onConfirm={() => { setDeleteTarget(null); setDeleteBlocked(false); }}
+      />
     </div>
   );
 }

@@ -66,6 +66,7 @@ export default function CustosPage() {
   const saveAll = async () => {
     setSaving(true);
     try {
+      toast.loading('Salvando alterações...');
       await Promise.all([
         custos.saveAllTubos(tubos),
         custos.saveAllEixos(eixos),
@@ -75,9 +76,12 @@ export default function CustosPage() {
       ]);
       await custos.reload();
       setEditingId(null);
-      toast.success('Custos salvos com sucesso!');
-    } catch {
-      toast.error('Erro ao salvar custos');
+      toast.dismiss();
+      toast.success('Custos persistidos com sucesso!');
+    } catch (e) {
+      console.error('Save error:', e);
+      toast.dismiss();
+      toast.error('Erro ao persistir custos no banco de dados');
     }
     setSaving(false);
   };
@@ -183,11 +187,60 @@ export default function CustosPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const addTubo = () => { const id = 'new_' + crypto.randomUUID(); setTubos([...tubos, { id, diametro: '' as any, parede: '' as any, precoBarra6000mm: '' as any }]); setEditingId(id); };
-  const addEixo = () => { const id = 'new_' + crypto.randomUUID(); setEixos([...eixos, { id, diametro: '', precoBarra6000mm: '' as any }]); setEditingId(id); };
-  const addConjunto = () => { const id = 'new_' + crypto.randomUUID(); setConjuntos([...conjuntos, { id, codigo: '', valor: '' as any }]); setEditingId(id); };
-  const addRevestimento = (isSpiraflex: boolean) => { const id = 'new_' + crypto.randomUUID(); setRevestimentos([...revestimentos, { id, tipo: isSpiraflex ? 'SPIRAFLEX ' : 'ABI-', valorMetroOuPeca: '' as any }]); setEditingId(id); };
-  const addEncaixe = () => { const id = 'new_' + crypto.randomUUID(); setEncaixes([...encaixes, { id, tipo: '', preco: '' as any }]); setEditingId(id); };
+  const addTubo = () => { const id = 'new_' + crypto.randomUUID(); setTubos([{ id, diametro: '' as any, parede: '' as any, precoBarra6000mm: '' as any }, ...tubos]); setEditingId(id); };
+  const addEixo = () => { const id = 'new_' + crypto.randomUUID(); setEixos([{ id, diametro: '', precoBarra6000mm: '' as any }, ...eixos]); setEditingId(id); };
+  const addConjunto = () => { const id = 'new_' + crypto.randomUUID(); setConjuntos([{ id, codigo: '', valor: '' as any }, ...conjuntos]); setEditingId(id); };
+  const addRevestimento = (isSpiraflex: boolean) => {
+    const id = 'new_' + crypto.randomUUID();
+    const defaultTipo = isSpiraflex ? 'SPIRAFLEX - NOVO' : 'ABI - NOVO';
+    setRevestimentos([{ id, tipo: defaultTipo, valorMetroOuPeca: '' as any }, ...revestimentos]);
+    setEditingId(id);
+  };
+  const addEncaixe = () => { const id = 'new_' + crypto.randomUUID(); setEncaixes([{ id, tipo: '', preco: '' as any }, ...encaixes]); setEditingId(id); };
+
+  const handleIndividualSave = async (id: string, tab: CustoTab) => {
+    setSaving(true);
+    try {
+      toast.loading('Salvando item...');
+      let item: any;
+      if (tab === 'tubos') item = tubos.find(t => t.id === id);
+      else if (tab === 'eixos') item = eixos.find(e => e.id === id);
+      else if (tab === 'conjuntos') item = conjuntos.find(c => c.id === id);
+      else if (tab === 'spiraflex' || tab === 'aneis') item = revestimentos.find(r => r.id === id);
+      else if (tab === 'encaixes') item = encaixes.find(e => e.id === id);
+
+      if (!item) throw new Error('Item não encontrado');
+
+      if (tab === 'tubos') await custos.saveTubo(item);
+      else if (tab === 'eixos') await custos.saveEixo(item);
+      else if (tab === 'conjuntos') await custos.saveConjunto(item);
+      else if (tab === 'spiraflex' || tab === 'aneis') await custos.saveRevestimento(item);
+      else if (tab === 'encaixes') await custos.saveEncaixe(item);
+
+      await custos.reload();
+      setEditingId(null);
+      toast.dismiss();
+      toast.success('Salvo com sucesso!');
+    } catch (e) {
+      toast.dismiss();
+      toast.error('Erro ao salvar item');
+      console.error(e);
+    }
+    setSaving(false);
+  };
+
+  const handleCancelEdit = async (id: string, tab: CustoTab) => {
+    if (id.startsWith('new_')) {
+      if (tab === 'tubos') setTubos(tubos.filter(t => t.id !== id));
+      else if (tab === 'eixos') setEixos(eixos.filter(e => e.id !== id));
+      else if (tab === 'conjuntos') setConjuntos(conjuntos.filter(c => c.id !== id));
+      else if (tab === 'spiraflex' || tab === 'aneis') setRevestimentos(revestimentos.filter(r => r.id !== id));
+      else if (tab === 'encaixes') setEncaixes(encaixes.filter(e => e.id !== id));
+    } else {
+      await custos.reload();
+    }
+    setEditingId(null);
+  };
 
   const handleDeleteTubo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteTubo(id); setTubos(tubos.filter(t => t.id !== id)); toast.success('Removido!'); };
   const handleDeleteEixo = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEixo(id); setEixos(eixos.filter(e => e.id !== id)); toast.success('Removido!'); };
@@ -195,13 +248,28 @@ export default function CustosPage() {
   const handleDeleteRevestimento = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteRevestimento(id); setRevestimentos(revestimentos.filter(r => r.id !== id)); toast.success('Removido!'); };
   const handleDeleteEncaixe = async (id: string) => { if (!id.startsWith('new_')) await custos.deleteEncaixe(id); setEncaixes(encaixes.filter(e => e.id !== id)); toast.success('Removido!'); };
 
-  const ActionButtons = ({ id, item, onDelete }: { id: string; item: any; onDelete: (id: string) => void }) => (
-    <div className="flex gap-1">
-      <button onClick={() => setViewItem(item)} className="text-info hover:text-info/80"><Eye className="h-4 w-4" /></button>
-      <button onClick={() => setEditingId(editingId === id ? null : id)} className="text-primary hover:text-primary/80"><Edit className="h-4 w-4" /></button>
-      <button onClick={() => onDelete(id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
-    </div>
-  );
+  // Confirm delete state for individual items
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; onDelete: (id: string) => void } | null>(null);
+
+  const ActionButtons = ({ id, item, onDelete, tab }: { id: string; item: any; onDelete: (id: string) => void; tab: CustoTab }) => {
+    const isEditing = editingId === id;
+    return (
+      <div className="flex gap-1">
+        {isEditing ? (
+          <>
+            <button onClick={() => handleIndividualSave(id, tab)} className="text-success hover:text-success/80" title="Confirmar Salvar"><Save className="h-4 w-4" /></button>
+            <button onClick={() => handleCancelEdit(id, tab)} className="text-muted-foreground hover:text-foreground" title="Cancelar"><X className="h-4 w-4" /></button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => setViewItem(item)} className="text-info hover:text-info/80" title="Visualizar"><Eye className="h-4 w-4" /></button>
+            <button onClick={() => setEditingId(id)} className="text-primary hover:text-primary/80" title="Editar"><Edit className="h-4 w-4" /></button>
+          </>
+        )}
+        <button onClick={() => setPendingDelete({ id, onDelete })} className="text-destructive hover:text-destructive/80" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+      </div>
+    );
+  };
 
   const updateTuboImg = (id: string, img: string) => setTubos(tubos.map(t => t.id === id ? { ...t, imagem: img } : t));
   const updateEixoImg = (id: string, img: string) => setEixos(eixos.map(e => e.id === id ? { ...e, imagem: img } : e));
@@ -233,7 +301,7 @@ export default function CustosPage() {
           <Trash2 className="h-4 w-4" /> Excluir Tudo ({tabs.find(t => t.key === activeTab)?.label})
         </Button>
       </div>
-
+      
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -243,7 +311,19 @@ export default function CustosPage() {
         ))}
       </div>
 
-      <div className="bg-card rounded-lg border overflow-x-auto">
+      <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="p-3 border-b bg-muted/20 flex justify-between items-center">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tabs.find(t => t.key === activeTab)?.label}</span>
+          <Button size="sm" onClick={() => {
+            if (activeTab === 'tubos') addTubo();
+            else if (activeTab === 'eixos') addEixo();
+            else if (activeTab === 'conjuntos') addConjunto();
+            else if (activeTab === 'spiraflex') addRevestimento(true);
+            else if (activeTab === 'aneis') addRevestimento(false);
+            else addEncaixe();
+          }} className="gap-2 h-8"><Plus className="h-3.5 w-3.5" /> Adicionar</Button>
+        </div>
+        <div className="overflow-x-auto">
         {activeTab === 'tubos' && (
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
@@ -266,7 +346,7 @@ export default function CustosPage() {
                     <td className="p-3">{t.parede || ''}</td>
                     <td className="p-3 font-mono">{fmt(t.precoBarra6000mm)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={t.id} item={t} onDelete={handleDeleteTubo} /></td>
+                  <td className="p-3"><ActionButtons id={t.id} item={t} onDelete={handleDeleteTubo} tab="tubos" /></td>
                 </tr>
               ))}
             </tbody>
@@ -292,7 +372,7 @@ export default function CustosPage() {
                     <td className="p-3">{e.diametro}</td>
                     <td className="p-3 font-mono">{fmt(e.precoBarra6000mm)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={e.id} item={e} onDelete={handleDeleteEixo} /></td>
+                  <td className="p-3"><ActionButtons id={e.id} item={e} onDelete={handleDeleteEixo} tab="eixos" /></td>
                 </tr>
               ))}
             </tbody>
@@ -318,7 +398,7 @@ export default function CustosPage() {
                     <td className="p-3">{c.codigo}</td>
                     <td className="p-3 font-mono">{fmt(c.valor)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={c.id} item={c} onDelete={handleDeleteConjunto} /></td>
+                  <td className="p-3"><ActionButtons id={c.id} item={c} onDelete={handleDeleteConjunto} tab="conjuntos" /></td>
                 </tr>
               ))}
             </tbody>
@@ -346,7 +426,7 @@ export default function CustosPage() {
                       <td className="p-3">{r.tipo}</td>
                       <td className="p-3 font-mono">{fmt(r.valorMetroOuPeca)}</td>
                     </>)}
-                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} /></td>
+                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} tab="spiraflex" /></td>
                   </tr>
                 );
               })}
@@ -375,7 +455,7 @@ export default function CustosPage() {
                       <td className="p-3">{r.tipo}</td>
                       <td className="p-3 font-mono">{fmt(r.valorMetroOuPeca)}</td>
                     </>)}
-                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} /></td>
+                    <td className="p-3"><ActionButtons id={r.id} item={r} onDelete={handleDeleteRevestimento} tab="aneis" /></td>
                   </tr>
                 );
               })}
@@ -402,22 +482,14 @@ export default function CustosPage() {
                     <td className="p-3">{enc.tipo}</td>
                     <td className="p-3 font-mono">{fmt(enc.preco)}</td>
                   </>)}
-                  <td className="p-3"><ActionButtons id={enc.id} item={enc} onDelete={handleDeleteEncaixe} /></td>
+                  <td className="p-3"><ActionButtons id={enc.id} item={enc} onDelete={handleDeleteEncaixe} tab="encaixes" /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
+        </div>
       </div>
-
-      <Button variant="outline" onClick={() => {
-        if (activeTab === 'tubos') addTubo();
-        else if (activeTab === 'eixos') addEixo();
-        else if (activeTab === 'conjuntos') addConjunto();
-        else if (activeTab === 'spiraflex') addRevestimento(true);
-        else if (activeTab === 'aneis') addRevestimento(false);
-        else addEncaixe();
-      }} className="gap-2"><Plus className="h-4 w-4" /> Adicionar</Button>
 
       <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
         <DialogContent>
@@ -435,10 +507,18 @@ export default function CustosPage() {
       <ConfirmDialog
         open={showDeleteAllConfirm}
         onOpenChange={setShowDeleteAllConfirm}
-        title="Confirmar Excluão em Massa"
+        title="Confirmar Exclusão em Massa"
         description={`Tem certeza que deseja excluir TODOS os itens da aba "${tabs.find(t => t.key === activeTab)?.label}"? Esta ação não pode ser desfeita.`}
-        confirmLabel="Confirmar Excluão"
+        confirmLabel="Confirmar Exclusão"
         onConfirm={() => { setShowDeleteAllConfirm(false); handleDeleteAll(); }}
+      />
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
+        title="Confirmar Exclusão"
+        description="Tem certeza que deseja excluir este registro? Esta ação é permanente e pode afetar orçamentos vinculados."
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={() => { if (pendingDelete) { pendingDelete.onDelete(pendingDelete.id); setPendingDelete(null); } }}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Trash2, AlertTriangle, Eye, Edit, Search, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const emptyItem = (): ItemEstoque => ({
   id: '', nome: '', categoria: '', quantidade: '' as any, unidade: 'un', metragem: undefined,
@@ -37,6 +38,7 @@ export default function EstoquePage() {
   const [viewItem, setViewItem] = useState<ItemEstoque | null>(null);
   const [search, setSearch] = useState('');
   const [imgPreview, setImgPreview] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = () => {
@@ -202,7 +204,7 @@ export default function EstoquePage() {
                   <div className="flex gap-1 justify-end">
                     <button onClick={() => setViewItem(item)} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
                     <button onClick={() => { setEditing(item); setOpen(true); }} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => setDeleteId(item.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </td>
               </tr>
@@ -211,6 +213,21 @@ export default function EstoquePage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(isOpen) => !isOpen && setDeleteId(null)}
+        title="Confirmar Exclusão de Item"
+        description="Tem certeza que deseja excluir este item do estoque? Esta ação é irreversível e removerá todo o histórico de saldo e movimentações deste material."
+        confirmLabel="Confirmar Exclusão"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteId) {
+            handleDelete(deleteId);
+            setDeleteId(null);
+          }
+        }}
+      />
     </div>
   );
 }

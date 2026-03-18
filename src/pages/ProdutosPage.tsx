@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Edit, Search, Settings2, Package } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const fmt = (v: number) => v ? `R$ ${v.toFixed(2).replace('.', ',')}` : '-';
 
@@ -20,6 +20,8 @@ export default function ProdutosPage() {
   const [openProduto, setOpenProduto] = useState(false);
   const [editing, setEditing] = useState<Produto | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Produto | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteBlockedInfo, setDeleteBlockedInfo] = useState('');
 
   const emptyRolete = (): Produto => ({
     id: '', codigo: '', codigoCliente: '', nome: '', nomeCompleto: '', tipo: 'RC', medidas: '', descricao: '',
@@ -71,6 +73,27 @@ export default function ProdutosPage() {
     setProdutos(updated);
     setDeleteConfirm(null);
     toast.success('Produto removido!');
+  };
+
+  const requestDelete = (p: Produto) => {
+    // Check for linked orçamentos
+    const orcamentos = store.getOrcamentos();
+    const linkedOrcs = orcamentos.filter(o => {
+      const hasInRolete = (o.itensRolete || []).some((item: any) => item.produtoId === p.id || item.codigo === p.codigo);
+      const hasInProduto = (o.itensProduto || []).some((item: any) => item.produtoId === p.id || item.produtoNome === p.nome);
+      return hasInRolete || hasInProduto;
+    });
+    const activeOrcs = linkedOrcs.filter(o => o.status !== 'REPROVADO');
+
+    if (activeOrcs.length > 0) {
+      setDeleteBlockedInfo(`Este produto está vinculado a ${activeOrcs.length} orçamento(s) ativo(s). Remova os vínculos antes de excluir o produto.`);
+      setDeleteBlocked(true);
+      setDeleteConfirm(p);
+    } else {
+      setDeleteBlocked(false);
+      setDeleteBlockedInfo('');
+      setDeleteConfirm(p);
+    }
   };
 
   const openEditDialog = (p: Produto) => {
@@ -176,7 +199,7 @@ export default function ProdutosPage() {
                 <td className="p-2 sm:p-3">
                   <div className="flex gap-1">
                     <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                    <button onClick={() => requestDelete(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                   </div>
                 </td>
               </tr>
@@ -186,25 +209,23 @@ export default function ProdutosPage() {
         </table>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o produto <strong>{deleteConfirm?.nome}</strong>?
-              <br />
-              Esta ação não pode ser desfeita e o produto será removido para todos os usuários.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!deleteConfirm && !deleteBlocked}
+        onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}
+        title="Confirmar Exclusão"
+        description={`Tem certeza que deseja excluir o produto "${deleteConfirm?.nome}"? Esta ação é permanente e pode afetar orçamentos vinculados.`}
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={() => { if (deleteConfirm) handleDelete(deleteConfirm); }}
+      />
+      <ConfirmDialog
+        open={!!deleteConfirm && deleteBlocked}
+        onOpenChange={(open) => { if (!open) { setDeleteConfirm(null); setDeleteBlocked(false); } }}
+        title="⚠️ Exclusão Bloqueada"
+        description={deleteBlockedInfo}
+        confirmLabel="Entendi"
+        variant="warning"
+        onConfirm={() => { setDeleteConfirm(null); setDeleteBlocked(false); }}
+      />
     </div>
   );
 }
