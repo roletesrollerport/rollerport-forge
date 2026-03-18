@@ -924,12 +924,6 @@ export default function OrcamentosPage() {
                 <div className="space-y-1">
                   <p className="font-bold text-[10px] underline mb-1">Condições de Pagamento</p>
                   <p><strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
-                    <option value="">Selecione...</option>
-                    <option value="Boleto">Boleto</option>
-                    <option value="PIX">PIX</option>
-                    <option value="Transferência Bancária">Transferência Bancária</option>
-                    <option value="Cheque">Cheque</option>
-                  </select>
                   {viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento && (
                     <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
                   )}
