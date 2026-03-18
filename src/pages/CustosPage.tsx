@@ -216,12 +216,12 @@ export default function CustosPage() {
           <h1 className="page-header">Custos</h1>
           <p className="page-subtitle">Tabela de preços de matéria-prima</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={exportModelo} className="gap-2"><Download className="h-4 w-4" /> Modelo Excel</Button>
-          <Button variant="outline" onClick={exportExcel} className="gap-2"><Download className="h-4 w-4" /> Exportar Excel</Button>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2"><Upload className="h-4 w-4" /> Importar Excel</Button>
+        <div className="flex gap-2 overflow-x-auto pb-1 mobile-btn-scroll">
+          <Button variant="outline" onClick={exportModelo} className="gap-2 shrink-0"><Download className="h-4 w-4" /> Modelo Excel</Button>
+          <Button variant="outline" onClick={exportExcel} className="gap-2 shrink-0"><Download className="h-4 w-4" /> Exportar Excel</Button>
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2 shrink-0"><Upload className="h-4 w-4" /> Importar Excel</Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={importExcel} />
-          <Button onClick={saveAll} disabled={saving} className="gap-2"><Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}</Button>
+          <Button onClick={saveAll} disabled={saving} className="gap-2 shrink-0"><Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}</Button>
         </div>
       </div>
 
