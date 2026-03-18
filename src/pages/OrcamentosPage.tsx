@@ -1156,7 +1156,7 @@ export default function OrcamentosPage() {
                 </button>
               </div>
             </div>
-            <div className="flex gap-2 items-end">
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
               <div className="relative flex-[3]">
                 <label className="text-xs text-primary font-medium mb-1 block">
                   Buscar {categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'}
