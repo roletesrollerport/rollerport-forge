@@ -941,6 +941,16 @@ export default function OrcamentosPage() {
                   {viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento && (
                     <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
                   )}
+                  {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
+                    <div className="mt-1 pt-1 border-t border-gray-300 space-y-0.5">
+                      <p className="font-semibold">Dados Bancários:</p>
+                      <p>{empPrint.banco}</p>
+                      <p>{empPrint.razaoSocial}</p>
+                      <p>CNPJ: {empPrint.cnpjBanco}</p>
+                      <p>Ag: {empPrint.agencia} | CC: {empPrint.contaCorrente}</p>
+                      {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold">Chave PIX (CNPJ): {empPrint.chavePix}</p>}
+                    </div>
+                  )}
                 </div>
                 {/* Coluna 2 - Informativos do Orçamento */}
                 <div className="space-y-1">
