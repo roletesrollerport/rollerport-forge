@@ -694,6 +694,7 @@ export default function OrcamentosPage() {
     const allPrintItems: Array<{
       item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
       valorLiquidoUnit: number;
+      valorTotalBase: number;
       aliqPIS: number; valorPIS: number;
       aliqCOFINS: number; valorCOFINS: number;
       aliqICMS: number; valorICMS: number;
@@ -729,11 +730,12 @@ export default function OrcamentosPage() {
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
+        valorTotalBase: ip.valorUnitario * ip.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: ip.valorTotal + valorIPITotal,
+        valorTotalComImpostos: (ip.valorUnitario * ip.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
       });
     });
     (viewOrc.itensRolete || []).forEach((ir) => {
@@ -759,16 +761,17 @@ export default function OrcamentosPage() {
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
         codExterno: ir.codigoExterno || '-', descricao: desc,
         valorLiquidoUnit,
+        valorTotalBase: ir.valorPorPeca * ir.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: ir.valorTotal + valorIPITotal,
+        valorTotalComImpostos: (ir.valorPorPeca * ir.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
       });
     });
 
     const totals = allPrintItems.reduce((acc, i) => ({
-      valorTotalSemImpostos: acc.valorTotalSemImpostos + (i.valorLiquidoUnit * i.qtd),
+      valorTotalSemImpostos: acc.valorTotalSemImpostos + i.valorTotalBase,
       valorPIS: acc.valorPIS + i.valorPIS,
       valorCOFINS: acc.valorCOFINS + i.valorCOFINS,
       valorICMS: acc.valorICMS + i.valorICMS,
@@ -906,9 +909,9 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorTotalBase)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold print:hidden">{fmt(row.valorTotalComImpostos)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorTotalBase)}</td>
                 </tr>
               ))}
             </tbody>
