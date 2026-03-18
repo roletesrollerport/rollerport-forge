@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
+import logoRollerport from '@/assets/logo-rollerport.png';
+import logoFerreira from '@/assets/logo-ferreira.png';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
 
 const emptyItem = (): ItemOrcamento => ({
@@ -106,35 +108,47 @@ const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 const EMPRESAS = {
   rollerport: {
     nome: 'ROLLERPORT',
+    razaoSocialCompleta: 'ROLLERPORT INDUSTRIA, COMERCIO SERVIÇOS DE ROLETES LTDA',
     subtitulo: 'Fábrica de Roletes',
     cnpj: '58.234.180/0001-56',
+    ie: '312.259.169.119',
     endereco: 'Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial',
     cidadeEstado: 'Franco da Rocha/SP – CEP: 07832-460',
     telefone: '(11) 4441-3572',
-    email: 'contato@rollerport.com.br',
+    email: 'faturamento@rollerport.com.br',
     regimeTributario: 'simples_nacional' as const,
+    logo: logoRollerport,
     banco: 'BANCO SANTANDER (033)',
     razaoSocial: 'FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)',
     cnpjBanco: '10.311.350/0001-22',
     agencia: '3744',
     contaCorrente: '130094436',
     chavePix: '10.311.350/0001-22',
+    // Fiscal info for print
+    fiscalLabel: 'PIS/PASEP: 2,49% | COFINS: 11,51%',
+    fiscalNota: 'Regime: Simples Nacional – Tributos já inclusos no preço unitário.',
   },
   ferreira_roletes: {
     nome: 'FERREIRA ROLETES',
+    razaoSocialCompleta: 'FERREIRA ROLETES, INDÚSTRIA COMERCIO E SERVIÇO LTDA',
     subtitulo: 'Ind. Com. Serv. Ltda',
     cnpj: '10.311.350/0001-22',
+    ie: '312.034.593.110',
     endereco: 'Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial',
     cidadeEstado: 'Franco da Rocha/SP – CEP: 07832-460',
     telefone: '(11) 4441-3572',
-    email: 'contato@rollerport.com.br',
+    email: 'contato@ferreiraroletes.com.br',
     regimeTributario: 'lucro_presumido' as const,
+    logo: logoFerreira,
     banco: 'BANCO SANTANDER (033)',
     razaoSocial: 'FERREIRA ROLETES IND. COM. SERV. LTDA',
     cnpjBanco: '10.311.350/0001-22',
     agencia: '3744',
     contaCorrente: '130094436',
     chavePix: '10.311.350/0001-22',
+    // Fiscal info for print (ICMS is dynamic based on destination)
+    fiscalLabel: '', // built dynamically
+    fiscalNota: 'Regime: Lucro Presumido – Tributos já inclusos no preço unitário.',
   },
 };
 
@@ -676,9 +690,9 @@ export default function OrcamentosPage() {
     };
     const taxaICMSOrig = isSimplesNacional ? 0 : (icmsInterMap[destinoUF] || 0.12);
     const taxaICMSDest = isSimplesNacional ? 0 : (origemUF === destinoUF ? 0 : Math.max(0, (icmsInternoMap[destinoUF] || 0.18) - taxaICMSOrig));
-    const taxaPIS = isSimplesNacional ? 0 : 0.0165;
-    const taxaCOFINS = isSimplesNacional ? 0 : 0.076;
-    const taxaIPI = isSimplesNacional ? 0 : 0.05;
+    const taxaPIS = isSimplesNacional ? 0 : 0.0065;
+    const taxaCOFINS = isSimplesNacional ? 0 : 0.03;
+    const taxaIPI = 0; // Isento for both regimes
 
     // Build all items for the table
     const allPrintItems: Array<{
@@ -799,13 +813,13 @@ export default function OrcamentosPage() {
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
-              <img src={logo} alt={empPrint.nome} className="h-16 object-contain" />
+              <img src={empPrint.logo} alt={empPrint.nome} className="h-16 object-contain" />
               <div>
                 <h2 className="text-base font-bold leading-tight">{empPrint.nome}</h2>
                 <p className="text-[10px] font-semibold">{empPrint.subtitulo}</p>
                 <p className="text-[10px]">{empPrint.endereco}</p>
                 <p className="text-[10px]">{empPrint.cidadeEstado}</p>
-                <p className="text-[10px]">CNPJ: {empPrint.cnpj}</p>
+                <p className="text-[10px]">CNPJ: {empPrint.cnpj} | IE: {empPrint.ie}</p>
                 <p className="text-[10px]">Tel: {empPrint.telefone} • {empPrint.email}</p>
               </div>
               <div className="flex flex-col items-center ml-2">
@@ -953,9 +967,29 @@ export default function OrcamentosPage() {
           {/* ===== Informações Complementares ===== */}
           <div className="mt-2 border rounded p-2 text-[10px]">
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
+            
+            {/* Fiscal summary per company */}
+            <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <p>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
+                <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
+                <p>CST: <strong>00</strong></p>
+                <p>NCM: <strong>8431.39.00</strong></p>
+                <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
+                {isSimplesNacional ? (
+                  <p>Tributos: <strong>PIS/PASEP: 2,49% | COFINS: 11,51%</strong></p>
+                ) : (
+                  <>
+                    <p>ICMS: <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong> | PIS: <strong>0,65%</strong> | COFINS: <strong>3%</strong> | IPI: <strong>Isento</strong></p>
+                  </>
+                )}
+              </div>
+              <p className="text-[8px] mt-1 italic text-gray-600">{empPrint.fiscalNota}</p>
+            </div>
+
             <ol className="list-decimal list-inside text-[9px] space-y-1.5 font-medium">
-              <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A ROLLERPORT pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
-              <li>A ROLLERPORT fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
+              <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A {empPrint.nome} pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
+              <li>A {empPrint.nome} fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
               <li>A quantidade de peças solicitadas interfere e determina os valores cobrados e repassados na prestação de serviço, no valor da mercadoria (rolete, suporte, eixo e tubo) e nos descontos ofertados em orçamento;</li>
               <li>As opções de pagamento ou de faturamento, assim como os parcelamentos, também interferem nos descontos e valores repassados em orçamento;</li>
               <li><span className="text-red-600 font-bold">OBS: ORÇAMENTO SUJEITO A ALTERAÇÃO MEDIANTE A ANÁLISE DE CRÉDITO NO ATO DO FECHAMENTO DO PEDIDO.</span></li>
