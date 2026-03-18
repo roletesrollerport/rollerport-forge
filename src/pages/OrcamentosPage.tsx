@@ -695,6 +695,7 @@ export default function OrcamentosPage() {
       item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
       valorLiquidoUnit: number;
       valorTotalBase: number;
+      valorUnitComImpostos: number;
       aliqPIS: number; valorPIS: number;
       aliqCOFINS: number; valorCOFINS: number;
       aliqICMS: number; valorICMS: number;
@@ -726,16 +727,18 @@ export default function OrcamentosPage() {
         desc += ` (NCM: ${ip.ncm || (prod as any)?.ncm})`;
       }
 
+      const totalComImp = (ip.valorUnitario * ip.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
       allPrintItems.push({
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
         valorTotalBase: ip.valorUnitario * ip.quantidade,
+        valorUnitComImpostos: totalComImp / ip.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: (ip.valorUnitario * ip.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
+        valorTotalComImpostos: totalComImp,
       });
     });
     (viewOrc.itensRolete || []).forEach((ir) => {
@@ -757,16 +760,18 @@ export default function OrcamentosPage() {
       let desc = `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`;
       if (ir.ncm) desc += `\n(NCM: ${ir.ncm})`;
 
+      const totalComImpR = (ir.valorPorPeca * ir.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
         codExterno: ir.codigoExterno || '-', descricao: desc,
         valorLiquidoUnit,
         valorTotalBase: ir.valorPorPeca * ir.quantidade,
+        valorUnitComImpostos: totalComImpR / ir.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: (ir.valorPorPeca * ir.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
+        valorTotalComImpostos: totalComImpR,
       });
     });
 
@@ -894,8 +899,10 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center whitespace-nowrap">CÓDIGO CLIENTE</th>
                 <th className="border p-1 text-left" style={{ minWidth: '120px' }}>DESCRIÇÃO</th>
                 <th className="border p-1 text-center whitespace-nowrap">QTD</th>
-                <th className="border p-1 text-right whitespace-nowrap">VLR UNIT.</th>
+                <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR UNIT.</th>
+                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR UNIT. S/ IMP.</th>
                 <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL S/ IMP.</th>
+                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR UNIT. C/ IMP.</th>
                 <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL C/ IMP.</th>
                 <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR TOTAL</th>
               </tr>
@@ -908,8 +915,10 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
-                  <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell">{fmt(row.valorLiquidoUnit)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorLiquidoUnit)}</td>
                   <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorTotalBase)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorUnitComImpostos)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold print:hidden">{fmt(row.valorTotalComImpostos)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorTotalBase)}</td>
                 </tr>
@@ -919,8 +928,10 @@ export default function OrcamentosPage() {
               <tr className="bg-gray-100 font-bold">
                 <td className="border p-1 text-right" colSpan={4}>Valor Total</td>
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
-                <td className="border p-1"></td>
+                <td className="border p-1 hidden print:table-cell"></td>
+                <td className="border p-1 print:hidden"></td>
                 <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 print:hidden"></td>
                 <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalComImpostos)}</td>
                 <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalSemImpostos)}</td>
               </tr>
