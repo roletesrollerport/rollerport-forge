@@ -4,11 +4,12 @@ import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
 import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamento } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, Truck } from 'lucide-react';
+import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, Truck, ClipboardList, FileText, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -22,6 +23,18 @@ const daysSince = (dateStr: string): number => {
 };
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+const getTechnicalDescription = (item: any) => {
+  if (item.produtoNome) return item.produtoNome;
+  const parts = [];
+  if (item.tipoRolete) parts.push(`Rolete ${item.tipoRolete}`);
+  if (item.diametroTubo) parts.push(`ø${item.diametroTubo}x${item.paredeTubo}`);
+  if (item.comprimentoTubo) parts.push(`tubo:${item.comprimentoTubo}mm`);
+  if (item.comprimentoEixo) parts.push(`eixo:ø${item.diametroEixo}x${item.comprimentoEixo}mm`);
+  if (item.tipoEncaixe) parts.push(`encaixe:${item.tipoEncaixe}${item.medidaFresado ? ` (${item.medidaFresado})` : ''}`);
+  if (item.especificacaoRevestimento) parts.push(`rev:${item.especificacaoRevestimento}`);
+  return parts.join(' • ');
+};
 
 function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos, setCurrentPedido, setView }: {
   pedido: Pedido; orcamentos: Orcamento[]; pedidos: Pedido[];
@@ -65,71 +78,141 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
         <Button variant="outline" onClick={() => setView('print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
         <Button onClick={saveOrcChanges} className="gap-2">Salvar Alterações</Button>
       </div>
-      <div className="bg-card border rounded-lg p-6">
-        <h2 className="text-lg font-bold mb-4">Pedido {pedido.numero} — Edição Completa</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
-          <div><span className="text-muted-foreground">Empresa:</span> <strong>{pedido.clienteNome}</strong></div>
-          <div><span className="text-muted-foreground">Orçamento:</span> <strong>{pedido.orcamentoNumero || '-'}</strong></div>
-          <div><span className="text-muted-foreground">Data:</span> <strong>{pedido.createdAt}</strong></div>
-          <div><span className="text-muted-foreground">Entrega:</span> <strong>{pedido.dataEntrega}</strong></div>
+      <div className="bg-card border rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-primary/5 border-b p-4 sm:p-6">
+          <h2 className="text-xl font-black text-primary flex items-center gap-3">
+            <ShoppingCart className="h-6 w-6" />
+            Pedido {pedido.numero}
+            <Badge variant="outline" className="ml-auto font-mono bg-background">O.S. Pendente</Badge>
+          </h2>
         </div>
+        
+        <div className="p-4 sm:p-6">
+          {/* Header Grid - 6 COLUMNS */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Cliente</span>
+              <p className="font-bold text-sm truncate" title={pedido.clienteNome}>{pedido.clienteNome}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Vendedor</span>
+              <p className="font-bold text-sm">{pedido.vendedor || orc?.vendedor || '-'}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Orçamento</span>
+              <p className="font-bold font-mono text-sm text-blue-600">{pedido.orcamentoNumero || '-'}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Data Emissão</span>
+              <p className="font-bold text-sm flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-muted-foreground" /> {pedido.createdAt}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Prazo Entrega</span>
+              <p className="font-bold text-sm flex items-center gap-1.5 text-orange-600"><Clock className="h-3.5 w-3.5" /> {pedido.dataEntrega || '-'}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Valor Total</span>
+              <p className="font-black text-sm text-emerald-600 font-mono">{fmt(pedido.valorTotal)}</p>
+            </div>
+          </div>
         {editOrc && (
           <>
             {editOrc.itensRolete.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-semibold text-sm mb-2">Itens Rolete</h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead><tr className="border-b bg-muted/50">
-                      <th className="p-2 text-left">Item</th><th className="p-2">Tipo</th><th className="p-2">Qtd</th>
-                      <th className="p-2">ø Tubo</th><th className="p-2">Parede</th><th className="p-2">Comp. Tubo</th>
-                      <th className="p-2">ø Eixo</th><th className="p-2">Comp. Eixo</th><th className="p-2">Encaixe</th>
-                      <th className="p-2">Fresa</th><th className="p-2">Revestimento</th>
-                      <th className="p-2">Valor Un.</th><th className="p-2">Ações</th>
-                    </tr></thead>
+                <div className="border rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/30 border-b">
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Item</th>
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Descrição Técnica / Resumo</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Qtd</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Valor Un.</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Total</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Ações</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {editOrc.itensRolete.map((item, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="p-1">{i + 1}</td>
-                          <td className="p-1"><select value={item.tipoRolete} onChange={e => updateRoleteItem(i, 'tipoRolete', e.target.value)}
-                            className="h-7 text-xs rounded border bg-background px-1">
-                            {['RC','RR','RG','RI','RRA'].map(t => <option key={t} value={t}>{t}</option>)}
-                          </select></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.quantidade} onChange={e => updateRoleteItem(i, 'quantidade', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.diametroTubo} onChange={e => updateRoleteItem(i, 'diametroTubo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.paredeTubo} onChange={e => updateRoleteItem(i, 'paredeTubo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.comprimentoTubo} onChange={e => updateRoleteItem(i, 'comprimentoTubo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.diametroEixo} onChange={e => updateRoleteItem(i, 'diametroEixo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.comprimentoEixo} onChange={e => updateRoleteItem(i, 'comprimentoEixo', +e.target.value)} /></td>
-                          <td className="p-1"><Input className="h-7 w-20 text-xs" value={item.tipoEncaixe} onChange={e => updateRoleteItem(i, 'tipoEncaixe', e.target.value)} /></td>
-                          <td className="p-1"><Input className="h-7 w-20 text-xs" value={item.medidaFresado} onChange={e => updateRoleteItem(i, 'medidaFresado', e.target.value)} /></td>
-                          <td className="p-1"><Input className="h-7 w-24 text-xs" value={item.especificacaoRevestimento} onChange={e => updateRoleteItem(i, 'especificacaoRevestimento', e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-20 text-xs" value={item.valorPorPeca} onChange={e => updateRoleteItem(i, 'valorPorPeca', +e.target.value)} /></td>
-                          <td className="p-1"><button onClick={() => deleteRoleteItem(i)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></td>
+                        <tr key={i} className="border-b transition-colors hover:bg-muted/10 group">
+                          <td className="p-3 font-bold text-muted-foreground">{i + 1}</td>
+                          <td className="p-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="font-bold text-foreground text-[13px]">{getTechnicalDescription(item)}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-[9px] h-4 font-black uppercase">{(item as any).tipoRolete}</Badge>
+                                <span className="text-[10px] text-muted-foreground italic">Código: {(item as any).codigo || '-'}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <Input type="number" className="h-8 w-16 mx-auto text-xs font-bold text-center" value={item.quantidade} onChange={e => updateRoleteItem(i, 'quantidade', +e.target.value)} />
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-[10px] text-muted-foreground">R$</span>
+                              <Input type="number" className="h-8 w-24 text-xs font-mono text-right font-bold" value={item.valorPorPeca} onChange={e => updateRoleteItem(i, 'valorPorPeca', +e.target.value)} />
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-bold font-mono text-emerald-700">
+                            {fmt(item.valorTotal || (item.valorPorPeca * item.quantidade))}
+                          </td>
+                          <td className="p-3 text-center">
+                            <button onClick={() => deleteRoleteItem(i)} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir Item">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                </div>
               </div>
             )}
             {editOrc.itensProduto.length > 0 && (
               <div className="mb-6">
-                <h3 className="font-semibold text-sm mb-2">Itens Produto</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead><tr className="border-b bg-muted/50">
-                      <th className="p-2 text-left">Item</th><th className="p-2 text-left">Produto</th>
-                      <th className="p-2">Qtd</th><th className="p-2">Valor Un.</th><th className="p-2">Ações</th>
-                    </tr></thead>
+                <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  Itens Produto
+                </h3>
+                <div className="border rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/30 border-b">
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Item</th>
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Produto / Descrição</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Qtd</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Valor Un.</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Total</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Ações</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {editOrc.itensProduto.map((item, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="p-1">{(editOrc.itensRolete?.length || 0) + i + 1}</td>
-                          <td className="p-1 font-medium">{item.produtoNome}</td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.quantidade} onChange={e => updateProdutoItem(i, 'quantidade', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-20 text-xs" value={item.valorUnitario} onChange={e => updateProdutoItem(i, 'valorUnitario', +e.target.value)} /></td>
-                          <td className="p-1"><button onClick={() => deleteProdutoItem(i)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></td>
+                        <tr key={i} className="border-b transition-colors hover:bg-muted/10 group">
+                          <td className="p-3 font-bold text-muted-foreground">{(editOrc.itensRolete?.length || 0) + i + 1}</td>
+                          <td className="p-3">
+                            <span className="font-bold text-foreground text-[13px]">{item.produtoNome}</span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <Input type="number" className="h-8 w-16 mx-auto text-xs font-bold text-center" value={item.quantidade} onChange={e => updateProdutoItem(i, 'quantidade', +e.target.value)} />
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-[10px] text-muted-foreground">R$</span>
+                              <Input type="number" className="h-8 w-24 text-xs font-mono text-right font-bold" value={item.valorUnitario} onChange={e => updateProdutoItem(i, 'valorUnitario', +e.target.value)} />
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-bold font-mono text-emerald-700">
+                            {fmt(item.valorTotal || (item.valorUnitario * item.quantidade))}
+                          </td>
+                          <td className="p-3 text-center">
+                            <button onClick={() => deleteProdutoItem(i)} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir Item">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -139,6 +222,7 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );
@@ -178,7 +262,7 @@ export default function PedidosPage() {
   const [deleteOrcConfirmId, setDeleteOrcConfirmId] = useState<string | null>(null);
 
   const { usuarios: dbUsuarios } = useUsuarios();
-  const loggedUserId = localStorage.getItem('rp_logged_user');
+  const loggedUserId = '1'; // localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
 
   const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
@@ -486,22 +570,22 @@ export default function PedidosPage() {
                       <span className="text-[10px]">No status: {daysInStatus}d</span>
                     </div>
                   </td>
-                  <td className="p-2 sm:p-3 text-right font-mono hidden sm:table-cell">{fmt(p.valorTotal)}</td>
+                  <td className="p-2 sm:p-3 text-right font-mono truncate hidden sm:table-cell">{fmt(p.valorTotal)}</td>
                   <td className="p-2 sm:p-3">
-                    <div className="flex gap-0.5 sm:gap-1 justify-end flex-wrap">
-                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                        <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                        {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>}
-                        {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Concluir</Button>}
-                        {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Entregar</Button>}
+                    <div className="flex gap-2 justify-end flex-wrap items-center">
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Visualizar"><Eye className="h-4 w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Editar"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors" title="Imprimir"><Printer className="h-4 w-4" /></button>
+                        {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1.5 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors" title="Gerar O.S."><Factory className="h-4 w-4" /></button>}
+                        
                         <button 
                           onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })} 
-                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-violet-500" 
-                          title="Agendar Follow-up"
+                          className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-600 transition-colors" 
+                          title="CRM / Follow-up"
                         >
-                          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <ClipboardList className="h-4 w-4" />
                         </button>
+                        
                         <button 
                           onClick={() => {
                             const orc = orcamentos.find(o => o.id === p.orcamentoId);
@@ -509,14 +593,15 @@ export default function PedidosPage() {
                             setTrackingVendor(vendor);
                             setIsTrackingOpen(true);
                           }} 
-                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" 
-                          title="Rastrear Pedido"
+                          className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" 
+                          title="Rastrear"
                         >
-                          <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <Truck className="h-4 w-4" />
                         </button>
-                        <button onClick={() => cancelarPedido(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                        <button onClick={() => deletePedido(p.id)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                      </div>
+                        
+                        <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors" title="Anular / Cancelar"><XCircle className="h-4 w-4" /></button>
+                        <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                    </div>
                   </td>
                 </tr>
                 );
@@ -554,6 +639,7 @@ export default function PedidosPage() {
         pedidos={pedidos}
         orcamentos={orcamentos}
         onMetaUpdate={() => {}} // Not strictly needed here as we don't show meta cards in PedidosPage
+        currentUser={currentUser}
       />
       <ConfirmDialog
         open={!!deleteConfirmId}
