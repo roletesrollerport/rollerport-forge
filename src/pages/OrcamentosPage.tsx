@@ -1120,7 +1120,7 @@ export default function OrcamentosPage() {
           </div>
         </div>
 
-        <style>{`@media print { @page { size: landscape; margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+        <style>{`@media print { @page { size: landscape; margin: 0; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
       </div>
     );
   }
