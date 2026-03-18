@@ -734,8 +734,14 @@ export default function OrcamentosPage() {
         desc += ` (NCM: ${ip.ncm || (prod as any)?.ncm})`;
       }
 
+      const itemIdx = idx++;
+      const overrideQtd = qtyOverrides[itemIdx] ?? ip.quantidade;
+      const valorTotalComImpostosOverride = valorUnitComImpostos * overrideQtd;
+      const impostosTotaisOverride = +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2);
+      const valorTotalSemImpostosOverride = +(valorTotalComImpostosOverride - impostosTotaisOverride).toFixed(2);
+
       allPrintItems.push({
-        item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
+        item: itemIdx, qtd: overrideQtd, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
         valorTotalSemImpostos,
