@@ -761,11 +761,12 @@ export default function OrcamentosPage() {
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
         codExterno: ir.codigoExterno || '-', descricao: desc,
         valorLiquidoUnit,
+        valorTotalBase: ir.valorPorPeca * ir.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: ir.valorTotal + valorIPITotal,
+        valorTotalComImpostos: (ir.valorPorPeca * ir.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
       });
     });
 
