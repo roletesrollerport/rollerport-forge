@@ -961,6 +961,7 @@ export default function OrcamentosPage() {
               </tr>
             </tfoot>
           </table>
+          </div>
           <p className="text-[7px] text-muted-foreground mt-1 italic font-medium">
             * Valores de impostos destacados apenas para fins informativos, já inclusos no preço final conforme legislação vigente.
           </p>
