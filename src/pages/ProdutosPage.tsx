@@ -161,22 +161,22 @@ export default function ProdutosPage() {
           <tbody>
             {filtered.map(p => (
               <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="p-3 font-mono text-xs">{p.codigo}</td>
-                <td className="p-3 font-medium">
-                  {p.nome}
-                  {p.nomeCompleto && <span className="text-xs text-muted-foreground ml-2">({p.nomeCompleto})</span>}
-                  {!p.nomeCompleto && p.miniDescricao && <span className="text-xs text-muted-foreground ml-2">({p.miniDescricao})</span>}
+                <td className="p-2 sm:p-3 font-mono text-[10px] sm:text-xs">{p.codigo}</td>
+                <td className="p-2 sm:p-3 font-medium text-xs sm:text-sm">
+                  <span className="truncate block max-w-[150px] sm:max-w-none">{p.nome}</span>
+                  {p.nomeCompleto && <span className="text-[10px] sm:text-xs text-muted-foreground block sm:inline sm:ml-2">({p.nomeCompleto})</span>}
+                  {!p.nomeCompleto && p.miniDescricao && <span className="text-[10px] sm:text-xs text-muted-foreground block sm:inline sm:ml-2">({p.miniDescricao})</span>}
                 </td>
-                <td className="p-3">
+                <td className="p-2 sm:p-3 hidden sm:table-cell">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                     p.tipo === 'GENERICO' ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'
                   }`}>{p.tipo === 'GENERICO' ? 'Produto' : `Rolete ${p.tipo}`}</span>
                 </td>
-                <td className="p-3 text-right font-mono">{p.tipo === 'GENERICO' ? fmt(p.valor) : 'Calculado'}</td>
-                <td className="p-3">
+                <td className="p-2 sm:p-3 text-right font-mono hidden sm:table-cell">{p.tipo === 'GENERICO' ? fmt(p.valor) : 'Calculado'}</td>
+                <td className="p-2 sm:p-3">
                   <div className="flex gap-1">
-                    <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => openEditDialog(p)} className="p-1 rounded hover:bg-muted text-primary"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                    <button onClick={() => setDeleteConfirm(p)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                   </div>
                 </td>
               </tr>
