@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
-import type { Pedido, StatusPedido, Orcamento } from '@/lib/types';
+import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamento } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, Truck, ClipboardList, MessageSquare } from 'lucide-react';
+import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, Truck, ClipboardList, FileText, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -29,14 +29,13 @@ const getTechnicalDescription = (item: any) => {
   const parts = [];
   if (item.tipoRolete) parts.push(`Rolete ${item.tipoRolete}`);
   if (item.diametroTubo) parts.push(`ø${item.diametroTubo}x${item.paredeTubo}`);
-  if (item.comprimentoTubo) parts.push(`Tubo: ${item.comprimentoTubo}mm`);
-  if (item.comprimentoEixo) parts.push(`Eixo: ø${item.diametroEixo}x${item.comprimentoEixo}mm`);
-  if (item.tipoEncaixe) parts.push(`Encaixe: ${item.tipoEncaixe}${item.medidaFresado ? ` (${item.medidaFresado})` : ''}`);
-  if (item.especificacaoRevestimento) parts.push(`Rev: ${item.especificacaoRevestimento}`);
+  if (item.comprimentoTubo) parts.push(`tubo:${item.comprimentoTubo}mm`);
+  if (item.comprimentoEixo) parts.push(`eixo:ø${item.diametroEixo}x${item.comprimentoEixo}mm`);
+  if (item.tipoEncaixe) parts.push(`encaixe:${item.tipoEncaixe}${item.medidaFresado ? ` (${item.medidaFresado})` : ''}`);
+  if (item.especificacaoRevestimento) parts.push(`rev:${item.especificacaoRevestimento}`);
   return parts.join(' • ');
 };
 
-// ========== EDIT VIEW ==========
 function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos, setCurrentPedido, setView }: {
   pedido: Pedido; orcamentos: Orcamento[]; pedidos: Pedido[];
   setOrcamentos: (o: Orcamento[]) => void; setPedidos: (p: Pedido[]) => void;
@@ -44,7 +43,6 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
 }) {
   const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
   const [editOrc, setEditOrc] = useState<Orcamento | null>(orc ? { ...orc, itensRolete: [...(orc.itensRolete || [])], itensProduto: [...(orc.itensProduto || [])] } : null);
-  const [deleteItemConfirm, setDeleteItemConfirm] = useState<{ type: 'rolete' | 'produto'; idx: number } | null>(null);
 
   const saveOrcChanges = () => {
     if (!editOrc) return;
@@ -70,205 +68,165 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
     const items = [...editOrc.itensProduto]; items[idx] = { ...items[idx], [field]: value };
     setEditOrc({ ...editOrc, itensProduto: items });
   };
-  const confirmDeleteItem = () => {
-    if (!editOrc || !deleteItemConfirm) return;
-    if (deleteItemConfirm.type === 'rolete') {
-      setEditOrc({ ...editOrc, itensRolete: editOrc.itensRolete.filter((_, i) => i !== deleteItemConfirm.idx) });
-    } else {
-      setEditOrc({ ...editOrc, itensProduto: editOrc.itensProduto.filter((_, i) => i !== deleteItemConfirm.idx) });
-    }
-    setDeleteItemConfirm(null);
-    toast.success('Item removido!');
-  };
+  const deleteRoleteItem = (idx: number) => { if (!editOrc) return; setEditOrc({ ...editOrc, itensRolete: editOrc.itensRolete.filter((_, i) => i !== idx) }); };
+  const deleteProdutoItem = (idx: number) => { if (!editOrc) return; setEditOrc({ ...editOrc, itensProduto: editOrc.itensProduto.filter((_, i) => i !== idx) }); };
 
   return (
     <div className="space-y-4">
-      {/* Top action bar */}
-      <div className="flex gap-2 mobile-btn-scroll">
-        <Button variant="outline" onClick={() => setView('list')} className="gap-2 shrink-0"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
-        <Button variant="outline" onClick={() => setView('print')} className="gap-2 shrink-0"><Printer className="h-4 w-4" /> Imprimir</Button>
-        <Button onClick={saveOrcChanges} className="gap-2 shrink-0">Salvar Alterações</Button>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
+        <Button variant="outline" onClick={() => setView('print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
+        <Button onClick={saveOrcChanges} className="gap-2">Salvar Alterações</Button>
       </div>
-
       <div className="bg-card border rounded-xl shadow-lg overflow-hidden">
-        {/* Card header */}
-        <div className="bg-primary/5 border-b px-4 py-3 sm:px-6 sm:py-4">
-          <h2 className="text-lg sm:text-xl font-black text-primary flex items-center gap-3">
-            <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+        <div className="bg-primary/5 border-b p-4 sm:p-6">
+          <h2 className="text-xl font-black text-primary flex items-center gap-3">
+            <ShoppingCart className="h-6 w-6" />
             Pedido {pedido.numero}
-            <Badge variant="outline" className="ml-auto font-mono bg-background text-xs">O.S. Pendente</Badge>
+            <Badge variant="outline" className="ml-auto font-mono bg-background">O.S. Pendente</Badge>
           </h2>
         </div>
-
+        
         <div className="p-4 sm:p-6">
-          {/* ===== HEADER GRID - Modern 6-field layout ===== */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6 mb-8 bg-muted/20 rounded-xl p-4 border">
-            <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Nº Pedido</span>
-              <p className="font-black text-sm font-mono text-primary">{pedido.numero}</p>
-            </div>
+          {/* Header Grid - 6 COLUMNS */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
             <div className="space-y-1">
               <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Cliente</span>
-              <p className="font-bold text-sm break-words" title={pedido.clienteNome}>{pedido.clienteNome}</p>
+              <p className="font-bold text-sm truncate" title={pedido.clienteNome}>{pedido.clienteNome}</p>
             </div>
             <div className="space-y-1">
               <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Vendedor</span>
               <p className="font-bold text-sm">{pedido.vendedor || orc?.vendedor || '-'}</p>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Nº Orçamento</span>
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Orçamento</span>
               <p className="font-bold font-mono text-sm text-blue-600">{pedido.orcamentoNumero || '-'}</p>
             </div>
             <div className="space-y-1">
               <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Data Emissão</span>
-              <p className="font-bold text-sm flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> {pedido.createdAt}</p>
+              <p className="font-bold text-sm flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-muted-foreground" /> {pedido.createdAt}</p>
             </div>
             <div className="space-y-1">
               <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Prazo Entrega</span>
-              <p className="font-bold text-sm flex items-center gap-1.5 text-orange-600"><Clock className="h-3.5 w-3.5 shrink-0" /> {pedido.dataEntrega || '-'}</p>
+              <p className="font-bold text-sm flex items-center gap-1.5 text-orange-600"><Clock className="h-3.5 w-3.5" /> {pedido.dataEntrega || '-'}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Valor Total</span>
+              <p className="font-black text-sm text-emerald-600 font-mono">{fmt(pedido.valorTotal)}</p>
             </div>
           </div>
-
-          {/* Valor Total highlight */}
-          <div className="flex justify-end mb-6">
-            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-2">
-              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mr-3">Valor Total</span>
-              <span className="font-black text-lg text-emerald-600 font-mono">{fmt(pedido.valorTotal)}</span>
-            </div>
-          </div>
-
-          {/* ===== ITEMS TABLE ===== */}
-          {editOrc && (
-            <>
-              {editOrc.itensRolete.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <Factory className="h-4 w-4 text-muted-foreground" />
-                    Itens Rolete
-                  </h3>
-                  <div className="mobile-table-scroll">
-                    <div className="border rounded-xl overflow-hidden shadow-sm min-w-[600px]">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-muted/30 border-b">
-                            <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px] w-12">Item</th>
-                            <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Descrição Técnica</th>
-                            <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px] w-20">Qtd</th>
-                            <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px] w-32">Valor Un.</th>
-                            <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px] w-28">Total</th>
-                            <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px] w-16">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {editOrc.itensRolete.map((item, i) => (
-                            <tr key={i} className="border-b transition-colors hover:bg-muted/10">
-                              <td className="p-3 font-bold text-muted-foreground text-center">{i + 1}</td>
-                              <td className="p-3">
-                                <div className="flex flex-col gap-1">
-                                  <span className="font-bold text-foreground text-[13px] leading-tight">{getTechnicalDescription(item)}</span>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="secondary" className="text-[9px] h-4 font-black uppercase">{(item as any).tipoRolete}</Badge>
-                                    {(item as any).codigo && <span className="text-[10px] text-muted-foreground italic">Cód: {(item as any).codigo}</span>}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="p-3 text-center">
-                                <Input type="number" className="h-8 w-16 mx-auto text-xs font-bold text-center" value={item.quantidade} onChange={e => updateRoleteItem(i, 'quantidade', +e.target.value)} />
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <span className="text-[10px] text-muted-foreground">R$</span>
-                                  <Input type="number" className="h-8 w-24 text-xs font-mono text-right font-bold" value={item.valorPorPeca} onChange={e => updateRoleteItem(i, 'valorPorPeca', +e.target.value)} />
-                                </div>
-                              </td>
-                              <td className="p-3 text-right font-bold font-mono text-emerald-700">
-                                {fmt(item.valorTotal || (item.valorPorPeca * item.quantidade))}
-                              </td>
-                              <td className="p-3 text-center">
-                                <button onClick={() => setDeleteItemConfirm({ type: 'rolete', idx: i })} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir Item">
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+        {editOrc && (
+          <>
+            {editOrc.itensRolete.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-sm mb-2">Itens Rolete</h3>
+                <div className="overflow-x-auto">
+                <div className="border rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/30 border-b">
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Item</th>
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Descrição Técnica / Resumo</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Qtd</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Valor Un.</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Total</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editOrc.itensRolete.map((item, i) => (
+                        <tr key={i} className="border-b transition-colors hover:bg-muted/10 group">
+                          <td className="p-3 font-bold text-muted-foreground">{i + 1}</td>
+                          <td className="p-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="font-bold text-foreground text-[13px]">{getTechnicalDescription(item)}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-[9px] h-4 font-black uppercase">{(item as any).tipoRolete}</Badge>
+                                <span className="text-[10px] text-muted-foreground italic">Código: {(item as any).codigo || '-'}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <Input type="number" className="h-8 w-16 mx-auto text-xs font-bold text-center" value={item.quantidade} onChange={e => updateRoleteItem(i, 'quantidade', +e.target.value)} />
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-[10px] text-muted-foreground">R$</span>
+                              <Input type="number" className="h-8 w-24 text-xs font-mono text-right font-bold" value={item.valorPorPeca} onChange={e => updateRoleteItem(i, 'valorPorPeca', +e.target.value)} />
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-bold font-mono text-emerald-700">
+                            {fmt(item.valorTotal || (item.valorPorPeca * item.quantidade))}
+                          </td>
+                          <td className="p-3 text-center">
+                            <button onClick={() => deleteRoleteItem(i)} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir Item">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-
-              {editOrc.itensProduto.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                    Itens Produto
-                  </h3>
-                  <div className="mobile-table-scroll">
-                    <div className="border rounded-xl overflow-hidden shadow-sm min-w-[600px]">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-muted/30 border-b">
-                            <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px] w-12">Item</th>
-                            <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Produto / Descrição</th>
-                            <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px] w-20">Qtd</th>
-                            <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px] w-32">Valor Un.</th>
-                            <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px] w-28">Total</th>
-                            <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px] w-16">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {editOrc.itensProduto.map((item, i) => (
-                            <tr key={i} className="border-b transition-colors hover:bg-muted/10">
-                              <td className="p-3 font-bold text-muted-foreground text-center">{(editOrc.itensRolete?.length || 0) + i + 1}</td>
-                              <td className="p-3">
-                                <span className="font-bold text-foreground text-[13px]">{item.produtoNome}</span>
-                                {item.descricao && <p className="text-[10px] text-muted-foreground mt-0.5">{item.descricao}</p>}
-                              </td>
-                              <td className="p-3 text-center">
-                                <Input type="number" className="h-8 w-16 mx-auto text-xs font-bold text-center" value={item.quantidade} onChange={e => updateProdutoItem(i, 'quantidade', +e.target.value)} />
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <span className="text-[10px] text-muted-foreground">R$</span>
-                                  <Input type="number" className="h-8 w-24 text-xs font-mono text-right font-bold" value={item.valorUnitario} onChange={e => updateProdutoItem(i, 'valorUnitario', +e.target.value)} />
-                                </div>
-                              </td>
-                              <td className="p-3 text-right font-bold font-mono text-emerald-700">
-                                {fmt(item.valorTotal || (item.valorUnitario * item.quantidade))}
-                              </td>
-                              <td className="p-3 text-center">
-                                <button onClick={() => setDeleteItemConfirm({ type: 'produto', idx: i })} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir Item">
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
+            {editOrc.itensProduto.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  Itens Produto
+                </h3>
+                <div className="border rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/30 border-b">
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Item</th>
+                        <th className="p-3 text-left font-black uppercase tracking-tighter text-[10px]">Produto / Descrição</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Qtd</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Valor Un.</th>
+                        <th className="p-3 text-right font-black uppercase tracking-tighter text-[10px]">Total</th>
+                        <th className="p-3 text-center font-black uppercase tracking-tighter text-[10px]">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editOrc.itensProduto.map((item, i) => (
+                        <tr key={i} className="border-b transition-colors hover:bg-muted/10 group">
+                          <td className="p-3 font-bold text-muted-foreground">{(editOrc.itensRolete?.length || 0) + i + 1}</td>
+                          <td className="p-3">
+                            <span className="font-bold text-foreground text-[13px]">{item.produtoNome}</span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <Input type="number" className="h-8 w-16 mx-auto text-xs font-bold text-center" value={item.quantidade} onChange={e => updateProdutoItem(i, 'quantidade', +e.target.value)} />
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-[10px] text-muted-foreground">R$</span>
+                              <Input type="number" className="h-8 w-24 text-xs font-mono text-right font-bold" value={item.valorUnitario} onChange={e => updateProdutoItem(i, 'valorUnitario', +e.target.value)} />
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-bold font-mono text-emerald-700">
+                            {fmt(item.valorTotal || (item.valorUnitario * item.quantidade))}
+                          </td>
+                          <td className="p-3 text-center">
+                            <button onClick={() => deleteProdutoItem(i)} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir Item">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
         </div>
       </div>
-
-      {/* Confirm delete item */}
-      <ConfirmDialog
-        open={!!deleteItemConfirm}
-        onOpenChange={(open) => { if (!open) setDeleteItemConfirm(null); }}
-        title="Confirmar Exclusão de Item"
-        description="Tem certeza que deseja excluir este item do pedido? Esta ação não pode ser desfeita."
-        confirmLabel="Confirmar Exclusão"
-        onConfirm={confirmDeleteItem}
-      />
     </div>
   );
 }
-
-// ========== STATUS ==========
 const statusProgress: Record<string, number> = {
   'PENDENTE': 20, 'CONFIRMADO': 40, 'EM_PRODUCAO': 60, 'CONCLUIDO': 80, 'ENTREGUE': 100,
 };
@@ -285,7 +243,6 @@ function StatusProgressBar({ status }: { status: string }) {
 
 type View = 'list' | 'view' | 'print';
 
-// ========== MAIN PAGE ==========
 export default function PedidosPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -299,11 +256,13 @@ export default function PedidosPage() {
   const [cancelMotivo, setCancelMotivo] = useState('');
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackingVendor, setTrackingVendor] = useState('');
+
+  // Confirm delete states
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteOrcConfirmId, setDeleteOrcConfirmId] = useState<string | null>(null);
 
   const { usuarios: dbUsuarios } = useUsuarios();
-  const loggedUserId = '1';
+  const loggedUserId = '1'; // localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
 
   const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
@@ -324,6 +283,7 @@ export default function PedidosPage() {
     if (q) setSearch(q);
   }, [searchParams]);
 
+  // Comprehensive search helper
   const matchesSearch = (text: string, s: string) => text?.toLowerCase().includes(s.toLowerCase());
   const clienteMatchesSearch = (clienteNome: string, s: string) => {
     const cli = clientes.find(c => c.nome === clienteNome);
@@ -432,7 +392,7 @@ export default function PedidosPage() {
     .filter(o =>
       o.numero.includes(search) || clienteMatchesSearch(o.clienteNome, search)
     );
-
+    
   const filteredPedidos = pedidos
     .filter(p => {
       if (isFullAccess) return true;
@@ -454,10 +414,10 @@ export default function PedidosPage() {
           <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
           <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
         </div>
-        <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none print:max-w-none overflow-hidden">
-          <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-6">
+        <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none print:max-w-none">
+          <div className="flex justify-between items-start mb-6">
             <div className="flex items-start gap-4">
-              <img src={logo} alt="Rollerport" className="h-16 w-16 sm:h-20 sm:w-20 object-contain shrink-0" />
+              <img src={logo} alt="Rollerport" className="h-20 w-20 object-contain" />
               <div>
                 <h2 className="text-xl font-bold">ROLLERPORT</h2>
                 <p className="text-xs text-muted-foreground">Roletes para Correia Transportadora</p>
@@ -466,14 +426,14 @@ export default function PedidosPage() {
               </div>
             </div>
             {cli && (
-              <div className="text-left lg:text-right text-sm w-full lg:w-auto border-t lg:border-t-0 pt-3 lg:pt-0">
+              <div className="text-right text-sm">
                 <p className="font-semibold">{cli.nome}</p>
                 <p className="text-xs text-muted-foreground">CNPJ: {cli.cnpj}</p>
                 <p className="text-xs text-muted-foreground">{cli.endereco}</p>
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm mb-6 border rounded p-4">
+          <div className="grid grid-cols-2 gap-4 text-sm mb-6 border rounded p-4">
             <div><span className="font-semibold">Pedido Nº:</span> {currentPedido.numero}</div>
             <div><span className="font-semibold">Orçamento Nº:</span> {currentPedido.orcamentoNumero || '-'}</div>
             <div><span className="font-semibold">Data:</span> {currentPedido.createdAt}</div>
@@ -482,41 +442,39 @@ export default function PedidosPage() {
             <div><span className="font-semibold">Valor Total:</span> {fmt(currentPedido.valorTotal)}</div>
           </div>
           {orc && (
-            <div className="mobile-table-scroll">
-              <table className="w-full text-sm border-collapse mb-6 min-w-[500px]">
-                <thead><tr className="border-b-2">
-                  <th className="text-left p-2 font-semibold">Item</th>
-                  <th className="text-left p-2 font-semibold">Descrição</th>
-                  <th className="text-center p-2 font-semibold">Qtd</th>
-                  <th className="text-right p-2 font-semibold">Valor Unit.</th>
-                  <th className="text-right p-2 font-semibold">Total</th>
-                </tr></thead>
-                <tbody>
-                  {(orc.itensRolete || []).map((item, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-2">{i + 1}</td>
-                      <td className="p-2">{getTechnicalDescription(item)}</td>
-                      <td className="p-2 text-center">{item.quantidade}</td>
-                      <td className="p-2 text-right">{fmt(item.valorPorPeca)}</td>
-                      <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
-                    </tr>
-                  ))}
-                  {(orc.itensProduto || []).map((item, i) => (
-                    <tr key={`p-${i}`} className="border-b">
-                      <td className="p-2">{(orc.itensRolete?.length || 0) + i + 1}</td>
-                      <td className="p-2">{item.produtoNome}</td>
-                      <td className="p-2 text-center">{item.quantidade}</td>
-                      <td className="p-2 text-right">{fmt(item.valorUnitario)}</td>
-                      <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 font-bold">
-                    <td colSpan={4} className="p-2 text-right">TOTAL</td>
-                    <td className="p-2 text-right">{fmt(currentPedido.valorTotal)}</td>
+            <table className="w-full text-sm border-collapse mb-6">
+              <thead><tr className="border-b-2">
+                <th className="text-left p-2 font-semibold">Item</th>
+                <th className="text-left p-2 font-semibold">Descrição</th>
+                <th className="text-center p-2 font-semibold">Qtd</th>
+                <th className="text-right p-2 font-semibold">Valor Unit.</th>
+                <th className="text-right p-2 font-semibold">Total</th>
+              </tr></thead>
+              <tbody>
+                {(orc.itensRolete || []).map((item, i) => (
+                  <tr key={i} className="border-b">
+                    <td className="p-2">{i + 1}</td>
+                    <td className="p-2">Rolete {item.tipoRolete} ø{item.diametroTubo}x{item.paredeTubo} Tubo:{item.comprimentoTubo}mm Eixo:{item.comprimentoEixo}mm</td>
+                    <td className="p-2 text-center">{item.quantidade}</td>
+                    <td className="p-2 text-right">{fmt(item.valorPorPeca)}</td>
+                    <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
                   </tr>
-                </tbody>
-              </table>
-            </div>
+                ))}
+                {(orc.itensProduto || []).map((item, i) => (
+                  <tr key={`p-${i}`} className="border-b">
+                    <td className="p-2">{(orc.itensRolete?.length || 0) + i + 1}</td>
+                    <td className="p-2">{item.produtoNome}</td>
+                    <td className="p-2 text-center">{item.quantidade}</td>
+                    <td className="p-2 text-right">{fmt(item.valorUnitario)}</td>
+                    <td className="p-2 text-right">{fmt(item.valorTotal)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 font-bold">
+                  <td colSpan={4} className="p-2 text-right">TOTAL</td>
+                  <td className="p-2 text-right">{fmt(currentPedido.valorTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
           )}
         </div>
         <style>{`@media print { @page { size: landscape; margin: 1cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
@@ -543,37 +501,33 @@ export default function PedidosPage() {
         </div>
       </div>
 
-      {/* Orçamentos pendentes */}
       {filteredOrcs.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-3">Orçamentos (pendentes de pedido)</h2>
-          <div className="bg-card rounded-lg border mobile-table-scroll">
-            <table className="w-full text-sm min-w-[600px]">
+          <div className="bg-card rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/50">
-                <th className="text-left p-3 font-medium">Nº</th>
-                <th className="text-left p-3 font-medium">Cliente</th>
-                <th className="text-left p-3 font-medium">Data</th>
-                <th className="text-left p-3 font-medium">Status</th>
-                <th className="text-left p-3 font-medium">Dias</th>
-                <th className="text-right p-3 font-medium">Valor</th>
-                <th className="p-3 w-40 text-center font-medium">Ações</th>
+                <th className="text-left p-3 font-medium">Nº</th><th className="text-left p-3 font-medium">Cliente</th>
+                <th className="text-left p-3 font-medium hidden md:table-cell">Data</th><th className="text-left p-3 font-medium">Status</th>
+                <th className="text-left p-3 font-medium hidden md:table-cell">Dias</th>
+                <th className="text-right p-3 font-medium">Valor</th><th className="p-3 w-40">Ações</th>
               </tr></thead>
               <tbody>
                 {filteredOrcs.map(o => (
                   <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="p-3 font-mono font-medium">{o.numero}</td>
                     <td className="p-3">{o.clienteNome}</td>
-                    <td className="p-3">{o.dataOrcamento || o.createdAt}</td>
+                    <td className="p-3 hidden md:table-cell">{o.dataOrcamento || o.createdAt}</td>
                     <td className="p-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground uppercase">{o.status}</span></td>
-                    <td className="p-3">
+                    <td className="p-3 hidden md:table-cell">
                       <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{daysSince(o.createdAt)}d</span>
                     </td>
                     <td className="p-3 text-right font-mono">{fmt(o.valorTotal)}</td>
                     <td className="p-3">
-                      <div className="flex gap-1.5 justify-center items-center">
-                        <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Ver Orçamento"><Eye className="h-4 w-4" /></button>
-                        <button onClick={() => gerarPedido(o)} className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors" title="Gerar Pedido"><ShoppingCart className="h-4 w-4" /></button>
-                        <button onClick={() => setDeleteOrcConfirmId(o.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
+                        <button onClick={() => gerarPedido(o)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar Pedido"><ShoppingCart className="h-4 w-4" /></button>
+                        <button onClick={() => setDeleteOrcConfirmId(o.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -584,20 +538,19 @@ export default function PedidosPage() {
         </div>
       )}
 
-      {/* Pedidos */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Pedidos</h2>
-        <div className="bg-card rounded-lg border mobile-table-scroll">
-          <table className="w-full text-sm min-w-[900px]">
+        <div className="bg-card rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium text-xs">Nº Pedido</th>
-              <th className="text-left p-3 font-medium text-xs">Nº Orçamento</th>
-              <th className="text-left p-3 font-medium text-xs">Empresa</th>
-              <th className="text-left p-3 font-medium text-xs">Data</th>
-              <th className="text-left p-3 font-medium text-xs min-w-[150px]">Status</th>
-              <th className="text-left p-3 font-medium text-xs">Dias</th>
-              <th className="text-right p-3 font-medium text-xs">Valor</th>
-              <th className="p-3 text-center font-medium text-xs w-64">Ações</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Nº Pedido</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Nº Orçamento</th>
+              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Empresa</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Data</th>
+              <th className="text-left p-2 sm:p-3 font-medium min-w-[120px] sm:min-w-[180px] text-xs sm:text-sm">Status</th>
+              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Dias</th>
+              <th className="text-right p-2 sm:p-3 font-medium hidden sm:table-cell">Valor</th>
+              <th className="p-2 sm:p-3 w-auto sm:w-52">Ações</th>
             </tr></thead>
             <tbody>
               {filteredPedidos.map(p => {
@@ -606,59 +559,48 @@ export default function PedidosPage() {
                 const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
                 return (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-3 font-mono font-medium">{p.numero}</td>
-                  <td className="p-3 font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
-                  <td className="p-3">{p.clienteNome}</td>
-                  <td className="p-3 whitespace-nowrap">{p.createdAt}</td>
-                  <td className="p-3"><StatusProgressBar status={p.status} /></td>
-                  <td className="p-3">
+                  <td className="p-2 sm:p-3 font-mono font-medium text-xs sm:text-sm">{p.numero}</td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
+                  <td className="p-2 sm:p-3 text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{p.clienteNome}</td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell">{p.createdAt}</td>
+                  <td className="p-2 sm:p-3"><StatusProgressBar status={p.status} /></td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell">
                     <div className="flex flex-col text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {days}d</span>
-                      <span className="text-[10px]">Status: {daysInStatus}d</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Total: {days}d</span>
+                      <span className="text-[10px]">No status: {daysInStatus}d</span>
                     </div>
                   </td>
-                  <td className="p-3 text-right font-mono whitespace-nowrap">{fmt(p.valorTotal)}</td>
-                  <td className="p-3">
-                    <div className="flex gap-1 justify-center items-center">
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Visualizar">
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Editar">
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors" title="Imprimir">
-                        <Printer className="h-4 w-4" />
-                      </button>
-                      {p.status === 'PENDENTE' && (
-                        <button onClick={() => gerarOS(p)} className="p-1.5 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors" title="Gerar O.S.">
-                          <Factory className="h-4 w-4" />
+                  <td className="p-2 sm:p-3 text-right font-mono truncate hidden sm:table-cell">{fmt(p.valorTotal)}</td>
+                  <td className="p-2 sm:p-3">
+                    <div className="flex gap-2 justify-end flex-wrap items-center">
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Visualizar"><Eye className="h-4 w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Editar"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors" title="Imprimir"><Printer className="h-4 w-4" /></button>
+                        {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1.5 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors" title="Gerar O.S."><Factory className="h-4 w-4" /></button>}
+                        
+                        <button 
+                          onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })} 
+                          className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-600 transition-colors" 
+                          title="CRM / Follow-up"
+                        >
+                          <ClipboardList className="h-4 w-4" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })}
-                        className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-600 transition-colors"
-                        title="CRM / Follow-up"
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          const orc = orcamentos.find(o => o.id === p.orcamentoId);
-                          const vendor = p.vendedor || orc?.vendedor || 'Sistema';
-                          setTrackingVendor(vendor);
-                          setIsTrackingOpen(true);
-                        }}
-                        className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"
-                        title="Rastrear"
-                      >
-                        <Truck className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors" title="Cancelar">
-                        <XCircle className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        
+                        <button 
+                          onClick={() => {
+                            const orc = orcamentos.find(o => o.id === p.orcamentoId);
+                            const vendor = p.vendedor || orc?.vendedor || 'Sistema';
+                            setTrackingVendor(vendor);
+                            setIsTrackingOpen(true);
+                          }} 
+                          className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" 
+                          title="Rastrear"
+                        >
+                          <Truck className="h-4 w-4" />
+                        </button>
+                        
+                        <button onClick={() => cancelarPedido(p)} className="p-1.5 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors" title="Anular / Cancelar"><XCircle className="h-4 w-4" /></button>
+                        <button onClick={() => deletePedido(p.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -670,16 +612,16 @@ export default function PedidosPage() {
         </div>
       </div>
 
-      {/* Dialog de cancelamento com motivo obrigatório */}
+      {/* Dialog de cancelamento */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Cancelar Pedido {cancelTarget?.numero}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Informe o motivo do cancelamento antes de prosseguir:</p>
-            <Textarea
-              value={cancelMotivo}
-              onChange={e => setCancelMotivo(e.target.value)}
-              placeholder="Motivo do cancelamento..."
+            <Textarea 
+              value={cancelMotivo} 
+              onChange={e => setCancelMotivo(e.target.value)} 
+              placeholder="Motivo do cancelamento..." 
               rows={3}
             />
             <div className="flex justify-end gap-2">
@@ -690,17 +632,15 @@ export default function PedidosPage() {
         </DialogContent>
       </Dialog>
 
-      <AcompanhamentoPedidosModal
+      <AcompanhamentoPedidosModal 
         isOpen={isTrackingOpen}
         onOpenChange={setIsTrackingOpen}
         vendedor={trackingVendor}
         pedidos={pedidos}
         orcamentos={orcamentos}
-        onMetaUpdate={() => {}}
+        onMetaUpdate={() => {}} // Not strictly needed here as we don't show meta cards in PedidosPage
         currentUser={currentUser}
       />
-
-      {/* Confirm dialogs - exclusão segura */}
       <ConfirmDialog
         open={!!deleteConfirmId}
         onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}
