@@ -744,13 +744,13 @@ export default function OrcamentosPage() {
         item: itemIdx, qtd: overrideQtd, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
-        valorTotalSemImpostos,
+        valorTotalSemImpostos: valorTotalSemImpostosOverride,
         valorUnitComImpostos,
-        aliqPIS, valorPIS: valorPISTotal,
-        aliqCOFINS, valorCOFINS: valorCOFINSTotal,
-        aliqICMS, valorICMS: valorICMSTotal,
-        aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos,
+        aliqPIS, valorPIS: +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2),
+        aliqCOFINS, valorCOFINS: +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2),
+        aliqICMS, valorICMS: +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2),
+        aliqIPI, valorIPI: +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2),
+        valorTotalComImpostos: valorTotalComImpostosOverride,
       });
     });
 
