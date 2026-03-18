@@ -892,9 +892,9 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-left" style={{ minWidth: '120px' }}>DESCRIÇÃO</th>
                 <th className="border p-1 text-center whitespace-nowrap">QTD</th>
                 <th className="border p-1 text-right whitespace-nowrap">VLR UNIT.</th>
-                <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR TOTAL S/ IMP.</th>
-                <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR TOTAL C/ IMP.</th>
-                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL</th>
+                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL S/ IMP.</th>
+                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL C/ IMP.</th>
+                <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR TOTAL</th>
               </tr>
             </thead>
             <tbody>
@@ -906,9 +906,9 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell font-bold">{fmt(row.valorTotalComImpostos)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-bold print:hidden">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold print:hidden">{fmt(row.valorTotalComImpostos)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
                 </tr>
               ))}
             </tbody>
@@ -917,9 +917,9 @@ export default function OrcamentosPage() {
                 <td className="border p-1 text-right" colSpan={4}>Valor Total</td>
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
                 <td className="border p-1"></td>
-                <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalSemImpostos)}</td>
-                <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalComImpostos)}</td>
                 <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalComImpostos)}</td>
+                <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalSemImpostos)}</td>
               </tr>
             </tfoot>
           </table>
