@@ -143,14 +143,29 @@ html, body, #root {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Touch Friendly Utilities */
+/* Touch Friendly Utilities — scoped to avoid breaking inline/table buttons */
 @media (max-width: 1024px) {
-  button, a {
+  /* Only apply touch targets to standalone interactive elements, not tiny icon buttons */
+  .touch-target {
     min-height: 44px;
     min-width: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  }
+}
+
+/* Responsive table wrapper: smooth horizontal scroll on mobile */
+.responsive-table-wrap {
+  @apply overflow-x-auto -mx-2 px-2;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile-friendly action row */
+@media (max-width: 640px) {
+  .mobile-stack {
+    @apply flex flex-col w-full gap-2;
+  }
+  .mobile-stack > button,
+  .mobile-stack > a {
+    @apply w-full justify-center;
   }
 }
 

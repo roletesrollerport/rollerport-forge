@@ -397,7 +397,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
           onMenuOpen={() => setMobileOpen(true)}
         />
         <PresenceContext.Provider value={{ onlineUserIds }}>
-          <main className="flex-1 overflow-y-auto p-[10px] animate-fade-in relative bg-white border border-[#E2E8F0] rounded-2xl shadow-sm">
+          <main className="flex-1 overflow-y-auto p-2 sm:p-[10px] animate-fade-in relative bg-white border border-[#E2E8F0] rounded-2xl shadow-sm overflow-x-hidden">
             {children}
           </main>
         </PresenceContext.Provider>

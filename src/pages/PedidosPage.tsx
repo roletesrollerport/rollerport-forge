@@ -462,19 +462,19 @@ export default function PedidosPage() {
                 const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
                 return (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-3 font-mono font-medium">{p.numero}</td>
-                  <td className="p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
-                  <td className="p-3">{p.clienteNome}</td>
-                  <td className="p-3 hidden md:table-cell">{p.createdAt}</td>
-                  <td className="p-3"><StatusProgressBar status={p.status} /></td>
-                  <td className="p-3 hidden md:table-cell">
+                  <td className="p-2 sm:p-3 font-mono font-medium text-xs sm:text-sm">{p.numero}</td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
+                  <td className="p-2 sm:p-3 text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{p.clienteNome}</td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell">{p.createdAt}</td>
+                  <td className="p-2 sm:p-3"><StatusProgressBar status={p.status} /></td>
+                  <td className="p-2 sm:p-3 hidden md:table-cell">
                     <div className="flex flex-col text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Total: {days}d</span>
                       <span className="text-[10px]">No status: {daysInStatus}d</span>
                     </div>
                   </td>
-                  <td className="p-3 text-right font-mono">{fmt(p.valorTotal)}</td>
-                  <td className="p-3">
+                  <td className="p-2 sm:p-3 text-right font-mono hidden sm:table-cell">{fmt(p.valorTotal)}</td>
+                  <td className="p-2 sm:p-3">
                     <div className="flex gap-0.5 sm:gap-1 justify-end flex-wrap">
                         <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>

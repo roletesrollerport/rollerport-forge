@@ -793,20 +793,20 @@ export default function DashboardPage() {
                           className="hover:bg-[#F8FAFC] transition-colors group cursor-pointer"
                           onClick={() => navigate(`/producao/${os.id}`)}
                         >
-                          <td className="px-6 py-4 font-bold text-[#223c61] font-mono">{os.numero}</td>
-                          <td className="px-6 py-4 text-[#1E293B]">
-                            <div className="font-semibold">{os.empresa}</div>
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-[#223c61] font-mono text-xs">{os.numero}</td>
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-[#1E293B]">
+                            <div className="font-semibold text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{os.empresa}</div>
                             <div className="text-[10px] text-[#64748B]">Ped. {os.pedidoNumero}</div>
                           </td>
-                          <td className="px-6 py-4 text-[#1E293B] font-medium">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-[#1E293B] font-medium hidden sm:table-cell">
                             {(() => {
                               const ped = data.pedidos.find((p: any) => p.id === os.pedidoId);
                               const orc = data.orcamentos.find((o: any) => o.id === ped?.orcamentoId);
                               return os.responsavelTecnico || os.emitente || orc?.vendedor || 'Sistema';
                             })()}
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
+                            <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold border
                               ${os.status === 'CONCLUIDA' ? 'bg-green-50 text-green-600 border-green-100' : 
                                 os.status === 'EM_ANDAMENTO' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
                                 'bg-gray-50 text-gray-500 border-gray-100'}`}
@@ -814,7 +814,7 @@ export default function DashboardPage() {
                               {os.status?.replace('_', ' ')}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-right font-medium text-[#64748B]">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-right font-medium text-[#64748B] hidden sm:table-cell">
                             {os.entrega || '—'}
                           </td>
                         </tr>

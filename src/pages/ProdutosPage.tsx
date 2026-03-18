@@ -81,16 +81,16 @@ export default function ProdutosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="page-header">Produtos</h1>
           <p className="page-subtitle">Catálogo de roletes e produtos</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => { setEditing(emptyRolete()); setOpenRolete(true); }} variant="outline" className="gap-2">
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+          <Button onClick={() => { setEditing(emptyRolete()); setOpenRolete(true); }} variant="outline" className="gap-2 text-xs sm:text-sm flex-1 sm:flex-none">
             <Settings2 className="h-4 w-4" /> Cadastrar Rolete
           </Button>
-          <Button onClick={() => { setEditing(emptyProduto()); setOpenProduto(true); }} className="gap-2">
+          <Button onClick={() => { setEditing(emptyProduto()); setOpenProduto(true); }} className="gap-2 text-xs sm:text-sm flex-1 sm:flex-none">
             <Package className="h-4 w-4" /> Cadastrar Produto
           </Button>
         </div>
