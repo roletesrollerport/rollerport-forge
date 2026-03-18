@@ -727,16 +727,18 @@ export default function OrcamentosPage() {
         desc += ` (NCM: ${ip.ncm || (prod as any)?.ncm})`;
       }
 
+      const totalComImp = (ip.valorUnitario * ip.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
       allPrintItems.push({
         item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
         valorTotalBase: ip.valorUnitario * ip.quantidade,
+        valorUnitComImpostos: totalComImp / ip.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: (ip.valorUnitario * ip.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
+        valorTotalComImpostos: totalComImp,
       });
     });
     (viewOrc.itensRolete || []).forEach((ir) => {
