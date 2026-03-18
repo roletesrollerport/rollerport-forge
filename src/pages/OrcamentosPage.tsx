@@ -931,7 +931,7 @@ export default function OrcamentosPage() {
                       setViewOrc(updated);
                       const all = orcamentos.map(o => o.id === updated.id ? updated : o);
                       setOrcamentos(all);
-                      store.setOrcamentos(all);
+                      store.saveOrcamentos(all);
                     }}
                   >
                     <option value="">Selecione...</option>
