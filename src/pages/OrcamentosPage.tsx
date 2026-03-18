@@ -756,36 +756,33 @@ export default function OrcamentosPage() {
 
     (viewOrc.itensRolete || []).forEach((ir) => {
       const valorUnitComImpostos = ir.valorPorPeca;
-      const valorTotalComImpostos = valorUnitComImpostos * ir.quantidade;
 
       const aliqPIS = aliqPISPadrao;
       const aliqCOFINS = aliqCOFINSPadrao;
       const aliqICMS = aliqICMSPadrao;
       const aliqIPI = aliqIPIPadrao;
 
-      const valorPISTotal = +(valorTotalComImpostos * (aliqPIS / 100)).toFixed(2);
-      const valorCOFINSTotal = +(valorTotalComImpostos * (aliqCOFINS / 100)).toFixed(2);
-      const valorICMSTotal = +(valorTotalComImpostos * (aliqICMS / 100)).toFixed(2);
-      const valorIPITotal = +(valorTotalComImpostos * (aliqIPI / 100)).toFixed(2);
-
-      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
-      const valorTotalSemImpostos = +(valorTotalComImpostos - impostosTotaisItem).toFixed(2);
-      const valorLiquidoUnit = +(valorTotalSemImpostos / ir.quantidade).toFixed(2);
+      const itemIdx = idx++;
+      const overrideQtd = qtyOverrides[itemIdx] ?? ir.quantidade;
+      const valorTotalComImpostosOverride = valorUnitComImpostos * overrideQtd;
+      const impostosTotaisOverride = +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2);
+      const valorTotalSemImpostosOverride = +(valorTotalComImpostosOverride - impostosTotaisOverride).toFixed(2);
+      const valorLiquidoUnit = +(valorTotalSemImpostosOverride / overrideQtd).toFixed(2);
 
       let desc = `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`;
       if (ir.ncm) desc += `\n(NCM: ${ir.ncm})`;
 
       allPrintItems.push({
-        item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
+        item: itemIdx, qtd: overrideQtd, codigo: ir.codigoProduto || ir.tipoRolete,
         codExterno: ir.codigoExterno || '-', descricao: desc,
         valorLiquidoUnit,
-        valorTotalSemImpostos,
+        valorTotalSemImpostos: valorTotalSemImpostosOverride,
         valorUnitComImpostos,
-        aliqPIS, valorPIS: valorPISTotal,
-        aliqCOFINS, valorCOFINS: valorCOFINSTotal,
-        aliqICMS, valorICMS: valorICMSTotal,
-        aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos,
+        aliqPIS, valorPIS: +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2),
+        aliqCOFINS, valorCOFINS: +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2),
+        aliqICMS, valorICMS: +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2),
+        aliqIPI, valorIPI: +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2),
+        valorTotalComImpostos: valorTotalComImpostosOverride,
       });
     });
 
