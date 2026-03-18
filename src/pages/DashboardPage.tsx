@@ -777,11 +777,11 @@ export default function DashboardPage() {
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-[#F8FAFC]/50 text-[#64748B] uppercase tracking-wider text-[10px]">
-                      <th className="px-6 py-4 font-bold">O.S.</th>
-                      <th className="px-6 py-4 font-bold">Cliente</th>
-                      <th className="px-6 py-4 font-bold">Vendedor / Usuário</th>
-                      <th className="px-6 py-4 font-bold">Status</th>
-                      <th className="px-6 py-4 font-bold text-right">Previsão</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold">O.S.</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold">Cliente</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold hidden sm:table-cell">Vendedor / Usuário</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold">Status</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-right hidden sm:table-cell">Previsão</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F1F5F9]">
