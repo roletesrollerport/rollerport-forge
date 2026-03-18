@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
+import logoRollerport from '@/assets/logo-rollerport.png';
+import logoFerreira from '@/assets/logo-ferreira.png';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
 
 const emptyItem = (): ItemOrcamento => ({
