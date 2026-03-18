@@ -925,7 +925,19 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{row.codigo}</td>
                   <td className="border p-1 text-center whitespace-nowrap">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
-                  <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
+                  <td className="border p-1 text-center whitespace-nowrap font-bold">
+                    <span className="hidden print:inline">{row.qtd}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.qtd}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setQtyOverrides(prev => ({ ...prev, [row.item]: val }));
+                      }}
+                      className="print:hidden w-14 text-center border rounded p-0.5 text-[8px] font-bold"
+                    />
+                  </td>
                   <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell">{fmt(row.valorUnitComImpostos)}</td>
                   <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorLiquidoUnit)}</td>
                   <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorTotalSemImpostos)}</td>
