@@ -802,24 +802,24 @@ export default function OrcamentosPage() {
 
     return (
       <div>
-        <div className="flex gap-2 mb-4 print:hidden">
-          <Button variant="outline" onClick={() => setView('list')} className="gap-2">
+        <div className="flex gap-2 mb-4 print:hidden overflow-x-auto pb-1 mobile-btn-scroll">
+          <Button variant="outline" onClick={() => setView('list')} className="gap-2 shrink-0">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
-          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+          <Button variant="outline" onClick={() => window.print()} className="gap-2 shrink-0">
             <Printer className="h-4 w-4" /> Imprimir
           </Button>
-          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+          <Button variant="outline" onClick={() => window.print()} className="gap-2 shrink-0">
             <FileText className="h-4 w-4" /> Gerar PDF
           </Button>
           <Button 
             variant={showTecnico ? "default" : "outline"} 
             onClick={() => setShowTecnico(!showTecnico)} 
-            className="gap-2"
+            className="gap-2 shrink-0"
           >
             <SettingsIcon className="h-4 w-4" /> Orçamento Técnico
           </Button>
-          <Button variant="outline" onClick={() => handleSendEmail(viewOrc)} className="gap-2">
+          <Button variant="outline" onClick={() => handleSendEmail(viewOrc)} className="gap-2 shrink-0">
             <Mail className="h-4 w-4" /> Enviar por E-mail
           </Button>
           <Button variant="outline" onClick={() => {

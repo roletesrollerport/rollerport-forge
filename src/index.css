@@ -143,6 +143,46 @@ html, body, #root {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ===== MOBILE/TABLET ONLY (<1024px) ===== */
+@media (max-width: 1023px) {
+  body {
+    overflow-x: hidden !important;
+    hyphens: none;
+    -webkit-hyphens: none;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  /* Scrollable button bars instead of stacking */
+  .mobile-btn-scroll {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.5rem;
+    padding-bottom: 0.25rem;
+  }
+  .mobile-btn-scroll > * {
+    flex-shrink: 0;
+  }
+
+  /* Scrollable tables */
+  .mobile-table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Scale print preview logos */
+  .print-header-logo {
+    max-width: 60px !important;
+    height: auto !important;
+  }
+  .print-qr-code {
+    max-width: 40px !important;
+    height: auto !important;
+  }
+}
+
 /* Touch Friendly Utilities — scoped to avoid breaking inline/table buttons */
 @media (max-width: 1024px) {
   /* Only apply touch targets to standalone interactive elements, not tiny icon buttons */
