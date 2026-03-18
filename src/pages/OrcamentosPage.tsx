@@ -967,9 +967,29 @@ export default function OrcamentosPage() {
           {/* ===== Informações Complementares ===== */}
           <div className="mt-2 border rounded p-2 text-[10px]">
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
+            
+            {/* Fiscal summary per company */}
+            <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <p>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
+                <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
+                <p>CST: <strong>00</strong></p>
+                <p>NCM: <strong>8431.39.00</strong></p>
+                <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
+                {isSimplesNacional ? (
+                  <p>Tributos: <strong>PIS/PASEP: 2,49% | COFINS: 11,51%</strong></p>
+                ) : (
+                  <>
+                    <p>ICMS: <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong> | PIS: <strong>0,65%</strong> | COFINS: <strong>3%</strong> | IPI: <strong>Isento</strong></p>
+                  </>
+                )}
+              </div>
+              <p className="text-[8px] mt-1 italic text-gray-600">{empPrint.fiscalNota}</p>
+            </div>
+
             <ol className="list-decimal list-inside text-[9px] space-y-1.5 font-medium">
-              <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A ROLLERPORT pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
-              <li>A ROLLERPORT fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
+              <li>FRETE: Os orçamentos elaborados com a condição FOB devem ser retirados a critério do cliente, que deverá efetuar a coleta ou solicitar a transportadora de sua preferência. A {empPrint.nome} pode realizar a cotação e a indicação de algumas transportadoras, ficando a cargo do cliente a aprovação e a contratação (<strong>pagamento</strong>) do frete;</li>
+              <li>A {empPrint.nome} fará o despache da mercadoria em nossa cidade ou em São Paulo - Capital via transportadora, <span className="font-bold underline">NÃO SERÁ ACEITO</span> o envio de mercadorias pelos <strong>CORREIOS</strong> que ultrapassem as dimensões de <strong>20x20x20 e que pesem mais de 10 kg</strong>;</li>
               <li>A quantidade de peças solicitadas interfere e determina os valores cobrados e repassados na prestação de serviço, no valor da mercadoria (rolete, suporte, eixo e tubo) e nos descontos ofertados em orçamento;</li>
               <li>As opções de pagamento ou de faturamento, assim como os parcelamentos, também interferem nos descontos e valores repassados em orçamento;</li>
               <li><span className="text-red-600 font-bold">OBS: ORÇAMENTO SUJEITO A ALTERAÇÃO MEDIANTE A ANÁLISE DE CRÉDITO NO ATO DO FECHAMENTO DO PEDIDO.</span></li>
