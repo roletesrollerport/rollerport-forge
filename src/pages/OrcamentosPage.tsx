@@ -181,6 +181,7 @@ export default function OrcamentosPage() {
   const [itensProduto, setItensProduto] = useState<ItemProdutoOrcamento[]>([]);
   const [prazoPagamento, setPrazoPagamento] = useState('');
   const [empresaEmitente, setEmpresaEmitente] = useState<EmpresaEmitente>('rollerport');
+  const [qtyOverrides, setQtyOverrides] = useState<Record<number, number>>({});
 
   // Sub-panels
   const [showProdutoSearch, setShowProdutoSearch] = useState(false);
