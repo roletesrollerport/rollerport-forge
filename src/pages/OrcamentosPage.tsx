@@ -694,6 +694,7 @@ export default function OrcamentosPage() {
     const allPrintItems: Array<{
       item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
       valorLiquidoUnit: number;
+      valorTotalBase: number;
       aliqPIS: number; valorPIS: number;
       aliqCOFINS: number; valorCOFINS: number;
       aliqICMS: number; valorICMS: number;
