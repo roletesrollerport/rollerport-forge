@@ -1549,15 +1549,11 @@ export default function OrcamentosPage() {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-muted/50 text-primary uppercase text-[10px] font-bold">
-                  <th className="border p-2 text-center w-8">#</th>
+                  <th className="border p-2 text-center w-8">Item</th>
                   <th className="border p-2 text-left">Código</th>
                   <th className="border p-2 text-left">Descrição</th>
                   <th className="border p-2 text-center w-12">Qtd</th>
                   <th className="border p-2 text-right">Vlr Unit</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">PIS%</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">COF%</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">ICM%</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">IPI%</th>
                   <th className="border p-2 text-right">Total Item</th>
                   <th className="border p-2 text-center w-24">Ações</th>
                 </tr>
