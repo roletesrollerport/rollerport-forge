@@ -181,6 +181,7 @@ export default function OrcamentosPage() {
   const [itensProduto, setItensProduto] = useState<ItemProdutoOrcamento[]>([]);
   const [prazoPagamento, setPrazoPagamento] = useState('');
   const [empresaEmitente, setEmpresaEmitente] = useState<EmpresaEmitente>('rollerport');
+  const [qtyOverrides, setQtyOverrides] = useState<Record<number, number>>({});
 
   // Sub-panels
   const [showProdutoSearch, setShowProdutoSearch] = useState(false);
@@ -733,52 +734,55 @@ export default function OrcamentosPage() {
         desc += ` (NCM: ${ip.ncm || (prod as any)?.ncm})`;
       }
 
+      const itemIdx = idx++;
+      const overrideQtd = qtyOverrides[itemIdx] ?? ip.quantidade;
+      const valorTotalComImpostosOverride = valorUnitComImpostos * overrideQtd;
+      const impostosTotaisOverride = +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2);
+      const valorTotalSemImpostosOverride = +(valorTotalComImpostosOverride - impostosTotaisOverride).toFixed(2);
+
       allPrintItems.push({
-        item: idx++, qtd: ip.quantidade, codigo: prod?.codigo || '-',
+        item: itemIdx, qtd: overrideQtd, codigo: prod?.codigo || '-',
         codExterno: (prod as any)?.codigoCliente || '-', descricao: desc,
         valorLiquidoUnit,
-        valorTotalSemImpostos,
+        valorTotalSemImpostos: valorTotalSemImpostosOverride,
         valorUnitComImpostos,
-        aliqPIS, valorPIS: valorPISTotal,
-        aliqCOFINS, valorCOFINS: valorCOFINSTotal,
-        aliqICMS, valorICMS: valorICMSTotal,
-        aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos,
+        aliqPIS, valorPIS: +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2),
+        aliqCOFINS, valorCOFINS: +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2),
+        aliqICMS, valorICMS: +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2),
+        aliqIPI, valorIPI: +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2),
+        valorTotalComImpostos: valorTotalComImpostosOverride,
       });
     });
 
     (viewOrc.itensRolete || []).forEach((ir) => {
       const valorUnitComImpostos = ir.valorPorPeca;
-      const valorTotalComImpostos = valorUnitComImpostos * ir.quantidade;
 
       const aliqPIS = aliqPISPadrao;
       const aliqCOFINS = aliqCOFINSPadrao;
       const aliqICMS = aliqICMSPadrao;
       const aliqIPI = aliqIPIPadrao;
 
-      const valorPISTotal = +(valorTotalComImpostos * (aliqPIS / 100)).toFixed(2);
-      const valorCOFINSTotal = +(valorTotalComImpostos * (aliqCOFINS / 100)).toFixed(2);
-      const valorICMSTotal = +(valorTotalComImpostos * (aliqICMS / 100)).toFixed(2);
-      const valorIPITotal = +(valorTotalComImpostos * (aliqIPI / 100)).toFixed(2);
-
-      const impostosTotaisItem = valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
-      const valorTotalSemImpostos = +(valorTotalComImpostos - impostosTotaisItem).toFixed(2);
-      const valorLiquidoUnit = +(valorTotalSemImpostos / ir.quantidade).toFixed(2);
+      const itemIdx = idx++;
+      const overrideQtd = qtyOverrides[itemIdx] ?? ir.quantidade;
+      const valorTotalComImpostosOverride = valorUnitComImpostos * overrideQtd;
+      const impostosTotaisOverride = +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2) + +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2);
+      const valorTotalSemImpostosOverride = +(valorTotalComImpostosOverride - impostosTotaisOverride).toFixed(2);
+      const valorLiquidoUnit = +(valorTotalSemImpostosOverride / overrideQtd).toFixed(2);
 
       let desc = `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`;
       if (ir.ncm) desc += `\n(NCM: ${ir.ncm})`;
 
       allPrintItems.push({
-        item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
+        item: itemIdx, qtd: overrideQtd, codigo: ir.codigoProduto || ir.tipoRolete,
         codExterno: ir.codigoExterno || '-', descricao: desc,
         valorLiquidoUnit,
-        valorTotalSemImpostos,
+        valorTotalSemImpostos: valorTotalSemImpostosOverride,
         valorUnitComImpostos,
-        aliqPIS, valorPIS: valorPISTotal,
-        aliqCOFINS, valorCOFINS: valorCOFINSTotal,
-        aliqICMS, valorICMS: valorICMSTotal,
-        aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos,
+        aliqPIS, valorPIS: +(valorTotalComImpostosOverride * (aliqPIS / 100)).toFixed(2),
+        aliqCOFINS, valorCOFINS: +(valorTotalComImpostosOverride * (aliqCOFINS / 100)).toFixed(2),
+        aliqICMS, valorICMS: +(valorTotalComImpostosOverride * (aliqICMS / 100)).toFixed(2),
+        aliqIPI, valorIPI: +(valorTotalComImpostosOverride * (aliqIPI / 100)).toFixed(2),
+        valorTotalComImpostos: valorTotalComImpostosOverride,
       });
     });
 
@@ -921,7 +925,19 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{row.codigo}</td>
                   <td className="border p-1 text-center whitespace-nowrap">{row.codExterno || '-'}</td>
                   <td className="border p-1 text-left">{row.descricao}</td>
-                  <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
+                  <td className="border p-1 text-center whitespace-nowrap font-bold">
+                    <span className="hidden print:inline">{row.qtd}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.qtd}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setQtyOverrides(prev => ({ ...prev, [row.item]: val }));
+                      }}
+                      className="print:hidden w-14 text-center border rounded p-0.5 text-[8px] font-bold"
+                    />
+                  </td>
                   <td className="border p-1 text-right whitespace-nowrap hidden print:table-cell">{fmt(row.valorUnitComImpostos)}</td>
                   <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorLiquidoUnit)}</td>
                   <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorTotalSemImpostos)}</td>
@@ -1104,7 +1120,7 @@ export default function OrcamentosPage() {
           </div>
         </div>
 
-        <style>{`@media print { @page { size: landscape; margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+        <style>{`@media print { @page { size: landscape; margin: 0; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
       </div>
     );
   }
