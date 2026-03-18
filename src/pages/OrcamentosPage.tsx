@@ -672,26 +672,22 @@ export default function OrcamentosPage() {
     const empPrint = EMPRESAS[viewOrc.empresaEmitente || 'rollerport'];
     const isSimplesNacional = empPrint.regimeTributario === 'simples_nacional';
 
-    // Brazilian tax rates 2026 - Rollerport is in SP
+    // Brazilian tax rates 2026 - Origem SEMPRE SP = 18%
     const destinoUF = cli?.estado || 'SP';
-    const origemUF = 'SP';
-    // ICMS interestadual from SP
-    const icmsInterMap: Record<string, number> = {
-      'SP': 0.18, 'MG': 0.12, 'RJ': 0.12, 'PR': 0.12, 'SC': 0.12, 'RS': 0.12, 'ES': 0.12,
-      'BA': 0.07, 'SE': 0.07, 'AL': 0.07, 'PE': 0.07, 'PB': 0.07, 'RN': 0.07, 'CE': 0.07,
-      'PI': 0.07, 'MA': 0.07, 'PA': 0.07, 'AP': 0.07, 'AM': 0.07, 'RR': 0.07, 'AC': 0.07,
-      'RO': 0.07, 'TO': 0.07, 'MT': 0.07, 'MS': 0.07, 'GO': 0.07, 'DF': 0.07,
+    const taxaICMSOrig = 0.18; // Sempre 18% pois somos de SP
+    // ICMS Destino conforme tabela interestadual de SP
+    const icmsDestinoMap: Record<string, number> = {
+      'AC': 0.07, 'AL': 0.07, 'AM': 0.07, 'AP': 0.07, 'BA': 0.07, 'CE': 0.07,
+      'DF': 0.07, 'ES': 0.07, 'GO': 0.07, 'MA': 0.07, 'MT': 0.07, 'MS': 0.07,
+      'PA': 0.07, 'PB': 0.07, 'PE': 0.07, 'PI': 0.07, 'RN': 0.07, 'RO': 0.07,
+      'RR': 0.07, 'SE': 0.07, 'TO': 0.07,
+      'MG': 0.12, 'PR': 0.12, 'RS': 0.12, 'RJ': 0.12, 'SC': 0.12,
+      'SP': 0.18,
     };
-    const icmsInternoMap: Record<string, number> = {
-      'SP': 0.18, 'MG': 0.18, 'RJ': 0.20, 'PR': 0.195, 'SC': 0.17, 'RS': 0.17, 'ES': 0.17,
-      'BA': 0.205, 'SE': 0.18, 'AL': 0.19, 'PE': 0.205, 'PB': 0.20, 'RN': 0.20, 'CE': 0.20,
-      'PI': 0.215, 'MA': 0.22, 'PA': 0.19, 'AP': 0.18, 'AM': 0.20, 'RR': 0.20, 'AC': 0.19,
-      'RO': 0.195, 'TO': 0.20, 'MT': 0.17, 'MS': 0.17, 'GO': 0.19, 'DF': 0.20,
-    };
-    const taxaICMSOrig = isSimplesNacional ? 0 : (icmsInterMap[destinoUF] || 0.12);
-    const taxaICMSDest = isSimplesNacional ? 0 : (origemUF === destinoUF ? 0 : Math.max(0, (icmsInternoMap[destinoUF] || 0.18) - taxaICMSOrig));
-    const taxaPIS = isSimplesNacional ? 0 : 0.0065;
-    const taxaCOFINS = isSimplesNacional ? 0 : 0.03;
+    const taxaICMSDest = icmsDestinoMap[destinoUF] ?? 0.07;
+    // isSimplesNacional already declared above
+    const taxaPIS = isSimplesNacional ? 0.0249 : 0.0065;
+    const taxaCOFINS = isSimplesNacional ? 0.1151 : 0.03;
     const taxaIPI = 0; // Isento for both regimes
 
     // Build all items for the table
@@ -953,12 +949,10 @@ export default function OrcamentosPage() {
                     </>
                   ) : (
                     <>
+                      <p>ICMS Origem (SP): <strong>18%</strong></p>
+                      <p>ICMS Destino ({destinoUF}): <strong>{(taxaICMSDest * 100).toFixed(0)}%</strong></p>
                       <p>PIS: <strong>0,65%</strong></p>
                       <p>COFINS: <strong>3%</strong></p>
-                      <p>ICMS Origem (SP → {destinoUF}): <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong></p>
-                      {taxaICMSDest > 0 && (
-                        <p>ICMS Destino ({destinoUF}): <strong>{(taxaICMSDest * 100).toFixed(1)}%</strong></p>
-                      )}
                       <p>IPI: <strong>Isento</strong></p>
                     </>
                   )}
