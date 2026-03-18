@@ -1572,13 +1572,9 @@ export default function OrcamentosPage() {
                     <tr key={item.id} className="hover:bg-muted/30 border-b">
                       <td className="p-2 text-center font-mono">{i + 1}</td>
                       <td className="p-2 font-medium">{codigo}</td>
-                      <td className="p-2 text-[11px] max-w-[200px] truncate" title={descricao}>{descricao}</td>
+                      <td className="p-2 text-[11px]" title={descricao}>{descricao}</td>
                       <td className="p-2 text-center font-bold">{item.quantidade}</td>
                       <td className="p-2 text-right">{fmt(valorUnit)}</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqPIS}%</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqCOFINS}%</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqICMS}%</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqIPI}%</td>
                       <td className="p-2 text-right font-bold text-primary">{fmt(item.valorTotal)}</td>
                       <td className="p-2 text-center">
                         <div className="flex justify-center gap-1">
