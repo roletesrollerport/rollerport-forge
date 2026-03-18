@@ -911,45 +911,36 @@ export default function OrcamentosPage() {
             </div>
           )}
 
-          {/* Boleto conditions */}
-          {viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento && (
-            <div className="mt-3 border rounded p-3 text-[10px]">
-              <p className="font-bold mb-1">Condições do Boleto:</p>
-              <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
-            </div>
-          )}
-
-          {/* Cheque conditions */}
-          {viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento && (
-            <div className="mt-3 border rounded p-3 text-[10px]">
-              <p className="font-bold mb-1">Condições do Cheque:</p>
-              <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
-            </div>
-          )}
-
-          {viewOrc.observacao && (
-            <div className="text-[10px] mt-2 border rounded p-2 bg-muted/20">Observação do Vendedor: <strong>{viewOrc.observacao}</strong></div>
-          )}
-
           {/* ===== Informações Complementares ===== */}
           <div className="mt-2 border rounded p-2 text-[10px]">
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
-            {/* Fiscal summary per company */}
             <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <p>Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
-                <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
-                <p>CST: <strong>00</strong></p>
-                <p>NCM: <strong>8431.39.00</strong></p>
-                <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
-                {isSimplesNacional ? (
-                  <p>Tributos: <strong>PIS/PASEP: 2,49% | COFINS: 11,51%</strong></p>
-                ) : (
-                  <>
-                    <p>ICMS: <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong> | PIS: <strong>0,65%</strong> | COFINS: <strong>3%</strong> | IPI: <strong>Isento</strong></p>
-                  </>
-                )}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                {/* Coluna 1 */}
+                <div className="space-y-1">
+                  <p>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}{viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}{viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}</strong></p>
+                  <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
+                  <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
+                  {viewOrc.observacao && <p>Observação: <strong>{viewOrc.observacao}</strong></p>}
+                </div>
+                {/* Coluna 2 */}
+                <div className="space-y-1">
+                  <p>NCM: <strong>8431.39.00</strong></p>
+                  <p>CST: <strong>00</strong></p>
+                  {isSimplesNacional ? (
+                    <>
+                      <p>PIS/PASEP: <strong>2,49%</strong></p>
+                      <p>COFINS: <strong>11,51%</strong></p>
+                    </>
+                  ) : (
+                    <>
+                      <p>PIS: <strong>0,65%</strong></p>
+                      <p>COFINS: <strong>3%</strong></p>
+                      <p>ICMS: <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong> | IPI: <strong>Isento</strong></p>
+                    </>
+                  )}
+                </div>
               </div>
               <p className="text-[8px] mt-1 italic text-gray-600">{empPrint.fiscalNota}</p>
             </div>
