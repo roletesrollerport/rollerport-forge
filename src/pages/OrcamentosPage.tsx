@@ -760,16 +760,18 @@ export default function OrcamentosPage() {
       let desc = `Rolete ${ir.tipoRolete} - Tubo ø${ir.diametroTubo} Comp.${ir.comprimentoTubo}mm - Eixo ø${ir.diametroEixo} Comp.${ir.comprimentoEixo}mm${ir.tipoEncaixe ? ` - Enc: ${ir.tipoEncaixe}` : ''}${ir.medidaFresado ? ` ${ir.medidaFresado}` : ''}${ir.especificacaoRevestimento ? ` - Rev: ${ir.especificacaoRevestimento}` : ''}`;
       if (ir.ncm) desc += `\n(NCM: ${ir.ncm})`;
 
+      const totalComImpR = (ir.valorPorPeca * ir.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal;
       allPrintItems.push({
         item: idx++, qtd: ir.quantidade, codigo: ir.codigoProduto || ir.tipoRolete,
         codExterno: ir.codigoExterno || '-', descricao: desc,
         valorLiquidoUnit,
         valorTotalBase: ir.valorPorPeca * ir.quantidade,
+        valorUnitComImpostos: totalComImpR / ir.quantidade,
         aliqPIS, valorPIS: valorPISTotal,
         aliqCOFINS, valorCOFINS: valorCOFINSTotal,
         aliqICMS, valorICMS: valorICMSTotal,
         aliqIPI, valorIPI: valorIPITotal,
-        valorTotalComImpostos: (ir.valorPorPeca * ir.quantidade) + valorPISTotal + valorCOFINSTotal + valorICMSTotal + valorIPITotal,
+        valorTotalComImpostos: totalComImpR,
       });
     });
 
