@@ -1,29 +1,44 @@
+## Plano de Responsividade por Dispositivo
 
+### Regra Principal
+- **Desktop/Notebook (≥1024px):** NÃO TOCAR em nada. Layout, fontes, colunas, menu lateral — tudo permanece idêntico ao atual.
+- **Tablet/Celular (<1024px):** Adaptar a interface para parecer um App fluido sem alterar design, cores ou componentes.
 
-## Plan: Refactor DashboardPage - Replace Relatórios Comerciais with User Cards Grid
+---
 
-### What Changes
+### 1. Base CSS Global
+- [ ] Adicionar `overflow-x: hidden` no body apenas para `<1024px`
+- [ ] Adicionar `hyphens: none; word-break: keep-all` para evitar quebra de palavras
+- [ ] Todas as regras mobile usam `@media (max-width: 1023px)` exclusivamente
 
-1. **Remove "Relatórios Comerciais" section** (lines 658-702) - the table with orçamentos listing at the bottom.
+### 2. Tabelas de Dados
+- [ ] Envolver tabelas em container com `overflow-x: auto` em `<1024px`
+- [ ] Tabelas de impressão/orçamento: rolagem horizontal interna sem mover cabeçalho/página
+- [ ] Aplicar em: Orçamentos, Pedidos, Custos, Produção, Estoque
 
-2. **Move User Cards Grid to replace the removed section** - reposition the existing user cards grid (lines 704-719) to where the table was.
+### 3. Logos e Cabeçalhos (Impressão/Orçamento)
+- [ ] Redimensionar logos proporcionalmente em `<1024px`
+- [ ] Centralizar informações da empresa dentro das margens mobile
 
-3. **Enhance each user card** with the requested content:
-   - **Header**: Name + `Badge` component (Ativo/Inativo) from shadcn/ui
-   - **Individual Stats**: Orçamentos count, Pedidos count, OS count per user ID
-   - **Monthly Goal**: `Progress` bar showing percentage of monthly target
-   - **Status Summary**: Small indicators for Rascunho, Aprovado, Em Produção counts linked to the user
-   - **Footer Buttons**: Two `Button` components - `[Ver Relatório Completo]` (navigates to vendor-detail) and `[Imprimir Relatório]` (navigates to vendor-print)
+### 4. Botões em Excesso
+- [ ] Em `<1024px`, grupos de botões em container com `overflow-x: auto; white-space: nowrap`
+- [ ] Scroll lateral em vez de empilhar verticalmente
+- [ ] Tamanho de toque mínimo 44px mantido
 
-4. **Permission logic** (already partially implemented):
-   - **Master**: Sees grid of all users' cards
-   - **Non-master**: Hides the users grid, shows only their own card directly below the "Taxa de Conversão" section
+### 5. Páginas Específicas
+- [ ] DashboardPage: Grids empilham em mobile, intactos em desktop
+- [ ] ClientesPage: Modais 95vw em mobile, fixos em desktop
+- [ ] ProdutosPage: Tabela com scroll horizontal mobile
+- [ ] OrcamentosPage: Scroll horizontal nas tabelas de impostos
+- [ ] PedidosPage: Colunas secundárias ocultas em mobile
+- [ ] CustosPage, ProducaoPage, EstoquePage: Scroll horizontal
+- [ ] AgendaPage/CRM: Calendário e formulários adaptados
 
-5. **Data connections**:
-   - Use `useUsuarios` hook to fetch real user data from the database instead of `store.getUsuarios()`
-   - Add OS count per user by filtering `data.os` by user association
-   - Add per-user status breakdown (rascunho/aprovado/em produção) from existing `data.orcamentos` and `data.pedidos`
+### 6. Menu Lateral (AppLayout)
+- [ ] ≥1024px: Menu lateral fixo, sem alteração
+- [ ] <1024px: Menu via Sheet (já implementado), sem overflow
 
-### Files Modified
-- `src/pages/DashboardPage.tsx` - single file change
-
+### 7. Validação
+- [ ] Testar viewport 1920px — zero mudanças visuais
+- [ ] Testar viewport 768px (tablet) — acessível, sem overflow
+- [ ] Testar viewport 375px (iPhone) — app fluido
