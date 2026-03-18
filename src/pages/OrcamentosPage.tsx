@@ -913,19 +913,8 @@ export default function OrcamentosPage() {
             * Valores de impostos destacados apenas para fins informativos, já inclusos no preço final conforme legislação vigente.
           </p>
 
-          {/* PIX / Transferência data on print */}
-          {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
-            <div className="mt-3 border rounded p-3 text-[10px]">
-              <p className="font-bold mb-1">Dados Bancários para {viewOrc.condicaoPagamento === 'PIX' ? 'PIX' : 'Transferência Bancária'}:</p>
-              <p>{empPrint.banco}</p>
-              <p>{empPrint.razaoSocial}</p>
-              <p>CNPJ: {empPrint.cnpjBanco}</p>
-              <p>Agência: {empPrint.agencia} | Conta Corrente: {empPrint.contaCorrente}</p>
-              {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): {empPrint.chavePix}</p>}
-            </div>
-          )}
 
-          {/* ===== Informações Complementares ===== */}
+
           <div className="mt-2 border rounded p-2 text-[10px]">
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
