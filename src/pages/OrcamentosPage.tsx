@@ -909,9 +909,9 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-left">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap print:hidden">{fmt(row.valorTotalBase)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold print:hidden">{fmt(row.valorTotalComImpostos)}</td>
-                  <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
+                  <td className="border p-1 text-right whitespace-nowrap font-bold hidden print:table-cell">{fmt(row.valorTotalBase)}</td>
                 </tr>
               ))}
             </tbody>
