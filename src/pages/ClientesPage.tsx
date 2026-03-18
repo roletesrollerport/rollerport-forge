@@ -135,7 +135,7 @@ export default function ClientesPage() {
           <DialogTrigger asChild>
             <Button onClick={() => setEditing(emptyCliente())} className="gap-2"><Plus className="h-4 w-4" /> {isRevenda ? 'Nova Revenda' : 'Novo Cliente'}</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
             <DialogHeader><DialogTitle>{editing.id ? 'Editar' : 'Novo(a)'} {isRevenda ? 'Revenda' : 'Cliente'}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><label className="text-xs text-muted-foreground">Nome da Empresa</label><Input value={editing.nome} onChange={e => setEditing({ ...editing, nome: e.target.value })} /></div>
