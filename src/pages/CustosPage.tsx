@@ -7,6 +7,7 @@ import { Plus, Trash2, Save, Eye, Edit, X, ImagePlus, Download, Upload } from 'l
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 type CustoTab = 'tubos' | 'eixos' | 'conjuntos' | 'spiraflex' | 'aneis' | 'encaixes';
 
@@ -53,6 +54,7 @@ export default function CustosPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewItem, setViewItem] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const custos = useCustos();
   const { tubos, eixos, conjuntos, revestimentos, encaixes, loading,
@@ -81,7 +83,7 @@ export default function CustosPage() {
   };
 
   const handleDeleteAll = async () => {
-    if (!confirm('Tem certeza que deseja excluir TODOS os itens desta aba?')) return;
+    // Confirm is handled by the ConfirmDialog opening before this function is called
     setSaving(true);
     try {
       if (activeTab === 'tubos') { await custos.deleteAllTubos(); setTubos([]); }
@@ -227,7 +229,7 @@ export default function CustosPage() {
 
       {/* Delete All button */}
       <div className="flex justify-end">
-        <Button variant="destructive" size="sm" onClick={handleDeleteAll} disabled={saving} className="gap-2">
+        <Button variant="destructive" size="sm" onClick={() => setShowDeleteAllConfirm(true)} disabled={saving} className="gap-2">
           <Trash2 className="h-4 w-4" /> Excluir Tudo ({tabs.find(t => t.key === activeTab)?.label})
         </Button>
       </div>
@@ -430,6 +432,14 @@ export default function CustosPage() {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={showDeleteAllConfirm}
+        onOpenChange={setShowDeleteAllConfirm}
+        title="Confirmar Excluão em Massa"
+        description={`Tem certeza que deseja excluir TODOS os itens da aba "${tabs.find(t => t.key === activeTab)?.label}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Confirmar Excluão"
+        onConfirm={() => { setShowDeleteAllConfirm(false); handleDeleteAll(); }}
+      />
     </div>
   );
 }

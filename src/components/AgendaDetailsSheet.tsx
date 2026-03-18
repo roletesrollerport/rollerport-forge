@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { AgendaItem, Cliente } from "@/lib/types";
@@ -19,6 +20,7 @@ import {
 import { store } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface AgendaDetailsSheetProps {
   item: AgendaItem | null;
@@ -45,6 +47,7 @@ export function AgendaDetailsSheet({
   onToggleComplete 
 }: AgendaDetailsSheetProps) {
   const navigate = useNavigate();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   if (!item) return null;
 
   const config = TYPE_CONFIG[item.tipo] || { color: 'text-amber-500', bg: 'bg-amber-50', icon: Calendar };
@@ -167,16 +170,19 @@ export function AgendaDetailsSheet({
           <Button 
             variant="ghost" 
             className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => {
-              if (confirm('Tem certeza que deseja excluir este compromisso?')) {
-                onDelete(item.id);
-                onOpenChange(false);
-              }
-            }}
+            onClick={() => setShowDeleteConfirm(true)}
           >
             <Trash2 className="h-4 w-4" /> Excluir Compromisso
           </Button>
         </SheetFooter>
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title="Confirmar Exclusão"
+          description="Tem certeza que deseja excluir este compromisso? Esta ação não pode ser desfeita."
+          confirmLabel="Confirmar Exclusão"
+          onConfirm={() => { onDelete(item.id); onOpenChange(false); setShowDeleteConfirm(false); }}
+        />
       </SheetContent>
     </Sheet>
   );

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const daysSince = (dateStr: string): number => {
   if (!dateStr) return 0;
@@ -34,6 +35,7 @@ export default function ProducaoPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const { usuarios: dbUsuarios } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
@@ -89,7 +91,12 @@ export default function ProducaoPage() {
     toast.success('O.S. cancelada. Pedido voltou para pendente.'); navigate('/pedidos');
   };
 
-  const deleteOS = (id: string) => { saveOrdens(ordens.filter(o => o.id !== id)); toast.success('O.S. excluída!'); };
+  const deleteOS = (id: string) => { setDeleteConfirmId(id); };
+  const confirmDeleteOS = () => {
+    if (!deleteConfirmId) return;
+    saveOrdens(ordens.filter(o => o.id !== deleteConfirmId));
+    setDeleteConfirmId(null); toast.success('O.S. excluída!');
+  };
 
   const openView = (os: OrdemServico) => { navigate(`/producao/${os.id}`); };
   const openEdit = (os: OrdemServico) => { setCurrent(os); setEditItems([...os.itens]); setView('edit'); };
@@ -430,6 +437,14 @@ export default function ProducaoPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}
+        title="Confirmar Exclusão de O.S."
+        description="Tem certeza que deseja excluir esta ordem de serviço? Esta ação não pode ser desfeita."
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={confirmDeleteOS}
+      />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { parseISO, isSameDay, isBefore, startOfDay, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Usuario } from '@/lib/types';
 import logo from '@/assets/logo.png';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import {
   Tooltip,
   TooltipContent,
@@ -32,6 +33,8 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
   const [currentTime, setCurrentTime] = useState(new Date());
   const [agendaItems, setAgendaItems] = useState<any[]>([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [confirmSync, setConfirmSync] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const notificacoes = store.getNotificacoes();
 
   // Real-time Clock logic
@@ -258,12 +261,7 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
 
           {/* Sync Button */}
           <button 
-            onClick={() => {
-              if(confirm('Deseja recarregar o sistema e forçar a busca de dados novos do banco?')) {
-                localStorage.clear();
-                window.location.reload();
-              }
-            }} 
+            onClick={() => setConfirmSync(true)} 
             className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#223c61] hover:bg-white transition-all shadow-sm shrink-0 min-h-0 min-w-0"
             title="Forçar Sincronização"
           >
@@ -352,11 +350,7 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
             </TooltipProvider>
             
             <button 
-              onClick={() => {
-                if (confirm('Deseja realmente sair do sistema?')) {
-                  onLogout();
-                }
-              }}
+              onClick={() => setConfirmLogout(true)}
               className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-lg sm:rounded-xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm shrink-0 min-h-0 min-w-0"
               title="Sair do Sistema"
             >
@@ -365,6 +359,26 @@ export function GlobalHeader({ currentUser, naoLidas, unreadChatCount, onLogout,
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmSync}
+        onOpenChange={setConfirmSync}
+        title="Recarregar Sistema"
+        description="Deseja recarregar o sistema e forçar a busca de dados novos do banco?"
+        confirmLabel="Recarregar"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={() => { localStorage.clear(); window.location.reload(); }}
+      />
+      <ConfirmDialog
+        open={confirmLogout}
+        onOpenChange={setConfirmLogout}
+        title="Sair do Sistema"
+        description="Deseja realmente sair do sistema?"
+        confirmLabel="Sair"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={onLogout}
+      />
     </header>
   );
 }

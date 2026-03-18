@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Trash2, ImagePlus, User, Eye, EyeOff, Edit, Phone, Mail, Loader2, Lock, LogOut, ShieldAlert, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const niveis: { value: NivelAcesso; label: string }[] = [
   { value: 'master', label: 'Master' },
@@ -57,6 +58,13 @@ export default function UsuariosPage() {
   const [viewingPass, setViewingPass] = useState<{ id: string, pass: string, isPlain: boolean } | null>(null);
   const [cardPassVisible, setCardPassVisible] = useState<Record<string, string | null>>({});
 
+  // ConfirmDialog states
+  const [confirmGenTemp, setConfirmGenTemp] = useState<string | null>(null);
+  const [confirmLogoutUser, setConfirmLogoutUser] = useState<string | null>(null);
+  const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
+  const [confirmToggle, setConfirmToggle] = useState<UsuarioDB | null>(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<string | null>(null);
+
   const handleViewPass = async (userId: string) => {
     try {
       const data = await getUserCredentials(userId);
@@ -67,7 +75,6 @@ export default function UsuariosPage() {
   };
 
   const handleGenTempPass = async (userId: string) => {
-    if (!confirm('Deseja gerar uma nova senha temporária para este usuário? A senha atual será invalidada.')) return;
     try {
       const data = await generateTempPassword(userId);
       toast.success(`Nova senha gerada com sucesso!`);
@@ -78,7 +85,6 @@ export default function UsuariosPage() {
   };
 
   const handleLogoutUser = async (userId: string) => {
-    if (!confirm('Deseja deslogar este usuário remotamente?')) return;
     try {
       await logoutUser(userId);
       toast.success('Solicitação de logout enviada!');
@@ -88,7 +94,6 @@ export default function UsuariosPage() {
   };
 
   const handleLogoutAll = async () => {
-    if (!confirm('Deseja deslogar TODOS os usuários comuns do sistema?')) return;
     try {
       await logoutAllCommonUsers();
       toast.success('Todos os usuários comuns foram deslogados!');
@@ -99,7 +104,6 @@ export default function UsuariosPage() {
 
   const handleToggleActive = async (u: UsuarioDB) => {
     const novoStatus = !u.ativo;
-    if (!confirm(`Deseja ${novoStatus ? 'ativar' : 'bloquear'} o usuário ${u.nome}?`)) return;
     try {
       await saveUsuario({ ...u, ativo: novoStatus });
       toast.success(`Usuário ${novoStatus ? 'ativado' : 'bloqueado'}!`);
@@ -215,7 +219,7 @@ export default function UsuariosPage() {
         </div>
         {isMaster && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleLogoutAll} className="gap-2 text-amber-600 border-amber-200 hover:bg-amber-50">
+            <Button variant="outline" onClick={() => setConfirmLogoutAll(true)} className="gap-2 text-amber-600 border-amber-200 hover:bg-amber-50">
               <LogOut className="h-4 w-4" /> Deslogar Todos
             </Button>
             <Dialog open={open} onOpenChange={setOpen}>
@@ -436,12 +440,12 @@ export default function UsuariosPage() {
               <div className="mt-4 pt-3 border-t flex gap-1 justify-start flex-wrap">
                 <button onClick={() => openEdit(u)} disabled={openingEdit} className="p-1.5 rounded bg-muted/50 hover:bg-muted text-primary disabled:opacity-50" title="Editar"><Edit className="h-4 w-4" /></button>
                 <button onClick={() => handleViewPass(u.id)} className="p-1.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40" title="Ver Senha"><Eye className="h-4 w-4" /></button>
-                <button onClick={() => handleGenTempPass(u.id)} className="p-1.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40" title="Gerar Senha Temporária"><Lock className="h-4 w-4" /></button>
-                <button onClick={() => handleToggleActive(u)} className={`p-1.5 rounded ${u.ativo ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:hover:bg-orange-900/40' : 'bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
+                <button onClick={() => setConfirmGenTemp(u.id)} className="p-1.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40" title="Gerar Senha Temporária"><Lock className="h-4 w-4" /></button>
+                <button onClick={() => setConfirmToggle(u)} className={`p-1.5 rounded ${u.ativo ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:hover:bg-orange-900/40' : 'bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40'}`} title={u.ativo ? 'Bloquear' : 'Ativar'}>
                   {u.ativo ? <ShieldAlert className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
                 </button>
-                <button onClick={() => handleLogoutUser(u.id)} className="p-1.5 rounded bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40" title="Forçar Logout"><LogOut className="h-4 w-4" /></button>
-                <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => setConfirmLogoutUser(u.id)} className="p-1.5 rounded bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40" title="Forçar Logout"><LogOut className="h-4 w-4" /></button>
+                <button onClick={() => setConfirmDeleteUser(u.id)} className="p-1.5 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
               </div>
             )}
           </div>
@@ -450,6 +454,50 @@ export default function UsuariosPage() {
           <div className="col-span-full text-center py-12 text-muted-foreground">Nenhum usuário cadastrado.</div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!confirmGenTemp}
+        onOpenChange={(open) => { if (!open) setConfirmGenTemp(null); }}
+        title="Gerar Senha Temporária"
+        description="Deseja gerar uma nova senha temporária para este usuário? A senha atual será invalidada."
+        confirmLabel="Gerar Senha"
+        variant="warning"
+        onConfirm={() => { if (confirmGenTemp) handleGenTempPass(confirmGenTemp); setConfirmGenTemp(null); }}
+      />
+      <ConfirmDialog
+        open={!!confirmLogoutUser}
+        onOpenChange={(open) => { if (!open) setConfirmLogoutUser(null); }}
+        title="Forçar Logout"
+        description="Deseja deslogar este usuário remotamente?"
+        confirmLabel="Deslogar"
+        variant="warning"
+        onConfirm={() => { if (confirmLogoutUser) handleLogoutUser(confirmLogoutUser); setConfirmLogoutUser(null); }}
+      />
+      <ConfirmDialog
+        open={confirmLogoutAll}
+        onOpenChange={setConfirmLogoutAll}
+        title="Deslogar Todos"
+        description="Deseja deslogar TODOS os usuários comuns do sistema?"
+        confirmLabel="Deslogar Todos"
+        variant="warning"
+        onConfirm={() => { handleLogoutAll(); setConfirmLogoutAll(false); }}
+      />
+      <ConfirmDialog
+        open={!!confirmToggle}
+        onOpenChange={(open) => { if (!open) setConfirmToggle(null); }}
+        title={confirmToggle?.ativo ? 'Bloquear Usuário' : 'Ativar Usuário'}
+        description={`Deseja ${confirmToggle?.ativo ? 'bloquear' : 'ativar'} o usuário ${confirmToggle?.nome}?`}
+        confirmLabel={confirmToggle?.ativo ? 'Bloquear' : 'Ativar'}
+        variant={confirmToggle?.ativo ? 'warning' : 'default'}
+        onConfirm={() => { if (confirmToggle) handleToggleActive(confirmToggle); setConfirmToggle(null); }}
+      />
+      <ConfirmDialog
+        open={!!confirmDeleteUser}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteUser(null); }}
+        title="Confirmar Exclusão"
+        description="Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita."
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={() => { if (confirmDeleteUser) handleDelete(confirmDeleteUser); setConfirmDeleteUser(null); }}
+      />
     </div>
   );
 }

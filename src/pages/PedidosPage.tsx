@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import logo from '@/assets/logo.png';
 
 const daysSince = (dateStr: string): number => {
@@ -172,6 +173,10 @@ export default function PedidosPage() {
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackingVendor, setTrackingVendor] = useState('');
 
+  // Confirm delete states
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteOrcConfirmId, setDeleteOrcConfirmId] = useState<string | null>(null);
+
   const { usuarios: dbUsuarios } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
@@ -248,8 +253,16 @@ export default function PedidosPage() {
     toast.success('Pedido cancelado. Orçamento voltou para edição.'); navigate('/orcamentos');
   };
 
-  const deletePedido = (id: string) => {
-    const updated = pedidos.filter(p => p.id !== id); store.savePedidos(updated); setPedidos(updated); toast.success('Pedido excluído!');
+  const deletePedido = (id: string) => { setDeleteConfirmId(id); };
+  const confirmDeletePedido = () => {
+    if (!deleteConfirmId) return;
+    const updated = pedidos.filter(p => p.id !== deleteConfirmId); store.savePedidos(updated); setPedidos(updated);
+    setDeleteConfirmId(null); toast.success('Pedido excluído!');
+  };
+  const confirmDeleteOrc = () => {
+    if (!deleteOrcConfirmId) return;
+    const updated = orcamentos.filter(x => x.id !== deleteOrcConfirmId); store.saveOrcamentos(updated); setOrcamentos(updated);
+    setDeleteOrcConfirmId(null); toast.success('Orçamento excluído!');
   };
 
   const gerarOS = (pedido: Pedido) => {
@@ -430,7 +443,7 @@ export default function PedidosPage() {
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => navigate('/orcamentos')} className="p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-4 w-4" /></button>
                         <button onClick={() => gerarPedido(o)} className="p-1.5 rounded hover:bg-muted text-primary" title="Gerar Pedido"><ShoppingCart className="h-4 w-4" /></button>
-                        <button onClick={() => { const updated = orcamentos.filter(x => x.id !== o.id); store.saveOrcamentos(updated); setOrcamentos(updated); toast.success('Orçamento excluído!'); }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={() => setDeleteOrcConfirmId(o.id)} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -541,6 +554,22 @@ export default function PedidosPage() {
         pedidos={pedidos}
         orcamentos={orcamentos}
         onMetaUpdate={() => {}} // Not strictly needed here as we don't show meta cards in PedidosPage
+      />
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}
+        title="Confirmar Exclusão de Pedido"
+        description="Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita."
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={confirmDeletePedido}
+      />
+      <ConfirmDialog
+        open={!!deleteOrcConfirmId}
+        onOpenChange={(open) => { if (!open) setDeleteOrcConfirmId(null); }}
+        title="Confirmar Exclusão de Orçamento"
+        description="Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={confirmDeleteOrc}
       />
     </div>
   );

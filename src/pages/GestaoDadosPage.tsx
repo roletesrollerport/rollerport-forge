@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Download, Upload, Share2, AlertCircle, CheckCircle2, Loader2, Database, FileCode, PlayCircle, Eye, EyeOff, Settings, Clipboard, Check, Github, LogOut, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 // Tables to export/import in dependency order
 const TABLES_CONFIG = [
@@ -33,6 +34,9 @@ const TABLES_CONFIG = [
 function GitHubConnection() {
   const [connection, setConnection] = useState<{ user: string, repo: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmConnect, setConfirmConnect] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [confirmDownload, setConfirmDownload] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('rp_github_connection');
@@ -40,7 +44,6 @@ function GitHubConnection() {
   }, []);
 
   const handleConnect = () => {
-    if (!window.confirm("AVISO DE SEGURANÇA: Vincular o projeto ao GitHub requer permissões de acesso. Deseja prosseguir com a conexão?")) return;
     setLoading(true);
     // Mock authentication flow
     setTimeout(() => {
@@ -53,16 +56,13 @@ function GitHubConnection() {
   };
 
   const handleDisconnect = () => {
-    if (window.confirm("Atenção: Desconectar o GitHub não apaga seu código na nuvem, mas impede atualizações automáticas. Deseja continuar?")) {
-      setConnection(null);
-      localStorage.removeItem('rp_github_connection');
-      toast.info("GitHub desconectado.");
-    }
+    setConnection(null);
+    localStorage.removeItem('rp_github_connection');
+    toast.info("GitHub desconectado.");
   };
 
   const handleDownloadZip = async () => {
     if (!connection) return;
-    if (!window.confirm("AVISO DE SEGURANÇA: Você está baixando o código-fonte completo (.ZIP). Certifique-se de que este computador é seguro. Prosseguir?")) return;
     
     toast.loading("Preparando download do código-fonte...");
     try {
@@ -103,7 +103,7 @@ function GitHubConnection() {
               variant="destructive" 
               size="sm" 
               className="h-8 gap-2"
-              onClick={handleDisconnect}
+              onClick={() => setConfirmDisconnect(true)}
             >
               <LogOut className="h-4 w-4" />
               Desconectar GitHub
@@ -134,7 +134,7 @@ function GitHubConnection() {
             {!connection ? (
               <Button 
                 className="bg-slate-900 hover:bg-slate-800 text-white gap-2 px-6"
-                onClick={handleConnect}
+                onClick={() => setConfirmConnect(true)}
                 disabled={loading}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
@@ -143,7 +143,7 @@ function GitHubConnection() {
             ) : (
               <Button 
                 className="bg-[#238636] hover:bg-[#2ea043] text-white gap-2 px-6 font-bold shadow-sm border border-[#238636]/20 transition-all duration-200 active:scale-95"
-                onClick={handleDownloadZip}
+                onClick={() => setConfirmDownload(true)}
               >
                 <Download className="h-4 w-4" />
                 Baixar Código-Fonte (.ZIP)
@@ -152,12 +152,44 @@ function GitHubConnection() {
           </div>
         </div>
       </CardContent>
+
+      <ConfirmDialog
+        open={confirmConnect}
+        onOpenChange={setConfirmConnect}
+        title="Conectar ao GitHub"
+        description="AVISO DE SEGURANÇA: Vincular o projeto ao GitHub requer permissões de acesso. Deseja prosseguir com a conexão?"
+        confirmLabel="Conectar"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={() => { setConfirmConnect(false); handleConnect(); }}
+      />
+      <ConfirmDialog
+        open={confirmDisconnect}
+        onOpenChange={setConfirmDisconnect}
+        title="Desconectar GitHub"
+        description="Atenção: Desconectar o GitHub não apaga seu código na nuvem, mas impede atualizações automáticas. Deseja continuar?"
+        confirmLabel="Desconectar"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={() => { setConfirmDisconnect(false); handleDisconnect(); }}
+      />
+      <ConfirmDialog
+        open={confirmDownload}
+        onOpenChange={setConfirmDownload}
+        title="Baixar Código-Fonte"
+        description="AVISO DE SEGURANÇA: Você está baixando o código-fonte completo (.ZIP). Certifique-se de que este computador é seguro. Prosseguir?"
+        confirmLabel="Baixar"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={() => { setConfirmDownload(false); handleDownloadZip(); }}
+      />
     </Card>
   );
 }
 
 function EnvironmentSettings() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [confirmEnvBackup, setConfirmEnvBackup] = useState(false);
   
   // Extract env variables with safety
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'Não configurado';
@@ -178,8 +210,6 @@ function EnvironmentSettings() {
   };
 
   const generateEnvBackup = () => {
-    if (!window.confirm("Atenção: Você está gerando um arquivo com credenciais de acesso ao banco. Mantenha este arquivo em local seguro. Continuar?")) return;
-    
     const content = `VITE_SUPABASE_URL=${supabaseUrl}\nVITE_SUPABASE_ANON_KEY=${supabaseAnonKey}\nVITE_SUPABASE_PROJECT_ID=${projectId}`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -220,7 +250,7 @@ function EnvironmentSettings() {
               variant="outline" 
               size="sm" 
               className="text-[10px] h-7 font-bold uppercase tracking-wider bg-white"
-              onClick={generateEnvBackup}
+              onClick={() => setConfirmEnvBackup(true)}
             >
               GERAR ARQUIVO .env
             </Button>
@@ -277,6 +307,16 @@ function EnvironmentSettings() {
           </p>
         </div>
       </CardContent>
+      <ConfirmDialog
+        open={confirmEnvBackup}
+        onOpenChange={setConfirmEnvBackup}
+        title="Gerar Arquivo .env"
+        description="Atenção: Você está gerando um arquivo com credenciais de acesso ao banco. Mantenha este arquivo em local seguro. Continuar?"
+        confirmLabel="Gerar Arquivo"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={() => { setConfirmEnvBackup(false); generateEnvBackup(); }}
+      />
     </Card>
   );
 }
@@ -294,6 +334,12 @@ export default function GestaoDadosPage() {
   const [targetUrl, setTargetUrl] = useState("");
   const [targetKey, setTargetKey] = useState("");
   const [isSimulation, setIsSimulation] = useState(false);
+
+  // Confirm dialog states
+  const [confirmExport, setConfirmExport] = useState(false);
+  const [confirmMigration, setConfirmMigration] = useState(false);
+  const [confirmVoltar, setConfirmVoltar] = useState(false);
+  const [confirmClearLogs, setConfirmClearLogs] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -382,7 +428,6 @@ export default function GestaoDadosPage() {
 
   // --- EXPORT logic ---
   const handleExport = async () => {
-    if (!window.confirm("RISCO DE EXPOSIÇÃO: Deseja baixar um backup completo da base de dados em JSON? Mantenha este arquivo em local seguro. Confirmar exportação?")) return;
     setExporting(true);
     clearLogs();
     addLog("Iniciando exportação consolidada e abstrata...");
@@ -429,8 +474,6 @@ export default function GestaoDadosPage() {
 
   // --- BRIDGE MIGRATION / SQL GENERATOR ---
   const handleUniversalMigration = async () => {
-    if (!window.confirm("ALERTA DE SEGURANÇA: Esta ação pode sobrescrever dados no destino ou gerar scripts sensíveis. Tem certeza que deseja prosseguir?")) return;
-
     if (targetType === 'supabase' && (!targetUrl || !targetKey)) {
       toast.error("Preencha a URL e a KEY do Supabase de destino.");
       return;
@@ -516,9 +559,7 @@ export default function GestaoDadosPage() {
           <p className="text-muted-foreground">Abstração de dados e migração para múltiplos motores de banco.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => {
-            if (window.confirm("Sair da Gestão de Dados? Riscos: Logs de operação não salvos serão perdidos.")) navigate("/");
-          }}>Voltar</Button>
+          <Button variant="outline" onClick={() => setConfirmVoltar(true)}>Voltar</Button>
         </div>
       </div>
 
@@ -535,7 +576,7 @@ export default function GestaoDadosPage() {
           <CardContent>
             <Button 
               className="w-full bg-blue-600 hover:bg-blue-700" 
-              onClick={handleExport} 
+              onClick={() => setConfirmExport(true)} 
               disabled={exporting || migrating}
             >
               {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
@@ -610,7 +651,7 @@ export default function GestaoDadosPage() {
               <Button 
                 variant={isSimulation ? "secondary" : "default"}
                 className={`flex-1 ${!isSimulation ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
-                onClick={handleUniversalMigration}
+                onClick={() => setConfirmMigration(true)}
                 disabled={exporting || migrating}
               >
                 {migrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
@@ -641,9 +682,7 @@ export default function GestaoDadosPage() {
             </div>
             <span className="text-[10px] font-mono text-slate-400 ml-4 font-bold tracking-widest uppercase">Universal Migrator Engine v2.0 - Output</span>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] text-slate-500 hover:text-white" onClick={() => {
-            if (window.confirm("Deseja limpar o histórico de logs do motor de migração?")) clearLogs();
-          }}>CLEAR_LOG</Button>
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] text-slate-500 hover:text-white" onClick={() => setConfirmClearLogs(true)}>CLEAR_LOG</Button>
         </div>
         <CardContent className="p-4 font-mono text-[11px] leading-relaxed max-h-[450px] overflow-y-auto custom-scrollbar bg-gradient-to-b from-transparent to-slate-900/50">
           {logs.length === 0 && (
@@ -677,6 +716,42 @@ export default function GestaoDadosPage() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
       `}</style>
+      <ConfirmDialog
+        open={confirmExport}
+        onOpenChange={setConfirmExport}
+        title="Exportar Backup"
+        description="RISCO DE EXPOSIÇÃO: Deseja baixar um backup completo da base de dados em JSON? Mantenha este arquivo em local seguro."
+        confirmLabel="Exportar"
+        variant="warning"
+        onConfirm={() => { setConfirmExport(false); handleExport(); }}
+      />
+      <ConfirmDialog
+        open={confirmMigration}
+        onOpenChange={setConfirmMigration}
+        title="Confirmar Migração"
+        description="ALERTA DE SEGURANÇA: Esta ação pode sobrescrever dados no destino ou gerar scripts sensíveis. Tem certeza que deseja prosseguir?"
+        confirmLabel="Prosseguir"
+        variant="warning"
+        onConfirm={() => { setConfirmMigration(false); handleUniversalMigration(); }}
+      />
+      <ConfirmDialog
+        open={confirmVoltar}
+        onOpenChange={setConfirmVoltar}
+        title="Sair da Gestão de Dados"
+        description="Logs de operação não salvos serão perdidos. Deseja sair?"
+        confirmLabel="Sair"
+        variant="warning"
+        onConfirm={() => { setConfirmVoltar(false); navigate("/"); }}
+      />
+      <ConfirmDialog
+        open={confirmClearLogs}
+        onOpenChange={setConfirmClearLogs}
+        title="Limpar Logs"
+        description="Deseja limpar o histórico de logs do motor de migração?"
+        confirmLabel="Limpar"
+        variant="warning"
+        onConfirm={() => { setConfirmClearLogs(false); clearLogs(); }}
+      />
     </div>
   );
 }

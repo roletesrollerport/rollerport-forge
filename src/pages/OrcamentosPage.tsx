@@ -26,6 +26,7 @@ import logoRollerport from '@/assets/logo-rollerport.png';
 import logoFerreira from '@/assets/logo-ferreira.png';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
 import ImagePreviewModal from '@/components/ImagePreviewModal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const emptyItem = (): ItemOrcamento => ({
   id: '', tipoRolete: '' as any, quantidade: '' as any, diametroTubo: '' as any, paredeTubo: '' as any, comprimentoTubo: '' as any,
@@ -235,6 +236,9 @@ export default function OrcamentosPage() {
 
   // Image preview modal state for rolete thumbnails
   const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+
+  // Confirm delete dialog state
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const [clientes, setClientes] = useState(store.getClientes());
   const [revendas, setRevendas] = useState(store.getFornecedores());
@@ -484,8 +488,13 @@ export default function OrcamentosPage() {
   };
 
   const deleteOrcamento = (id: string) => {
-    const updated = orcamentos.filter(o => o.id !== id);
+    setDeleteConfirmId(id);
+  };
+  const confirmDeleteOrcamento = () => {
+    if (!deleteConfirmId) return;
+    const updated = orcamentos.filter(o => o.id !== deleteConfirmId);
     store.saveOrcamentos(updated); setOrcamentos(updated);
+    setDeleteConfirmId(null);
     toast.success('Orçamento removido!');
   };
 
@@ -1701,12 +1710,8 @@ export default function OrcamentosPage() {
           </div>
         )}
 
-        {/* Total + Save */}
-        <div className="border-2 border-primary rounded-lg p-4 flex justify-between items-center">
-          <span className="font-bold text-lg">Total do Orçamento</span>
-          <span className="font-bold text-lg text-primary">{fmt(totalGeral)}</span>
-        </div>
-        <div className="flex gap-2">
+        {/* Save + Cancel */}
+        <div className="flex gap-2 mt-2">
           <Button onClick={handleSave} className="gap-2">Salvar Orçamento</Button>
           <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
         </div>
@@ -1816,12 +1821,12 @@ export default function OrcamentosPage() {
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="text-left p-3 font-medium">Número</th>
-              <th className="text-left p-3 font-medium">Empresa</th>
+              <th className="text-left p-3 font-medium">Cliente</th>
+              <th className="text-left p-3 font-medium hidden md:table-cell">Vendedor / Usuário</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Comprador</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Data</th>
               <th className="text-right p-3 font-medium">Valor</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="p-3 w-40">Ações</th>
+              <th className="text-center p-3 font-medium">Status</th>
+              <th className="text-center p-3 w-40">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -1829,10 +1834,10 @@ export default function OrcamentosPage() {
               <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30">
                 <td className="p-3 font-mono font-medium">{o.numero}</td>
                 <td className="p-3">{o.clienteNome || 'Sem cliente'}</td>
+                <td className="p-3 hidden md:table-cell text-muted-foreground">{o.vendedor || '-'}</td>
                 <td className="p-3 hidden md:table-cell text-muted-foreground">{o.compradorNome || '-'}</td>
-                <td className="p-3 hidden md:table-cell text-muted-foreground">{o.dataOrcamento || o.createdAt}</td>
                 <td className="p-3 text-right font-mono font-medium">{fmt(o.valorTotal)}</td>
-                <td className="p-3">
+                <td className="p-3 text-center">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                     o.status === 'APROVADO' ? 'bg-success/10 text-success' :
                     o.status === 'ENVIADO' ? 'bg-info/10 text-info' :
@@ -1842,7 +1847,7 @@ export default function OrcamentosPage() {
                   }`}>{o.status}</span>
                 </td>
                 <td className="p-3">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-center gap-1">
                     <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Visualizar"><Eye className="h-4 w-4" /></button>
                     <button onClick={() => openEdit(o)} className="p-1 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
                     <button onClick={() => { setViewOrc(o); setView('print'); }} className="p-1 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
@@ -1865,6 +1870,14 @@ export default function OrcamentosPage() {
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}
+        title="Confirmar Exclusão"
+        description="Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
+        confirmLabel="Confirmar Exclusão"
+        onConfirm={confirmDeleteOrcamento}
+      />
     </div>
   );
 }
