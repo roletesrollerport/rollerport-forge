@@ -807,6 +807,24 @@ export default function OrcamentosPage() {
           <Button variant="outline" onClick={() => handleSendEmail(viewOrc)} className="gap-2">
             <Mail className="h-4 w-4" /> Enviar por E-mail
           </Button>
+          <Select 
+            value={viewOrc.empresaEmitente || 'rollerport'} 
+            onValueChange={(value) => {
+              const updated = { ...viewOrc, empresaEmitente: value as EmpresaEmitente };
+              setViewOrc(updated);
+              const all = store.getOrcamentos();
+              const idx = all.findIndex(o => o.id === viewOrc.id);
+              if (idx >= 0) { all[idx] = updated; store.saveOrcamentos(all); }
+            }}
+          >
+            <SelectTrigger className="h-9 w-[220px]">
+              <SelectValue placeholder="Empresa emissora" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rollerport">Rollerport</SelectItem>
+              <SelectItem value="ferreira_roletes">Ferreira Roletes</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="bg-white text-black border rounded-lg p-3 mx-auto print:border-0 print:shadow-none print:p-2" style={{ maxWidth: '1200px' }}>
