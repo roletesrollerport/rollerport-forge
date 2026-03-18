@@ -928,8 +928,10 @@ export default function OrcamentosPage() {
               <tr className="bg-gray-100 font-bold">
                 <td className="border p-1 text-right" colSpan={4}>Valor Total</td>
                 <td className="border p-1 text-center">{allPrintItems.reduce((s, r) => s + r.qtd, 0)}</td>
-                <td className="border p-1"></td>
+                <td className="border p-1 hidden print:table-cell"></td>
+                <td className="border p-1 print:hidden"></td>
                 <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalSemImpostos)}</td>
+                <td className="border p-1 print:hidden"></td>
                 <td className="border p-1 text-right print:hidden">{fmt(totals.valorTotalComImpostos)}</td>
                 <td className="border p-1 text-right hidden print:table-cell">{fmt(totals.valorTotalSemImpostos)}</td>
               </tr>
