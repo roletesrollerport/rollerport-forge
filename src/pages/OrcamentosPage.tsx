@@ -813,7 +813,7 @@ export default function OrcamentosPage() {
           {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
-              <img src={empPrint.logo} alt={empPrint.nome} className="h-16 object-contain" />
+              <img src={empPrint.logo} alt={empPrint.nome} className="h-24 w-auto object-contain" />
               <div>
                 <h2 className="text-base font-bold leading-tight">{empPrint.nome}</h2>
                 <p className="text-[10px] font-semibold">{empPrint.subtitulo}</p>
