@@ -893,7 +893,7 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{String(row.item).padStart(2, '0')}</td>
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codigo}>{row.codigo}</td>
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codExterno}>{row.codExterno || '-'}</td>
-                  <td className="border p-1 text-left break-words whitespace-pre-wrap">{row.descricao}</td>
+                  <td className="border p-1 text-left whitespace-nowrap">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
@@ -930,16 +930,29 @@ export default function OrcamentosPage() {
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
             <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                {/* Coluna 1 */}
+              <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                {/* Coluna 1 - Condições de Pagamento */}
                 <div className="space-y-1">
-                  <p>Condição de Pagamento: <strong>{viewOrc.condicaoPagamento || '-'}{viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}{viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento ? ` – Prazo: ${(viewOrc as any).prazoPagamento}` : ''}</strong></p>
+                  <p className="font-bold text-[10px] underline mb-1">Condições de Pagamento</p>
+                  <p><strong>{viewOrc.condicaoPagamento || '-'}</strong></p>
+                  {viewOrc.condicaoPagamento?.toLowerCase().includes('boleto') && (viewOrc as any).prazoPagamento && (
+                    <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
+                  )}
+                  {viewOrc.condicaoPagamento?.toLowerCase().includes('cheque') && (viewOrc as any).prazoPagamento && (
+                    <p>Prazo: <strong>{(viewOrc as any).prazoPagamento}</strong></p>
+                  )}
+                </div>
+                {/* Coluna 2 - Informativos do Orçamento */}
+                <div className="space-y-1">
+                  <p className="font-bold text-[10px] underline mb-1">Informativos do Orçamento</p>
                   <p>Prazo de Entrega: <strong>{viewOrc.previsaoEntrega ? `${viewOrc.previsaoEntrega} Dias Úteis` : '-'}</strong></p>
                   <p>Frete: <strong>{viewOrc.tipoFrete === 'CIF' ? 'CIF (vendedor)' : 'FOB - Retira em Franco da Rocha/SP'}</strong></p>
                   {viewOrc.observacao && <p>Observação: <strong>{viewOrc.observacao}</strong></p>}
                 </div>
-                {/* Coluna 2 */}
+                {/* Coluna 3 - Tributos */}
                 <div className="space-y-1">
+                  <p className="font-bold text-[10px] underline mb-1">Tributos</p>
+                  <p>Regime Tributário: <strong>{isSimplesNacional ? 'Simples Nacional' : 'Lucro Presumido'}</strong></p>
                   <p>NCM: <strong>8431.39.00</strong></p>
                   <p>CST: <strong>00</strong></p>
                   {isSimplesNacional ? (
@@ -1549,15 +1562,11 @@ export default function OrcamentosPage() {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-muted/50 text-primary uppercase text-[10px] font-bold">
-                  <th className="border p-2 text-center w-8">#</th>
+                  <th className="border p-2 text-center w-8">Item</th>
                   <th className="border p-2 text-left">Código</th>
                   <th className="border p-2 text-left">Descrição</th>
                   <th className="border p-2 text-center w-12">Qtd</th>
                   <th className="border p-2 text-right">Vlr Unit</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">PIS%</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">COF%</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">ICM%</th>
-                  <th className="border p-2 text-center w-12 text-[9px]">IPI%</th>
                   <th className="border p-2 text-right">Total Item</th>
                   <th className="border p-2 text-center w-24">Ações</th>
                 </tr>
@@ -1576,13 +1585,9 @@ export default function OrcamentosPage() {
                     <tr key={item.id} className="hover:bg-muted/30 border-b">
                       <td className="p-2 text-center font-mono">{i + 1}</td>
                       <td className="p-2 font-medium">{codigo}</td>
-                      <td className="p-2 text-[11px] max-w-[200px] truncate" title={descricao}>{descricao}</td>
+                      <td className="p-2 text-[11px]" title={descricao}>{descricao}</td>
                       <td className="p-2 text-center font-bold">{item.quantidade}</td>
                       <td className="p-2 text-right">{fmt(valorUnit)}</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqPIS}%</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqCOFINS}%</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqICMS}%</td>
-                      <td className="p-2 text-center text-muted-foreground">{aliqIPI}%</td>
                       <td className="p-2 text-right font-bold text-primary">{fmt(item.valorTotal)}</td>
                       <td className="p-2 text-center">
                         <div className="flex justify-center gap-1">
