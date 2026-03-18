@@ -893,7 +893,7 @@ export default function OrcamentosPage() {
                   <td className="border p-1 text-center whitespace-nowrap">{String(row.item).padStart(2, '0')}</td>
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codigo}>{row.codigo}</td>
                   <td className="border p-1 text-center whitespace-nowrap truncate" title={row.codExterno}>{row.codExterno || '-'}</td>
-                  <td className="border p-1 text-left break-words whitespace-pre-wrap">{row.descricao}</td>
+                  <td className="border p-1 text-left whitespace-nowrap">{row.descricao}</td>
                   <td className="border p-1 text-center whitespace-nowrap font-bold">{row.qtd}</td>
                   <td className="border p-1 text-right whitespace-nowrap">{fmt(row.valorLiquidoUnit)}</td>
                   <td className="border p-1 text-right whitespace-nowrap font-bold">{fmt(row.valorLiquidoUnit * row.qtd)}</td>
