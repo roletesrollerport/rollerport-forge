@@ -972,7 +972,7 @@ export default function OrcamentosPage() {
             <h3 className="text-center font-bold text-xs mb-1">INFORMAÇÕES COMPLEMENTARES</h3>
             
             <div className="border rounded p-2 mb-2 bg-gray-50 text-[9px]">
-              <div className="grid grid-cols-3 gap-x-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
                 {/* Coluna 1 - Condições de Pagamento */}
                 <div className="space-y-1">
                   <p className="font-bold text-[10px] underline mb-1">Condições de Pagamento</p>
