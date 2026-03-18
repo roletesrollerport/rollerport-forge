@@ -955,7 +955,11 @@ export default function OrcamentosPage() {
                     <>
                       <p>PIS: <strong>0,65%</strong></p>
                       <p>COFINS: <strong>3%</strong></p>
-                      <p>ICMS: <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong> | IPI: <strong>Isento</strong></p>
+                      <p>ICMS Origem (SP → {destinoUF}): <strong>{(taxaICMSOrig * 100).toFixed(0)}%</strong></p>
+                      {taxaICMSDest > 0 && (
+                        <p>ICMS Destino ({destinoUF}): <strong>{(taxaICMSDest * 100).toFixed(1)}%</strong></p>
+                      )}
+                      <p>IPI: <strong>Isento</strong></p>
                     </>
                   )}
                 </div>
