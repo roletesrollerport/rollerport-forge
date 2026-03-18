@@ -269,7 +269,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   ];
 
   return (
-    <div className="flex bg-[#F1F5F9] h-screen overflow-hidden p-[10px] gap-[10px] relative">
+    <div className="flex bg-[#F1F5F9] h-screen overflow-hidden p-1.5 sm:p-[10px] gap-1.5 sm:gap-[10px] relative">
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex flex-col bg-white border border-[#E2E8F0] w-[92px] rounded-2xl shadow-sm z-50 h-full shrink-0 overflow-hidden">
 
