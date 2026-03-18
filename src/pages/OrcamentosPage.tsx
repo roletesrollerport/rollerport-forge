@@ -899,8 +899,10 @@ export default function OrcamentosPage() {
                 <th className="border p-1 text-center whitespace-nowrap">CÓDIGO CLIENTE</th>
                 <th className="border p-1 text-left" style={{ minWidth: '120px' }}>DESCRIÇÃO</th>
                 <th className="border p-1 text-center whitespace-nowrap">QTD</th>
-                <th className="border p-1 text-right whitespace-nowrap">VLR UNIT.</th>
+                <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR UNIT.</th>
+                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR UNIT. S/ IMP.</th>
                 <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL S/ IMP.</th>
+                <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR UNIT. C/ IMP.</th>
                 <th className="border p-1 text-right whitespace-nowrap print:hidden">VLR TOTAL C/ IMP.</th>
                 <th className="border p-1 text-right whitespace-nowrap hidden print:table-cell">VLR TOTAL</th>
               </tr>
