@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
@@ -25,6 +25,7 @@ import logo from '@/assets/logo.png';
 import logoRollerport from '@/assets/logo-rollerport.png';
 import logoFerreira from '@/assets/logo-ferreira.png';
 import qrcode from '@/assets/qrcode-rollerport.jpeg';
+import ImagePreviewModal from '@/components/ImagePreviewModal';
 
 const emptyItem = (): ItemOrcamento => ({
   id: '', tipoRolete: '' as any, quantidade: '' as any, diametroTubo: '' as any, paredeTubo: '' as any, comprimentoTubo: '' as any,
@@ -231,6 +232,9 @@ export default function OrcamentosPage() {
 
   // Histórico de orçamentos do cliente
   const [showClienteHistory, setShowClienteHistory] = useState(false);
+
+  // Image preview modal state for rolete thumbnails
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
 
   const [clientes, setClientes] = useState(store.getClientes());
   const [revendas, setRevendas] = useState(store.getFornecedores());
@@ -1521,11 +1525,14 @@ export default function OrcamentosPage() {
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Tipo do Encaixe</label>
-                <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Selecione...</option>
-                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Selecione...</option>
+                    {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
+                  </select>
+                  {(() => { const img = encaixes.find(e => e.tipo === roleteItem.tipoEncaixe)?.imagem; return img ? <img src={img} alt="Encaixe" className="h-9 w-9 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-primary transition-all shrink-0" onClick={() => setPreviewImage({ src: img, title: `Encaixe – ${roleteItem.tipoEncaixe}` })} /> : null; })()}
+                </div>
               </div>
               {roleteItem.tipoEncaixe && roleteItem.tipoEncaixe !== 'FAÇO' && (
                 <div>
@@ -1535,29 +1542,38 @@ export default function OrcamentosPage() {
               )}
               <div>
                 <label className="text-xs text-primary font-medium">Conjunto/Kits</label>
-                <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Selecione...</option>
-                  {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Selecione...</option>
+                    {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
+                  </select>
+                  {(() => { const img = conjuntos.find(c => c.codigo === roleteItem.conjunto)?.imagem; return img ? <img src={img} alt="Conjunto" className="h-9 w-9 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-primary transition-all shrink-0" onClick={() => setPreviewImage({ src: img, title: `Conjunto – ${roleteItem.conjunto}` })} /> : null; })()}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Revest. Spiraflex</label>
-                <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('SPIRAFLEX') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
-                  onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'SPIRAFLEX' : '', quantidadeAneis: 0 })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Sem Spiraflex</option>
-                  {revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('SPIRAFLEX') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                    onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'SPIRAFLEX' : '', quantidadeAneis: 0 })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Sem Spiraflex</option>
+                    {revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+                  </select>
+                  {(() => { const img = revestimentos.find(r => r.tipo.toUpperCase().includes('SPIRAFLEX') && r.tipo === roleteItem.especificacaoRevestimento)?.imagem; return img ? <img src={img} alt="Spiraflex" className="h-9 w-9 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-primary transition-all shrink-0" onClick={() => setPreviewImage({ src: img, title: `Spiraflex – ${roleteItem.especificacaoRevestimento}` })} /> : null; })()}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-primary font-medium">Revest. Borracha</label>
-                <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
-                  onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'ANEIS' : '', quantidadeAneis: e.target.value ? (roleteItem.quantidadeAneis || 1) : 0 })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Sem Anéis</option>
-                  {revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                    onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'ANEIS' : '', quantidadeAneis: e.target.value ? (roleteItem.quantidadeAneis || 1) : 0 })}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                    <option value="">Sem Anéis</option>
+                    {revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+                  </select>
+                  {(() => { const img = revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento)?.imagem; return img ? <img src={img} alt="Borracha" className="h-9 w-9 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-primary transition-all shrink-0" onClick={() => setPreviewImage({ src: img, title: `Borracha – ${roleteItem.especificacaoRevestimento}` })} /> : null; })()}
+                </div>
               </div>
               {roleteItem.especificacaoRevestimento && revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento && r.tipo.toUpperCase().includes('ABI')) && (
                 <div>
@@ -1604,6 +1620,12 @@ export default function OrcamentosPage() {
               <Button onClick={insertRolete} className="gap-2">✓ Inserir no Orçamento</Button>
               <Button variant="outline" onClick={() => setShowRoleteForm(false)}>Cancelar</Button>
             </div>
+            <ImagePreviewModal
+              open={!!previewImage}
+              onOpenChange={(open) => { if (!open) setPreviewImage(null); }}
+              imageSrc={previewImage?.src || ''}
+              title={previewImage?.title}
+            />
           </div>
         )}
 
