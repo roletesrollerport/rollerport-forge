@@ -2,11 +2,18 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
-import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
+import type { Orcamento, ItemOrcamento, ItemProdutoOrcamento, StatusOrcamento, TipoFrete, Cliente, Comprador, Produto, Tubo, Eixo, Conjunto, Revestimento, Encaixe, EmpresaEmitente } from '@/lib/types';
 import { useCustos } from '@/hooks/useCustos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Plus, Trash2, Eye, Edit, Search, Settings2, Package, Printer,
   ShoppingCart, ArrowLeft, UserPlus, X as XIcon, Copy, History,
@@ -96,6 +103,41 @@ function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: 
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
+const EMPRESAS = {
+  rollerport: {
+    nome: 'ROLLERPORT',
+    subtitulo: 'Fábrica de Roletes',
+    cnpj: '58.234.180/0001-56',
+    endereco: 'Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial',
+    cidadeEstado: 'Franco da Rocha/SP – CEP: 07832-460',
+    telefone: '(11) 4441-3572',
+    email: 'contato@rollerport.com.br',
+    regimeTributario: 'simples_nacional' as const,
+    banco: 'BANCO SANTANDER (033)',
+    razaoSocial: 'FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)',
+    cnpjBanco: '10.311.350/0001-22',
+    agencia: '3744',
+    contaCorrente: '130094436',
+    chavePix: '10.311.350/0001-22',
+  },
+  ferreira_roletes: {
+    nome: 'FERREIRA ROLETES',
+    subtitulo: 'Ind. Com. Serv. Ltda',
+    cnpj: '10.311.350/0001-22',
+    endereco: 'Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial',
+    cidadeEstado: 'Franco da Rocha/SP – CEP: 07832-460',
+    telefone: '(11) 4441-3572',
+    email: 'contato@rollerport.com.br',
+    regimeTributario: 'lucro_presumido' as const,
+    banco: 'BANCO SANTANDER (033)',
+    razaoSocial: 'FERREIRA ROLETES IND. COM. SERV. LTDA',
+    cnpjBanco: '10.311.350/0001-22',
+    agencia: '3744',
+    contaCorrente: '130094436',
+    chavePix: '10.311.350/0001-22',
+  },
+};
+
 type View = 'list' | 'form' | 'view' | 'print';
 
 export default function OrcamentosPage() {
@@ -124,6 +166,7 @@ export default function OrcamentosPage() {
   const [itensRolete, setItensRolete] = useState<ItemOrcamento[]>([]);
   const [itensProduto, setItensProduto] = useState<ItemProdutoOrcamento[]>([]);
   const [prazoPagamento, setPrazoPagamento] = useState('');
+  const [empresaEmitente, setEmpresaEmitente] = useState<EmpresaEmitente>('rollerport');
 
   // Sub-panels
   const [showProdutoSearch, setShowProdutoSearch] = useState(false);
@@ -267,6 +310,7 @@ export default function OrcamentosPage() {
           setItensRolete(d.itensRolete || []);
           setItensProduto(d.itensProduto || []);
           setPrazoPagamento(d.prazoPagamento || '');
+          setEmpresaEmitente(d.empresaEmitente || 'rollerport');
           if (d.editingOrc) setEditingOrc(d.editingOrc);
           setView('form');
         }
@@ -277,10 +321,10 @@ export default function OrcamentosPage() {
   // Autosave draft to localStorage on every change when in form view
   useEffect(() => {
     if (view === 'form') {
-      const draft = { clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc };
+      const draft = { clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, empresaEmitente, editingOrc };
       localStorage.setItem('orc_draft', JSON.stringify(draft));
     }
-  }, [view, clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, editingOrc]);
+  }, [view, clienteId, clienteSearch, tipoFrete, condicaoPagamento, vendedor, dataOrcamento, previsaoEntrega, observacao, compradorSelecionado, itensRolete, itensProduto, prazoPagamento, empresaEmitente, editingOrc]);
 
   // Autosave as draft every 10 seconds when in form view
   const autosaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -294,6 +338,7 @@ export default function OrcamentosPage() {
           clienteId,
           clienteNome: listaAtiva.find(c => c.id === clienteId)?.nome || 'Sem cliente',
           compradorNome: compradorSelecionado,
+          empresaEmitente,
           tipoFrete, condicaoPagamento, vendedor, dataOrcamento, prazoPagamento,
           previsaoEntrega, observacao,
           dataEntrega: previsaoEntrega,
@@ -314,7 +359,7 @@ export default function OrcamentosPage() {
       }, 10000);
     }
     return () => { if (autosaveTimer.current) clearInterval(autosaveTimer.current); };
-  }, [view, clienteId, tipoFrete, condicaoPagamento, vendedor, previsaoEntrega, observacao, itensRolete, itensProduto, compradorSelecionado]);
+  }, [view, clienteId, tipoFrete, condicaoPagamento, vendedor, previsaoEntrega, observacao, itensRolete, itensProduto, compradorSelecionado, empresaEmitente]);
 
   const resetForm = () => {
     setClienteId(''); setClienteSearch(''); setTipoFrete('FOB');
@@ -324,6 +369,7 @@ export default function OrcamentosPage() {
     setItensRolete([]); setItensProduto([]);
     setEditingOrc(null); setShowProdutoSearch(false);
     setShowRoleteForm(false); setSelectedProduto(null);
+    setEmpresaEmitente('rollerport');
     localStorage.removeItem('orc_draft');
   };
 
@@ -341,6 +387,7 @@ export default function OrcamentosPage() {
     setItensRolete(orc.itensRolete || []);
     setItensProduto(orc.itensProduto || []);
     setPrazoPagamento((orc as any).prazoPagamento || '');
+    setEmpresaEmitente(orc.empresaEmitente || 'rollerport');
     setView('form');
   };
 
@@ -377,6 +424,7 @@ export default function OrcamentosPage() {
     setItensRolete(itensRoleteAtualizados);
     setItensProduto(itensProdutoAtualizados);
     setPrazoPagamento((orc as any).prazoPagamento || '');
+    setEmpresaEmitente(orc.empresaEmitente || 'rollerport');
     setEditingOrc(null); // Não é edição, é novo
     setShowClienteHistory(false);
     
@@ -394,6 +442,7 @@ export default function OrcamentosPage() {
       numero: editingOrc?.numero || store.nextNumero('orc'),
       clienteId,
       clienteNome: clienteSelecionado?.nome || 'Sem cliente',
+      empresaEmitente,
       tipoFrete, condicaoPagamento, vendedor, dataOrcamento, prazoPagamento,
       previsaoEntrega, observacao,
       dataEntrega: previsaoEntrega,
@@ -580,8 +629,9 @@ export default function OrcamentosPage() {
   };
 
   const handleSendEmail = (orc: Orcamento) => {
-    const subject = encodeURIComponent(`Orçamento Rollerport - Nº ${orc.numero}`);
-    const body = encodeURIComponent(`Olá,\n\nSegue os dados principais do Orçamento Nº ${orc.numero}:\n\nCliente: ${orc.clienteNome}\nValor Total: R$ ${orc.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\n\nAtenciosamente,\nRollerport`);
+    const emp = EMPRESAS[orc.empresaEmitente || 'rollerport'];
+    const subject = encodeURIComponent(`Orçamento ${emp.nome} - Nº ${orc.numero}`);
+    const body = encodeURIComponent(`Olá,\n\nSegue os dados principais do Orçamento Nº ${orc.numero}:\n\nCliente: ${orc.clienteNome}\nValor Total: R$ ${orc.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\n\nAtenciosamente,\n${emp.nome}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
@@ -605,6 +655,8 @@ export default function OrcamentosPage() {
   // ========== PRINT VIEW ==========
   if (view === 'print' && viewOrc) {
     const cli = clientes.find(c => c.id === viewOrc.clienteId);
+    const empPrint = EMPRESAS[viewOrc.empresaEmitente || 'rollerport'];
+    const isSimplesNacional = empPrint.regimeTributario === 'simples_nacional';
 
     // Brazilian tax rates 2026 - Rollerport is in SP
     const destinoUF = cli?.estado || 'SP';
@@ -622,11 +674,11 @@ export default function OrcamentosPage() {
       'PI': 0.215, 'MA': 0.22, 'PA': 0.19, 'AP': 0.18, 'AM': 0.20, 'RR': 0.20, 'AC': 0.19,
       'RO': 0.195, 'TO': 0.20, 'MT': 0.17, 'MS': 0.17, 'GO': 0.19, 'DF': 0.20,
     };
-    const taxaICMSOrig = icmsInterMap[destinoUF] || 0.12;
-    const taxaICMSDest = origemUF === destinoUF ? 0 : Math.max(0, (icmsInternoMap[destinoUF] || 0.18) - taxaICMSOrig);
-    const taxaPIS = 0.0165;
-    const taxaCOFINS = 0.076;
-    const taxaIPI = 0.05;
+    const taxaICMSOrig = isSimplesNacional ? 0 : (icmsInterMap[destinoUF] || 0.12);
+    const taxaICMSDest = isSimplesNacional ? 0 : (origemUF === destinoUF ? 0 : Math.max(0, (icmsInternoMap[destinoUF] || 0.18) - taxaICMSOrig));
+    const taxaPIS = isSimplesNacional ? 0 : 0.0165;
+    const taxaCOFINS = isSimplesNacional ? 0 : 0.076;
+    const taxaIPI = isSimplesNacional ? 0 : 0.05;
 
     // Build all items for the table
     const allPrintItems: Array<{
@@ -744,20 +796,20 @@ export default function OrcamentosPage() {
         </div>
 
         <div className="bg-white text-black border rounded-lg p-3 mx-auto print:border-0 print:shadow-none print:p-2" style={{ maxWidth: '1200px' }}>
-          {/* ===== HEADER: Logo+Rollerport left, QR+Cliente right ===== */}
+          {/* ===== HEADER: Logo+Empresa left, QR+Cliente right ===== */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
-              <img src={logo} alt="Rollerport" className="h-16 object-contain" />
+              <img src={logo} alt={empPrint.nome} className="h-16 object-contain" />
               <div>
-                <h2 className="text-base font-bold leading-tight">ROLLERPORT</h2>
-                <p className="text-[10px] font-semibold">Fábrica de Roletes</p>
-                <p className="text-[10px]">Rua João Marcos Pimenta Rocha, 16 – Pólo Industrial</p>
-                <p className="text-[10px]">Franco da Rocha/SP – CEP: 07832-460</p>
-                <p className="text-[10px]">CNPJ: 58.234.180/0001-56</p>
-                <p className="text-[10px]">Tel: (11) 4441-3572 • contato@rollerport.com.br</p>
+                <h2 className="text-base font-bold leading-tight">{empPrint.nome}</h2>
+                <p className="text-[10px] font-semibold">{empPrint.subtitulo}</p>
+                <p className="text-[10px]">{empPrint.endereco}</p>
+                <p className="text-[10px]">{empPrint.cidadeEstado}</p>
+                <p className="text-[10px]">CNPJ: {empPrint.cnpj}</p>
+                <p className="text-[10px]">Tel: {empPrint.telefone} • {empPrint.email}</p>
               </div>
               <div className="flex flex-col items-center ml-2">
-                <img src={qrcode} alt="QR Code Rollerport" className="h-14 w-14 object-contain" />
+                <img src={qrcode} alt={`QR Code ${empPrint.nome}`} className="h-14 w-14 object-contain" />
                 <p className="text-[7px] text-gray-500 mt-0.5 text-center leading-tight">Aponte a câmera<br/>para nossas redes</p>
               </div>
             </div>
@@ -870,11 +922,11 @@ export default function OrcamentosPage() {
           {(viewOrc.condicaoPagamento === 'PIX' || viewOrc.condicaoPagamento === 'Transferência Bancária') && (
             <div className="mt-3 border rounded p-3 text-[10px]">
               <p className="font-bold mb-1">Dados Bancários para {viewOrc.condicaoPagamento === 'PIX' ? 'PIX' : 'Transferência Bancária'}:</p>
-              <p>BANCO SANTANDER (033)</p>
-              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
-              <p>CNPJ: 10.311.350/0001-22</p>
-              <p>Agência: 3744 | Conta Corrente: 130094436</p>
-              {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): 10.311.350/0001-22</p>}
+              <p>{empPrint.banco}</p>
+              <p>{empPrint.razaoSocial}</p>
+              <p>CNPJ: {empPrint.cnpjBanco}</p>
+              <p>Agência: {empPrint.agencia} | Conta Corrente: {empPrint.contaCorrente}</p>
+              {viewOrc.condicaoPagamento === 'PIX' && <p className="font-semibold mt-1">Chave PIX (CNPJ): {empPrint.chavePix}</p>}
             </div>
           )}
 
@@ -993,7 +1045,7 @@ export default function OrcamentosPage() {
           )}
 
           <div className="text-center text-[10px] mt-2">
-            <p className="font-semibold">ROLLERPORT – Fábrica de Roletes</p>
+            <p className="font-semibold">{empPrint.nome} – {empPrint.subtitulo}</p>
           </div>
         </div>
 
@@ -1031,32 +1083,49 @@ export default function OrcamentosPage() {
                 </button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} por nome, CNPJ, telefone, e-mail...`}
-                  value={clienteSearch}
-                  onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
-                  onFocus={() => setShowClienteDropdown(true)}
-                  className="pl-10"
-                />
-                {showClienteDropdown && clienteSearch && !clienteId && (
-                  <div className="absolute z-10 w-full border rounded mt-1 max-h-40 overflow-y-auto bg-card shadow-lg">
-                    {filteredClientes.map(c => (
-                      <button key={c.id} onClick={() => { setClienteId(c.id); setClienteSearch(c.nome); setShowClienteDropdown(false); }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between">
-                        <span className="font-medium">{c.nome}</span>
-                        <span className="text-muted-foreground text-xs">{c.cnpj}</span>
-                      </button>
-                    ))}
-                    {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum(a) {categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} encontrado(a)</p>}
-                  </div>
-                )}
+            <div className="flex gap-2 items-end">
+              <div className="relative flex-[3]">
+                <label className="text-xs text-primary font-medium mb-1 block">
+                  Buscar {categoriaOrc === 'revenda' ? 'Revenda' : 'Cliente'}
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={`Buscar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} por nome, CNPJ, telefone...`}
+                    value={clienteSearch}
+                    onChange={e => { setClienteSearch(e.target.value); setClienteId(''); setShowClienteDropdown(true); }}
+                    onFocus={() => setShowClienteDropdown(true)}
+                    className="pl-10"
+                  />
+                  {showClienteDropdown && clienteSearch && !clienteId && (
+                    <div className="absolute z-50 w-full border rounded mt-1 max-h-40 overflow-y-auto bg-card shadow-lg">
+                      {filteredClientes.map(c => (
+                        <button key={c.id} onClick={() => { setClienteId(c.id); setClienteSearch(c.nome); setShowClienteDropdown(false); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex justify-between">
+                          <span className="font-medium">{c.nome}</span>
+                          <span className="text-muted-foreground text-xs">{c.cnpj}</span>
+                        </button>
+                      ))}
+                      {filteredClientes.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum(a) {categoriaOrc === 'revenda' ? 'revenda' : 'cliente'} encontrado(a)</p>}
+                    </div>
+                  )}
+                </div>
               </div>
-              <Button variant="outline" size="icon" onClick={() => setShowCadCliente(true)} title={`Cadastrar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}`}>
+              <Button variant="outline" size="icon" className="shrink-0 h-9 mb-[1px]" onClick={() => setShowCadCliente(true)} title={`Cadastrar ${categoriaOrc === 'revenda' ? 'revenda' : 'cliente'}`}>
                 <UserPlus className="h-4 w-4" />
               </Button>
+              <div className="flex flex-col flex-[2] min-w-0">
+                <label className="text-xs text-primary font-medium mb-1">Empresa Emitente</label>
+                <Select value={empresaEmitente} onValueChange={(value) => setEmpresaEmitente(value as EmpresaEmitente)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Selecione a empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rollerport">Rollerport (Simples Nacional)</SelectItem>
+                    <SelectItem value="ferreira_roletes">Ferreira Roletes (Lucro Presumido)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -1192,20 +1261,20 @@ export default function OrcamentosPage() {
           {condicaoPagamento === 'PIX' && (
             <div className="bg-muted/20 rounded-lg p-3 border text-xs">
               <p className="font-semibold text-primary mb-1">Dados para PIX / Transferência:</p>
-              <p>BANCO SANTANDER</p>
-              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
-              <p>CNPJ: 10.311.350/0001-22</p>
-              <p>Agência: 3744 | Conta Corrente: 130094436</p>
-              <p>PIX: 10.311.350/0001-22</p>
+              <p>{EMPRESAS[empresaEmitente].banco}</p>
+              <p>{EMPRESAS[empresaEmitente].razaoSocial}</p>
+              <p>CNPJ: {EMPRESAS[empresaEmitente].cnpjBanco}</p>
+              <p>Agência: {EMPRESAS[empresaEmitente].agencia} | Conta Corrente: {EMPRESAS[empresaEmitente].contaCorrente}</p>
+              <p>PIX: {EMPRESAS[empresaEmitente].chavePix}</p>
             </div>
           )}
           {condicaoPagamento === 'Transferência Bancária' && (
             <div className="bg-muted/20 rounded-lg p-3 border text-xs">
               <p className="font-semibold text-primary mb-1">Dados para Transferência Bancária:</p>
-              <p>BANCO SANTANDER</p>
-              <p>FERREIRA ROLETES IND. COM. SERV. LTDA (Rollerport)</p>
-              <p>CNPJ: 10.311.350/0001-22</p>
-              <p>Agência: 3744 | Conta Corrente: 130094436</p>
+              <p>{EMPRESAS[empresaEmitente].banco}</p>
+              <p>{EMPRESAS[empresaEmitente].razaoSocial}</p>
+              <p>CNPJ: {EMPRESAS[empresaEmitente].cnpjBanco}</p>
+              <p>Agência: {EMPRESAS[empresaEmitente].agencia} | Conta Corrente: {EMPRESAS[empresaEmitente].contaCorrente}</p>
             </div>
           )}
 

@@ -140,12 +140,15 @@ export interface ItemProdutoOrcamento {
   valorIPI?: number;
 }
 
+export type EmpresaEmitente = 'rollerport' | 'ferreira_roletes';
+
 export interface Orcamento {
   id: string;
   numero: string;
   clienteId: string;
   clienteNome: string;
   compradorNome?: string;
+  empresaEmitente?: EmpresaEmitente;
   tipoFrete: TipoFrete;
   condicaoPagamento: string;
   vendedor: string;
