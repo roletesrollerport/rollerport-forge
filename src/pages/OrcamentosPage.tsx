@@ -695,6 +695,7 @@ export default function OrcamentosPage() {
       item: number; qtd: number; codigo: string; codExterno: string; descricao: string;
       valorLiquidoUnit: number;
       valorTotalBase: number;
+      valorUnitComImpostos: number;
       aliqPIS: number; valorPIS: number;
       aliqCOFINS: number; valorCOFINS: number;
       aliqICMS: number; valorICMS: number;
