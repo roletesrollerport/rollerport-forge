@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, History, Truck, FileText, Mail } from 'lucide-react';
+import { Factory, Eye, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, History, Truck, FileText, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -22,6 +22,16 @@ const daysSince = (dateStr: string): number => {
 };
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+const fmtDateShort = (iso: string) => {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+};
 
 function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos, setCurrentPedido, setView }: {
   pedido: Pedido; orcamentos: Orcamento[]; pedidos: Pedido[];
@@ -130,11 +140,11 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
           </div>
           <div className="flex flex-col gap-1 break-words">
             <span className="text-muted-foreground text-[11px] font-medium">Cliente</span>
-            <strong className="text-sm">{pedido.clienteNome}</strong>
+            <strong className="text-sm break-words">{pedido.clienteNome}</strong>
           </div>
           <div className="flex flex-col gap-1 break-words">
             <span className="text-muted-foreground text-[11px] font-medium">Vendedor/Usuário</span>
-            <strong className="text-sm">{orc?.vendedor || pedido.vendedor || '-'}</strong>
+            <strong className="text-sm break-words">{orc?.vendedor || pedido.vendedor || '-'}</strong>
           </div>
           <div className="flex flex-col gap-1 break-words">
             <span className="text-muted-foreground text-[11px] font-medium">Número do Orçamento</span>
@@ -146,7 +156,7 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
           </div>
           <div className="flex flex-col gap-1 break-words">
             <span className="text-muted-foreground text-[11px] font-medium">Prazo de Entrega (do Vendedor)</span>
-            <strong className="text-sm">{orc?.previsaoEntrega || pedido.dataEntrega || '-'}</strong>
+            <strong className="text-sm break-words">{orc?.previsaoEntrega || pedido.dataEntrega || '-'}</strong>
           </div>
         </div>
         {editOrc && (
@@ -156,12 +166,16 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="p-2 text-left">Item</th>
-                      <th className="p-2 text-left">Descrição Técnica</th>
-                      <th className="p-2 text-center">Quantidade</th>
-                      <th className="p-2 text-center">Valor Unitário</th>
-                      <th className="p-2 text-center">Total Item</th>
-                      <th className="p-2 text-center">Ações</th>
+                      <th className="p-2 text-left whitespace-nowrap">Item</th>
+                      <th className="p-2 text-left whitespace-nowrap">Descrição Rolete</th>
+                      <th className="p-2 text-left whitespace-nowrap">Medida (mm)</th>
+                      <th className="p-2 text-left whitespace-nowrap">Diâmetro/Eixo</th>
+                      <th className="p-2 text-left whitespace-nowrap">Parede/Tubo</th>
+                      <th className="p-2 text-left whitespace-nowrap">Revestimento</th>
+                      <th className="p-2 text-center whitespace-nowrap">Quantidade</th>
+                      <th className="p-2 text-center whitespace-nowrap">Valor Unitário</th>
+                      <th className="p-2 text-center whitespace-nowrap">Total Item</th>
+                      <th className="p-2 text-center whitespace-nowrap">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -175,11 +189,58 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
                         const valorUnit =
                           row.kind === 'rolete' ? (row.item.valorPorPeca || 0) : (row.item.valorUnitario || 0);
 
+                        const descricaoRolete =
+                          row.kind === 'rolete'
+                            ? `Rolete ${row.item.tipoRolete || '-'}` 
+                            : row.item.produtoNome || '-';
+
+                        const medidaMm =
+                          row.kind === 'rolete'
+                            ? `${row.item.comprimentoTubo || 0} / ${row.item.comprimentoEixo || 0}`
+                            : row.item.medidas || row.item.descricao || '-';
+
+                        const diametroEixo =
+                          row.kind === 'rolete'
+                            ? `ø${row.item.diametroEixo || '-'}`
+                            : '-';
+
+                        const paredeTubo =
+                          row.kind === 'rolete'
+                            ? `${row.item.paredeTubo || '-'}`
+                            : '-';
+
+                        const revestimento =
+                          row.kind === 'rolete'
+                            ? row.item.especificacaoRevestimento || '-'
+                            : row.item.descricao || '-';
+
                         return (
                           <tr key={`${row.kind}-${i}`} className="border-b">
                             <td className="p-2 text-center font-mono">{i + 1}</td>
-                            <td className="p-2 break-words max-w-[420px]">
-                              <div className="text-[11px] text-foreground">{getDescricaoTecnica(row)}</div>
+                            <td className="p-2 align-top break-words min-w-[140px]">
+                              <div className="text-[11px] text-foreground font-medium">
+                                {descricaoRolete}
+                              </div>
+                            </td>
+                            <td className="p-2 align-top break-words min-w-[140px]">
+                              <div className="text-[11px] text-muted-foreground">
+                                {medidaMm}
+                              </div>
+                            </td>
+                            <td className="p-2 align-top">
+                              <div className="text-[11px] text-muted-foreground">
+                                {diametroEixo}
+                              </div>
+                            </td>
+                            <td className="p-2 align-top">
+                              <div className="text-[11px] text-muted-foreground">
+                                {paredeTubo}
+                              </div>
+                            </td>
+                            <td className="p-2 align-top break-words min-w-[160px]">
+                              <div className="text-[11px] text-muted-foreground">
+                                {revestimento}
+                              </div>
                             </td>
                             <td className="p-2 text-center">
                               <Input
@@ -200,14 +261,47 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
                               {fmt(Number(total || 0))}
                             </td>
                             <td className="p-2 text-center">
-                              <button
-                                type="button"
-                                onClick={() => requestDeleteItem({ kind: row.kind, idx: row.idx })}
-                                className="p-1 rounded hover:bg-muted text-destructive"
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    window.dispatchEvent(new CustomEvent('rp-open-pedido-tracking', { detail: { pedidoId: pedido.id } }));
+                                  }}
+                                  className="p-1 rounded hover:bg-muted text-primary"
+                                  title="Acompanhar Pedido"
+                                >
+                                  <History className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Cancelamento de item pode ser tratado como exclusão lógica futura
+                                    toast.warning('Em breve: cancelamento individual de item.');
+                                  }}
+                                  className="p-1 rounded hover:bg-muted text-warning"
+                                  title="Cancelar Item"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => requestDeleteItem({ kind: row.kind, idx: row.idx })}
+                                  className="p-1 rounded hover:bg-muted text-destructive"
+                                  title="Excluir Item"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    toast.info('Use a ação "Gerar O.S." na lista de pedidos para este pedido.');
+                                  }}
+                                  className="p-1 rounded hover:bg-muted text-primary"
+                                  title="Gerar O.S."
+                                >
+                                  <Factory className="h-4 w-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -723,40 +817,65 @@ export default function PedidosPage() {
       <div>
         <h2 className="text-lg font-semibold mb-3">Pedidos</h2>
         <div className="bg-card rounded-lg border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Nº Pedido</th>
-              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Nº Orçamento</th>
-              <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Empresa</th>
-              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Data</th>
-              <th className="text-left p-2 sm:p-3 font-medium min-w-[120px] sm:min-w-[180px] text-xs sm:text-sm">Status</th>
-              <th className="text-left p-2 sm:p-3 font-medium hidden md:table-cell">Dias</th>
-              <th className="text-right p-2 sm:p-3 font-medium hidden sm:table-cell">Valor</th>
-              <th className="p-2 sm:p-3 w-auto sm:w-52">Ações</th>
-            </tr></thead>
+          <table className="w-full text-xs sm:text-[11px]">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap">Nº Pedido</th>
+                <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap hidden md:table-cell">Nº Orçamento</th>
+                <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap hidden lg:table-cell">Usuário</th>
+                <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap">Cliente/Revenda</th>
+                <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap">Data</th>
+                <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap min-w-[120px] sm:min-w-[160px]">Status</th>
+                <th className="text-right px-2 py-2 sm:px-3 font-medium whitespace-nowrap hidden sm:table-cell">Valor</th>
+                <th className="px-2 py-2 sm:px-3 font-medium text-right whitespace-nowrap w-[160px] sm:w-[200px]">Ações</th>
+              </tr>
+            </thead>
             <tbody>
               {filteredPedidos.map(p => {
                 const days = daysSince(p.createdAt);
                 const lastStatusChange = p.statusHistory?.length ? p.statusHistory[p.statusHistory.length - 1] : null;
                 const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
+                const orc = orcamentos.find(o => o.id === p.orcamentoId);
+                const usuario = p.vendedor || orc?.vendedor || '—';
                 return (
-                <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="p-2 sm:p-3 font-mono font-medium text-xs sm:text-sm">{p.numero}</td>
-                  <td className="p-2 sm:p-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{p.orcamentoNumero || '-'}</td>
-                  <td className="p-2 sm:p-3 text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{p.clienteNome}</td>
-                  <td className="p-2 sm:p-3 hidden md:table-cell">{p.createdAt}</td>
-                  <td className="p-2 sm:p-3"><StatusProgressBar status={p.status} /></td>
-                  <td className="p-2 sm:p-3 hidden md:table-cell">
-                    <div className="flex flex-col text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Total: {days}d</span>
-                      <span className="text-[10px]">No status: {daysInStatus}d</span>
-                    </div>
-                  </td>
-                  <td className="p-2 sm:p-3 text-right font-mono hidden sm:table-cell">{fmt(p.valorTotal)}</td>
-                  <td className="p-2 sm:p-3 pr-4">
-                    <div className="flex gap-1 justify-end flex-wrap">
-                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                        <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                  <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="px-2 py-2 sm:px-3 font-mono font-semibold whitespace-nowrap">{p.numero}</td>
+                    <td className="px-2 py-2 sm:px-3 hidden md:table-cell font-mono text-[10px] text-primary whitespace-nowrap">
+                      {p.orcamentoNumero ? (
+                        <button
+                          type="button"
+                          className="underline-offset-2 hover:underline"
+                          onClick={() => navigate(`/orcamentos?q=${encodeURIComponent(p.orcamentoNumero || '')}&mode=edit`)}
+                        >
+                          {p.orcamentoNumero}
+                        </button>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="px-2 py-2 sm:px-3 hidden lg:table-cell text-[10px] text-muted-foreground truncate max-w-[120px]">
+                      {usuario}
+                    </td>
+                    <td className="px-2 py-2 sm:px-3 truncate max-w-[140px] sm:max-w-[220px]">
+                      {p.clienteNome}
+                    </td>
+                    <td className="px-2 py-2 sm:px-3 whitespace-nowrap">
+                      {fmtDateShort(p.createdAt)}
+                    </td>
+                    <td className="px-2 py-2 sm:px-3">
+                      <StatusProgressBar status={p.status} />
+                      <div className="hidden xl:flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          Total: {days}d • No status: {daysInStatus}d
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 sm:px-3 text-right font-mono hidden sm:table-cell whitespace-nowrap">
+                      {fmt(p.valorTotal)}
+                    </td>
+                    <td className="px-2 py-2 sm:px-3 pr-3 text-right">
+                      <div className="flex gap-1 justify-end flex-nowrap">
                         <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>}
                         <button 

@@ -418,6 +418,18 @@ export default function OrcamentosPage() {
     setView('form');
   };
 
+  // Abrir edição automática quando vindo de /pedidos com ?q=NUMERO&mode=edit
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    const q = searchParams.get('q');
+    if (mode === 'edit' && q && view === 'list' && orcamentos.length) {
+      const found = orcamentos.find(o => o.numero === q);
+      if (found) {
+        openEdit(found);
+      }
+    }
+  }, [orcamentos, searchParams, view]);
+
   // Clonar orçamento com preços atualizados
   const cloneOrcamento = (orc: Orcamento) => {
     // Recalcular itens rolete com preços atuais
