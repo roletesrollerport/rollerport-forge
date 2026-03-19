@@ -730,6 +730,7 @@ export default function PedidosPage() {
         roscaIE: '', furoEixo: '', revestimento: item.especificacaoRevestimento,
         corte: false, torno: false, fresa: false, solda: false, pintura: false, montagem: false,
       })),
+      materiaisUtilizados: {},
       createdAt: new Date().toISOString().split('T')[0],
     };
     store.saveOrdensServico([...store.getOrdensServico(), os]);
