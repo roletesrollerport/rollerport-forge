@@ -847,8 +847,8 @@ export default function PedidosPage() {
                     <td className="px-2 py-2 sm:px-3 font-mono font-semibold whitespace-nowrap">
                       <button
                         type="button"
-                        className="underline-offset-2 hover:underline"
-                        onClick={() => navigate(`/orcamentos?q=${encodeURIComponent(p.numero)}&mode=edit&from=pedidos`)}
+                        className="text-primary underline-offset-2 hover:underline font-semibold"
+                        onClick={() => { setCurrentPedido(p); setView('view'); }}
                       >
                         {p.numero}
                       </button>
