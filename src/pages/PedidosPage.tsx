@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, Truck } from 'lucide-react';
+import { Factory, Eye, Edit, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, History, Truck, FileText, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -31,6 +31,13 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
   const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
   const [editOrc, setEditOrc] = useState<Orcamento | null>(orc ? { ...orc, itensRolete: [...(orc.itensRolete || [])], itensProduto: [...(orc.itensProduto || [])] } : null);
 
+  type DeleteItemTarget =
+    | { kind: 'rolete'; idx: number }
+    | { kind: 'produto'; idx: number };
+
+  const [deleteItemOpen, setDeleteItemOpen] = useState(false);
+  const [deleteItemTarget, setDeleteItemTarget] = useState<DeleteItemTarget | null>(null);
+
   const saveOrcChanges = () => {
     if (!editOrc) return;
     const itensR = editOrc.itensRolete.map(ir => ({ ...ir, valorTotal: ir.valorPorPeca * ir.quantidade }));
@@ -46,17 +53,66 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
   };
 
   const updateRoleteItem = (idx: number, field: string, value: any) => {
-    if (!editOrc) return;
-    const items = [...editOrc.itensRolete]; items[idx] = { ...items[idx], [field]: value };
-    setEditOrc({ ...editOrc, itensRolete: items });
+    setEditOrc(prev => {
+      if (!prev) return prev;
+      const items = [...prev.itensRolete];
+      items[idx] = { ...items[idx], [field]: value };
+      return { ...prev, itensRolete: items };
+    });
   };
   const updateProdutoItem = (idx: number, field: string, value: any) => {
-    if (!editOrc) return;
-    const items = [...editOrc.itensProduto]; items[idx] = { ...items[idx], [field]: value };
-    setEditOrc({ ...editOrc, itensProduto: items });
+    setEditOrc(prev => {
+      if (!prev) return prev;
+      const items = [...prev.itensProduto];
+      items[idx] = { ...items[idx], [field]: value };
+      return { ...prev, itensProduto: items };
+    });
   };
-  const deleteRoleteItem = (idx: number) => { if (!editOrc) return; setEditOrc({ ...editOrc, itensRolete: editOrc.itensRolete.filter((_, i) => i !== idx) }); };
-  const deleteProdutoItem = (idx: number) => { if (!editOrc) return; setEditOrc({ ...editOrc, itensProduto: editOrc.itensProduto.filter((_, i) => i !== idx) }); };
+
+  const requestDeleteItem = (target: DeleteItemTarget) => {
+    setDeleteItemTarget(target);
+    setDeleteItemOpen(true);
+  };
+
+  const confirmDeleteItem = () => {
+    if (!deleteItemTarget) return;
+
+    setEditOrc(prev => {
+      if (!prev) return prev;
+      if (deleteItemTarget.kind === 'rolete') {
+        return { ...prev, itensRolete: prev.itensRolete.filter((_, i) => i !== deleteItemTarget.idx) };
+      }
+      return { ...prev, itensProduto: prev.itensProduto.filter((_, i) => i !== deleteItemTarget.idx) };
+    });
+
+    setDeleteItemOpen(false);
+    setDeleteItemTarget(null);
+  };
+
+  const combinedItems = editOrc
+    ? [
+        ...editOrc.itensRolete.map((item, idx) => ({ kind: 'rolete' as const, idx, item })),
+        ...editOrc.itensProduto.map((item, idx) => ({ kind: 'produto' as const, idx, item })),
+      ]
+    : [];
+
+  const getDescricaoTecnica = (row: (typeof combinedItems)[number]) => {
+    if (row.kind === 'rolete') {
+      const it = row.item;
+      return [
+        `Rolete ${it.tipoRolete}`,
+        `ø${it.diametroTubo}x${it.paredeTubo} (Tubo ${it.comprimentoTubo}mm)`,
+        `Eixo ø${it.diametroEixo}mm`,
+        `Encaixe ${it.tipoEncaixe || '-'}`,
+        `Fresa ${it.medidaFresado || '-'}`,
+        `Revest. ${it.especificacaoRevestimento || '-'}`,
+      ].join(' • ');
+    }
+
+    const it = row.item;
+    const extra = it.descricao || it.medidas || '';
+    return extra ? `${it.produtoNome} — ${extra}` : it.produtoNome;
+  };
 
   return (
     <div className="space-y-4">
@@ -67,76 +123,121 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
       </div>
       <div className="bg-card border rounded-lg p-6">
         <h2 className="text-lg font-bold mb-4">Pedido {pedido.numero} — Edição Completa</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
-          <div><span className="text-muted-foreground">Empresa:</span> <strong>{pedido.clienteNome}</strong></div>
-          <div><span className="text-muted-foreground">Orçamento:</span> <strong>{pedido.orcamentoNumero || '-'}</strong></div>
-          <div><span className="text-muted-foreground">Data:</span> <strong>{pedido.createdAt}</strong></div>
-          <div><span className="text-muted-foreground">Entrega:</span> <strong>{pedido.dataEntrega}</strong></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm mb-6">
+          <div className="flex flex-col gap-1 break-words">
+            <span className="text-muted-foreground text-[11px] font-medium">Número do Pedido</span>
+            <strong className="text-sm">{pedido.numero}</strong>
+          </div>
+          <div className="flex flex-col gap-1 break-words">
+            <span className="text-muted-foreground text-[11px] font-medium">Cliente</span>
+            <strong className="text-sm">{pedido.clienteNome}</strong>
+          </div>
+          <div className="flex flex-col gap-1 break-words">
+            <span className="text-muted-foreground text-[11px] font-medium">Vendedor/Usuário</span>
+            <strong className="text-sm">{orc?.vendedor || pedido.vendedor || '-'}</strong>
+          </div>
+          <div className="flex flex-col gap-1 break-words">
+            <span className="text-muted-foreground text-[11px] font-medium">Número do Orçamento</span>
+            <strong className="text-sm">{pedido.orcamentoNumero || orc?.numero || '-'}</strong>
+          </div>
+          <div className="flex flex-col gap-1 break-words">
+            <span className="text-muted-foreground text-[11px] font-medium">Data</span>
+            <strong className="text-sm">{pedido.createdAt}</strong>
+          </div>
+          <div className="flex flex-col gap-1 break-words">
+            <span className="text-muted-foreground text-[11px] font-medium">Prazo de Entrega (do Vendedor)</span>
+            <strong className="text-sm">{orc?.previsaoEntrega || pedido.dataEntrega || '-'}</strong>
+          </div>
         </div>
         {editOrc && (
           <>
-            {editOrc.itensRolete.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold text-sm mb-2">Itens Rolete</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead><tr className="border-b bg-muted/50">
-                      <th className="p-2 text-left">Item</th><th className="p-2">Tipo</th><th className="p-2">Qtd</th>
-                      <th className="p-2">ø Tubo</th><th className="p-2">Parede</th><th className="p-2">Comp. Tubo</th>
-                      <th className="p-2">ø Eixo</th><th className="p-2">Comp. Eixo</th><th className="p-2">Encaixe</th>
-                      <th className="p-2">Fresa</th><th className="p-2">Revestimento</th>
-                      <th className="p-2">Valor Un.</th><th className="p-2">Ações</th>
-                    </tr></thead>
-                    <tbody>
-                      {editOrc.itensRolete.map((item, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="p-1">{i + 1}</td>
-                          <td className="p-1"><select value={item.tipoRolete} onChange={e => updateRoleteItem(i, 'tipoRolete', e.target.value)}
-                            className="h-7 text-xs rounded border bg-background px-1">
-                            {['RC','RR','RG','RI','RRA'].map(t => <option key={t} value={t}>{t}</option>)}
-                          </select></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.quantidade} onChange={e => updateRoleteItem(i, 'quantidade', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.diametroTubo} onChange={e => updateRoleteItem(i, 'diametroTubo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.paredeTubo} onChange={e => updateRoleteItem(i, 'paredeTubo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.comprimentoTubo} onChange={e => updateRoleteItem(i, 'comprimentoTubo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.diametroEixo} onChange={e => updateRoleteItem(i, 'diametroEixo', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-16 text-xs" value={item.comprimentoEixo} onChange={e => updateRoleteItem(i, 'comprimentoEixo', +e.target.value)} /></td>
-                          <td className="p-1"><Input className="h-7 w-20 text-xs" value={item.tipoEncaixe} onChange={e => updateRoleteItem(i, 'tipoEncaixe', e.target.value)} /></td>
-                          <td className="p-1"><Input className="h-7 w-20 text-xs" value={item.medidaFresado} onChange={e => updateRoleteItem(i, 'medidaFresado', e.target.value)} /></td>
-                          <td className="p-1"><Input className="h-7 w-24 text-xs" value={item.especificacaoRevestimento} onChange={e => updateRoleteItem(i, 'especificacaoRevestimento', e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-20 text-xs" value={item.valorPorPeca} onChange={e => updateRoleteItem(i, 'valorPorPeca', +e.target.value)} /></td>
-                          <td className="p-1"><button onClick={() => deleteRoleteItem(i)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            <div className="mb-6">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-2 text-left">Item</th>
+                      <th className="p-2 text-left">Descrição Técnica</th>
+                      <th className="p-2 text-center">Quantidade</th>
+                      <th className="p-2 text-center">Valor Unitário</th>
+                      <th className="p-2 text-center">Total Item</th>
+                      <th className="p-2 text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {combinedItems.length > 0 ? (
+                      combinedItems.map((row, i) => {
+                        const total =
+                          row.kind === 'rolete'
+                            ? (row.item.valorPorPeca || 0) * (row.item.quantidade || 0)
+                            : (row.item.valorUnitario || 0) * (row.item.quantidade || 0);
+
+                        const valorUnit =
+                          row.kind === 'rolete' ? (row.item.valorPorPeca || 0) : (row.item.valorUnitario || 0);
+
+                        return (
+                          <tr key={`${row.kind}-${i}`} className="border-b">
+                            <td className="p-2 text-center font-mono">{i + 1}</td>
+                            <td className="p-2 break-words max-w-[420px]">
+                              <div className="text-[11px] text-foreground">{getDescricaoTecnica(row)}</div>
+                            </td>
+                            <td className="p-2 text-center">
+                              <Input
+                                type="number"
+                                className="h-7 w-20 text-xs mx-auto"
+                                value={row.item.quantidade}
+                                onChange={e =>
+                                  row.kind === 'rolete'
+                                    ? updateRoleteItem(row.idx, 'quantidade', +e.target.value)
+                                    : updateProdutoItem(row.idx, 'quantidade', +e.target.value)
+                                }
+                              />
+                            </td>
+                            <td className="p-2 text-center text-xs text-muted-foreground">
+                              <div className="font-mono">{fmt(Number(valorUnit || 0))}</div>
+                            </td>
+                            <td className="p-2 text-center font-semibold text-primary">
+                              {fmt(Number(total || 0))}
+                            </td>
+                            <td className="p-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => requestDeleteItem({ kind: row.kind, idx: row.idx })}
+                                className="p-1 rounded hover:bg-muted text-destructive"
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                          Nenhum item para exibir.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
-            {editOrc.itensProduto.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold text-sm mb-2">Itens Produto</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead><tr className="border-b bg-muted/50">
-                      <th className="p-2 text-left">Item</th><th className="p-2 text-left">Produto</th>
-                      <th className="p-2">Qtd</th><th className="p-2">Valor Un.</th><th className="p-2">Ações</th>
-                    </tr></thead>
-                    <tbody>
-                      {editOrc.itensProduto.map((item, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="p-1">{(editOrc.itensRolete?.length || 0) + i + 1}</td>
-                          <td className="p-1 font-medium">{item.produtoNome}</td>
-                          <td className="p-1"><Input type="number" className="h-7 w-14 text-xs" value={item.quantidade} onChange={e => updateProdutoItem(i, 'quantidade', +e.target.value)} /></td>
-                          <td className="p-1"><Input type="number" className="h-7 w-20 text-xs" value={item.valorUnitario} onChange={e => updateProdutoItem(i, 'valorUnitario', +e.target.value)} /></td>
-                          <td className="p-1"><button onClick={() => deleteProdutoItem(i)} className="p-1 rounded hover:bg-muted text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+            </div>
+
+            <ConfirmDialog
+              open={deleteItemOpen}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setDeleteItemOpen(false);
+                  setDeleteItemTarget(null);
+                }
+              }}
+              title="Excluir registro"
+              description="Tem certeza que deseja excluir este registro?"
+              confirmLabel="Confirmar"
+              cancelLabel="Cancelar"
+              onConfirm={confirmDeleteItem}
+            />
           </>
         )}
       </div>
@@ -177,6 +278,13 @@ export default function PedidosPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteOrcConfirmId, setDeleteOrcConfirmId] = useState<string | null>(null);
 
+  // PDF preview + sharing (used in "print" view)
+  const printRef = useRef<HTMLDivElement | null>(null);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+
   const { usuarios: dbUsuarios } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
@@ -198,6 +306,130 @@ export default function PedidosPage() {
     const q = searchParams.get('q');
     if (q) setSearch(q);
   }, [searchParams]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const getPedidoPrintMeta = () => {
+    if (!currentPedido) return { fileName: 'pedido.pdf', vendedorUsuario: '-', clienteEmail: '' };
+    const orc = orcamentos.find(o => o.id === currentPedido.orcamentoId);
+    const vendedorUsuario = orc?.vendedor || currentPedido.vendedor || '-';
+    const cli = store.getClientes().find(c => c.nome === currentPedido.clienteNome);
+    const clienteEmail = cli?.email || '';
+    const fileName = `Pedido-${currentPedido.numero}-Vendedor-${String(vendedorUsuario).replace(/\s+/g, '-')}.pdf`;
+    return { fileName, vendedorUsuario, clienteEmail };
+  };
+
+  const generatePedidoPdf = async () => {
+    if (!currentPedido) return null;
+    if (!printRef.current) return null;
+    if (pdfGenerating) return null;
+
+    setPdfGenerating(true);
+    try {
+      const { default: html2canvas } = await import('html2canvas');
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+
+      const { fileName } = getPedidoPrintMeta();
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+      const pdfPageWidth = pdf.internal.pageSize.getWidth();
+      const pdfPageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgWidth = pdfPageWidth;
+      const imgHeight = (canvas.height * pdfPageWidth) / canvas.width;
+      const totalPages = Math.max(1, Math.ceil(imgHeight / pdfPageHeight));
+
+      const pageHeightPx = Math.ceil(canvas.height / totalPages);
+
+      for (let page = 0; page < totalPages; page++) {
+        const pageCanvas = document.createElement('canvas');
+        const startY = page * pageHeightPx;
+        const height = Math.min(pageHeightPx, canvas.height - startY);
+
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = height;
+
+        const ctx = pageCanvas.getContext('2d');
+        if (!ctx) continue;
+        ctx.drawImage(canvas, 0, startY, canvas.width, height, 0, 0, canvas.width, height);
+
+        const pageImgData = pageCanvas.toDataURL('image/png');
+        const pageImgHeight = (pageCanvas.height * pdfPageWidth) / canvas.width;
+
+        if (page > 0) pdf.addPage();
+        pdf.addImage(pageImgData, 'PNG', 0, 0, imgWidth, pageImgHeight);
+      }
+
+      const blob = pdf.output('blob');
+      // Keep blob + preview url for share/email flows
+      setPdfBlob(blob);
+      setPdfPreviewUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
+
+      return { blob, fileName };
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
+
+  const handlePreviewPdf = async () => {
+    const pdf = await generatePedidoPdf();
+    if (!pdf) return;
+    setPdfPreviewOpen(true);
+  };
+
+  const handleSharePdfViaNavigator = async () => {
+    const pdf = await generatePedidoPdf();
+    if (!pdf) return false;
+    const { fileName } = pdf;
+    const file = new File([pdf.blob], fileName, { type: 'application/pdf' });
+
+    try {
+      if (navigator.share && (navigator as any).canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: fileName,
+          text: `Pedido ${currentPedido?.numero} — Rollerport`,
+        });
+        return true;
+      }
+    } catch {
+      // fallthrough to false
+    }
+    return false;
+  };
+
+  const handleSendWhatsApp = async () => {
+    const ok = await handleSharePdfViaNavigator();
+    if (ok) return;
+    const { vendedorUsuario } = getPedidoPrintMeta();
+    const msg = `Pedido ${currentPedido?.numero} (${vendedorUsuario}) — gere/baixe o PDF no botão "Gerar PDF" para encaminhar.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const handleSendEmail = async () => {
+    const ok = await handleSharePdfViaNavigator();
+    if (ok) return;
+    const { clienteEmail, vendedorUsuario } = getPedidoPrintMeta();
+    const to = clienteEmail || '';
+    const subject = `Pedido ${currentPedido?.numero} - Rollerport`;
+    const body = `Olá! Segue o Pedido ${currentPedido?.numero}.\nVendedor/Usuário: ${vendedorUsuario}\n\n(Anexe o PDF gerado em "Gerar PDF".)`;
+    if (to) window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    else window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
 
   // Comprehensive search helper
   const matchesSearch = (text: string, s: string) => text?.toLowerCase().includes(s.toLowerCase());
@@ -324,13 +556,26 @@ export default function PedidosPage() {
   if (view === 'print' && currentPedido) {
     const orc = orcamentos.find(o => o.id === currentPedido.orcamentoId);
     const cli = clientes.find(c => c.nome === currentPedido.clienteNome);
+    const vendedorUsuario = orc?.vendedor || currentPedido.vendedor || '-';
     return (
       <div>
-        <div className="flex gap-2 mb-4 print:hidden">
+        <div className="flex gap-2 mb-4 print:hidden flex-wrap">
           <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
-          <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
+          <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
+          <Button variant="default" onClick={handlePreviewPdf} className="gap-2" disabled={pdfGenerating}>
+            {pdfGenerating ? <Clock className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            {pdfGenerating ? 'Gerando PDF...' : 'Gerar PDF'}
+          </Button>
+          <Button variant="outline" onClick={handleSendWhatsApp} className="gap-2" disabled={pdfGenerating}>
+            <Truck className="h-4 w-4" />
+            Encaminhar por WhatsApp
+          </Button>
+          <Button variant="outline" onClick={handleSendEmail} className="gap-2" disabled={pdfGenerating}>
+            <Mail className="h-4 w-4" />
+            Enviar por E-mail
+          </Button>
         </div>
-        <div className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none print:max-w-none">
+        <div ref={printRef} className="bg-card border rounded-lg p-6 max-w-5xl mx-auto print:border-0 print:shadow-none print:max-w-none">
           <div className="flex justify-between items-start mb-6">
             <div className="flex items-start gap-4">
               <img src={logo} alt="Rollerport" className="h-20 w-20 object-contain" />
@@ -349,11 +594,12 @@ export default function PedidosPage() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4 text-sm mb-6 border rounded p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-6 border rounded p-4">
             <div><span className="font-semibold">Pedido Nº:</span> {currentPedido.numero}</div>
             <div><span className="font-semibold">Orçamento Nº:</span> {currentPedido.orcamentoNumero || '-'}</div>
             <div><span className="font-semibold">Data:</span> {currentPedido.createdAt}</div>
             <div><span className="font-semibold">Entrega:</span> {currentPedido.dataEntrega}</div>
+            <div><span className="font-semibold">Vendedor/Usuário:</span> {vendedorUsuario}</div>
             <div><span className="font-semibold">Status:</span> {currentPedido.status.replace('_', ' ')}</div>
             <div><span className="font-semibold">Valor Total:</span> {fmt(currentPedido.valorTotal)}</div>
           </div>
@@ -394,6 +640,26 @@ export default function PedidosPage() {
           )}
         </div>
         <style>{`@media print { @page { size: landscape; margin: 1cm; } body { -webkit-print-color-adjust: exact; } .print\\:hidden { display: none !important; } }`}</style>
+
+        {pdfPreviewOpen && pdfPreviewUrl && (
+          <Dialog open={pdfPreviewOpen} onOpenChange={setPdfPreviewOpen}>
+            <DialogContent className="max-w-6xl w-[95vw] h-[80vh] p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <DialogHeader className="p-0 m-0">
+                  <DialogTitle className="text-base">Pré-visualização do PDF</DialogTitle>
+                </DialogHeader>
+                <Button variant="outline" size="sm" onClick={() => setPdfPreviewOpen(false)}>
+                  Fechar
+                </Button>
+              </div>
+              <iframe
+                title="PDF preview"
+                src={pdfPreviewUrl}
+                className="w-full h-[calc(80vh-56px)] bg-white"
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     );
   }
@@ -487,21 +753,12 @@ export default function PedidosPage() {
                     </div>
                   </td>
                   <td className="p-2 sm:p-3 text-right font-mono hidden sm:table-cell">{fmt(p.valorTotal)}</td>
-                  <td className="p-2 sm:p-3">
-                    <div className="flex gap-0.5 sm:gap-1 justify-end flex-wrap">
+                  <td className="p-2 sm:p-3 pr-4">
+                    <div className="flex gap-1 justify-end flex-wrap">
                         <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Ver"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         <button onClick={() => { setCurrentPedido(p); setView('view'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         <button onClick={() => { setCurrentPedido(p); setView('print'); }} className="p-1 sm:p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         {p.status === 'PENDENTE' && <button onClick={() => gerarOS(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" title="Gerar O.S."><Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>}
-                        {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Concluir</Button>}
-                        {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Entregar</Button>}
-                        <button 
-                          onClick={() => navigate('/agenda', { state: { followUp: { clienteId: p.cliente_id || orcamentos.find(o => o.id === p.orcamentoId)?.clienteId, orcNumero: p.orcamentoNumero || p.numero } } })} 
-                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-violet-500" 
-                          title="Agendar Follow-up"
-                        >
-                          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </button>
                         <button 
                           onClick={() => {
                             const orc = orcamentos.find(o => o.id === p.orcamentoId);
@@ -510,10 +767,24 @@ export default function PedidosPage() {
                             setIsTrackingOpen(true);
                           }} 
                           className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary" 
+                          title="CRM (Histórico/Observações)"
+                        >
+                          <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const orc = orcamentos.find(o => o.id === p.orcamentoId);
+                            const vendor = p.vendedor || orc?.vendedor || 'Sistema';
+                            setTrackingVendor(vendor);
+                            setIsTrackingOpen(true);
+                          }}
+                          className="p-1 sm:p-1.5 rounded hover:bg-muted text-primary"
                           title="Rastrear Pedido"
                         >
                           <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
+                        {p.status === 'EM_PRODUCAO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'CONCLUIDO')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Concluir</Button>}
+                        {p.status === 'CONCLUIDO' && <Button size="sm" variant="outline" onClick={() => updateStatus(p.id, 'ENTREGUE')} className="text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2">Entregar</Button>}
                         <button onClick={() => cancelarPedido(p)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         <button onClick={() => deletePedido(p.id)} className="p-1 sm:p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                       </div>
@@ -558,17 +829,19 @@ export default function PedidosPage() {
       <ConfirmDialog
         open={!!deleteConfirmId}
         onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}
-        title="Confirmar Exclusão de Pedido"
-        description="Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita."
-        confirmLabel="Confirmar Exclusão"
+        title="Excluir registro"
+        description="Tem certeza que deseja excluir este registro?"
+        confirmLabel="Confirmar"
+        cancelLabel="Cancelar"
         onConfirm={confirmDeletePedido}
       />
       <ConfirmDialog
         open={!!deleteOrcConfirmId}
         onOpenChange={(open) => { if (!open) setDeleteOrcConfirmId(null); }}
-        title="Confirmar Exclusão de Orçamento"
-        description="Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
-        confirmLabel="Confirmar Exclusão"
+        title="Excluir registro"
+        description="Tem certeza que deseja excluir este registro?"
+        confirmLabel="Confirmar"
+        cancelLabel="Cancelar"
         onConfirm={confirmDeleteOrc}
       />
     </div>

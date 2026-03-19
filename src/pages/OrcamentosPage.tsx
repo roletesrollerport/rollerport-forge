@@ -240,6 +240,10 @@ export default function OrcamentosPage() {
   // Confirm delete dialog state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // Confirm delete for items inside the orçamento editor (itensRolete / itensProduto)
+  const [deleteItemConfirmOpen, setDeleteItemConfirmOpen] = useState(false);
+  const [deleteItemTarget, setDeleteItemTarget] = useState<{ isProd: boolean; id: string } | null>(null);
+
   const [clientes, setClientes] = useState(store.getClientes());
   const [revendas, setRevendas] = useState(store.getFornecedores());
   const [produtos, setProdutos] = useState(store.getProdutos());
@@ -496,6 +500,21 @@ export default function OrcamentosPage() {
     store.saveOrcamentos(updated); setOrcamentos(updated);
     setDeleteConfirmId(null);
     toast.success('Orçamento removido!');
+  };
+
+  const confirmDeleteItem = () => {
+    if (!deleteItemTarget) return;
+    const { isProd, id } = deleteItemTarget;
+
+    if (isProd) {
+      setItensProduto(prev => prev.filter(it => it.id !== id));
+    } else {
+      setItensRolete(prev => prev.filter(it => it.id !== id));
+    }
+
+    setDeleteItemConfirmOpen(false);
+    setDeleteItemTarget(null);
+    toast.success('Item excluído!');
   };
 
   const convertToPedido = (orc: Orcamento) => {
@@ -1697,8 +1716,9 @@ export default function OrcamentosPage() {
                           }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Editar"><Edit className="h-4 w-4" /></button>
                           
                           <button onClick={() => {
-                            if ('isProd' in item && item.isProd) setItensProduto(itensProduto.filter(it => it.id !== item.id));
-                            else setItensRolete(itensRolete.filter(it => it.id !== item.id));
+                            const isProd = (item as any).isProd === true;
+                            setDeleteItemTarget({ isProd, id: item.id });
+                            setDeleteItemConfirmOpen(true);
                           }} className="p-1 text-muted-foreground hover:text-destructive transition-colors" title="Excluir"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </td>
@@ -1873,10 +1893,26 @@ export default function OrcamentosPage() {
       <ConfirmDialog
         open={!!deleteConfirmId}
         onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}
-        title="Confirmar Exclusão"
-        description="Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
-        confirmLabel="Confirmar Exclusão"
+        title="Excluir registro"
+        description="Tem certeza que deseja excluir este registro?"
+        confirmLabel="Confirmar"
+        cancelLabel="Cancelar"
         onConfirm={confirmDeleteOrcamento}
+      />
+
+      <ConfirmDialog
+        open={deleteItemConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteItemConfirmOpen(false);
+            setDeleteItemTarget(null);
+          }
+        }}
+        title="Excluir registro"
+        description="Tem certeza que deseja excluir este registro?"
+        confirmLabel="Confirmar"
+        cancelLabel="Cancelar"
+        onConfirm={confirmDeleteItem}
       />
     </div>
   );
