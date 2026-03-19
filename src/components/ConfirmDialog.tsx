@@ -35,8 +35,8 @@ export default function ConfirmDialog({
     variant === 'destructive'
       ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
       : variant === 'warning'
-      ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90'
-      : '';
+      ? 'bg-secondary text-white hover:bg-slate-100 hover:text-secondary border border-transparent hover:border-secondary/20 transition-colors'
+      : 'bg-primary text-white hover:bg-slate-100 hover:text-primary border border-transparent hover:border-primary/20 transition-colors';
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

@@ -31,12 +31,57 @@ const TABLES_CONFIG = [
   { name: 'ordens_servico', label: 'Ordens de Serviço', dependency: 4 },
 ];
 
+const FULL_SQL_SCHEMA = `-- ESQUEMA DE TABELAS ROLLERPORT - SUPABASE/POSTGRES
+-- Este script cria todas as tabelas necessárias no novo banco de dados.
+
+-- 1. TABELAS DE CONFIGURAÇÃO E USUÁRIOS
+CREATE TABLE IF NOT EXISTS public.usuarios (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome text NOT NULL DEFAULT '',
+  email text NOT NULL DEFAULT '',
+  login text NOT NULL UNIQUE,
+  senha text NOT NULL,
+  nivel text NOT NULL DEFAULT 'vendedor',
+  ativo boolean NOT NULL DEFAULT true,
+  permissoes jsonb DEFAULT '{"ver":["inicio","custos","clientes","produtos","orcamentos","pedidos","producao","estoque","chat","ia","usuarios"],"editar":["inicio","custos","clientes","produtos","orcamentos","pedidos","producao","estoque","chat","ia","usuarios"]}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- 2. TABELAS DE DADOS DINÂMICOS (JSONB)
+CREATE TABLE IF NOT EXISTS public.orcamentos (id text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.pedidos (id text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.ordens_servico (id text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.clientes (id text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.produtos (id text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.estoque (id text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.metas_vendedores (vendedor text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.fornecedores (id text PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.chat_messages (id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now());
+
+-- 3. TABELAS DE CUSTOS
+CREATE TABLE IF NOT EXISTS public.custos_tubos (id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.custos_eixos (id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.custos_conjuntos (id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.custos_revestimentos (id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.custos_encaixes (id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+
+-- HABILITAR REALTIME
+ALTER PUBLICATION supabase_realtime ADD TABLE public.orcamentos;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.pedidos;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.ordens_servico;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.clientes;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.produtos;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.estoque;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.metas_vendedores;
+`;
+
 function GitHubConnection() {
   const [connection, setConnection] = useState<{ user: string, repo: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmConnect, setConfirmConnect] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [confirmDownload, setConfirmDownload] = useState(false);
+  const [confirmSQL, setConfirmSQL] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('rp_github_connection');
@@ -45,7 +90,6 @@ function GitHubConnection() {
 
   const handleConnect = () => {
     setLoading(true);
-    // Mock authentication flow
     setTimeout(() => {
       const newConn = { user: 'roletesrollerport', repo: 'rollerport-forge' };
       setConnection(newConn);
@@ -63,12 +107,10 @@ function GitHubConnection() {
 
   const handleDownloadZip = async () => {
     if (!connection) return;
-    
     toast.loading("Preparando download do código-fonte...");
     try {
       const response = await fetch(`https://api.github.com/repos/${connection.user}/${connection.repo}/zipball/main`);
       if (!response.ok) throw new Error("Falha ao baixar arquivo");
-      
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -78,51 +120,76 @@ function GitHubConnection() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
       toast.dismiss();
       toast.success("Download iniciado!");
     } catch (error) {
       toast.dismiss();
-      toast.error("Erro ao baixar código: Repositório pode ser privado ou inexistente.");
+      toast.error("Erro ao baixar código.");
     }
   };
 
+  const handleDownloadSQLSchema = () => {
+    const blob = new Blob([FULL_SQL_SCHEMA], { type: "text/sql" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rollerport_schema_completo_${new Date().toISOString().split('T')[0]}.sql`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Script SQL baixado!");
+  };
+
   return (
-    <Card className="border-primary/20 shadow-sm overflow-hidden ring-1 ring-black/5 bg-slate-50/20">
-      <CardHeader className="pb-4 border-b">
+    <Card className="border-primary/30 shadow-md overflow-hidden bg-slate-50/10">
+      <CardHeader className="pb-4 border-b bg-primary/5">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Github className="h-5 w-5 text-slate-800" />
-              Conexão com Repositório de Código
+            <CardTitle className="text-lg flex items-center gap-2 text-primary">
+              <Database className="h-5 w-5" />
+              Implantação e Infraestrutura
             </CardTitle>
-            <CardDescription>Gerencie o vínculo entre este projeto e o GitHub.</CardDescription>
+            <CardDescription>Baixe o código-fonte ou o script SQL das tabelas.</CardDescription>
           </div>
-          {connection && (
+          <div className="flex gap-2">
             <Button 
-              variant="destructive" 
+              variant="outline" 
               size="sm" 
-              className="h-8 gap-2"
-              onClick={() => setConfirmDisconnect(true)}
+              className="h-8 gap-2 border-primary/20 hover:bg-primary/5 text-[11px] font-bold"
+              onClick={() => setConfirmSQL(true)}
             >
-              <LogOut className="h-4 w-4" />
-              Desconectar GitHub
+              <FileCode className="h-4 w-4" />
+              SCRIPT SQL (TABELAS)
             </Button>
-          )}
+            {connection && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="h-8 gap-2 opacity-70 hover:opacity-100"
+                onClick={() => setConfirmDisconnect(true)}
+              >
+                <LogOut className="h-4 w-4" />
+                Desconectar
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="py-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-full ${connection ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-              <Zap className="h-6 w-6" />
+            <div className={`p-3 rounded-full ${connection ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>
+              <Github className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Status da Conta</p>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">GitHub Rollerport</p>
               {connection ? (
                 <div className="flex flex-col">
-                  <span className="text-lg font-black text-slate-900 leading-tight">Conectado: {connection.user}</span>
-                  <span className="text-sm font-mono text-primary font-bold">Repos: {connection.repo}</span>
+                  <span className="text-lg font-black text-slate-900 leading-tight flex items-center gap-2">
+                    Status: <span className="text-emerald-500 animate-pulse">Conectado</span>
+                  </span>
+                  <span className="text-sm font-mono text-primary font-bold">{connection.user}/{connection.repo}</span>
                 </div>
               ) : (
                 <span className="text-lg font-black text-slate-400 italic">Status: Desconectado</span>
@@ -138,15 +205,15 @@ function GitHubConnection() {
                 disabled={loading}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
-                Conectar GitHub
+                Conectar Repositório
               </Button>
             ) : (
               <Button 
-                className="bg-[#238636] hover:bg-[#2ea043] text-white gap-2 px-6 font-bold shadow-sm border border-[#238636]/20 transition-all duration-200 active:scale-95"
+                className="bg-primary text-white gap-2 px-6 font-bold shadow-md transition-all hover:bg-slate-100 hover:text-primary active:scale-95 uppercase text-xs tracking-widest border border-transparent hover:border-primary/20"
                 onClick={() => setConfirmDownload(true)}
               >
                 <Download className="h-4 w-4" />
-                Baixar Código-Fonte (.ZIP)
+                BAIXAR CÓDIGO (.ZIP)
               </Button>
             )}
           </div>
@@ -157,19 +224,17 @@ function GitHubConnection() {
         open={confirmConnect}
         onOpenChange={setConfirmConnect}
         title="Conectar ao GitHub"
-        description="AVISO DE SEGURANÇA: Vincular o projeto ao GitHub requer permissões de acesso. Deseja prosseguir com a conexão?"
+        description="Deseja vincular o projeto ao repositório oficial do Rollerport?"
         confirmLabel="Conectar"
-        cancelLabel="Cancelar"
-        variant="warning"
+        variant="default"
         onConfirm={() => { setConfirmConnect(false); handleConnect(); }}
       />
       <ConfirmDialog
         open={confirmDisconnect}
         onOpenChange={setConfirmDisconnect}
         title="Desconectar GitHub"
-        description="Atenção: Desconectar o GitHub não apaga seu código na nuvem, mas impede atualizações automáticas. Deseja continuar?"
+        description="Atenção: A desconexão impedirá downloads diretos do código-fonte. Deseja continuar?"
         confirmLabel="Desconectar"
-        cancelLabel="Cancelar"
         variant="warning"
         onConfirm={() => { setConfirmDisconnect(false); handleDisconnect(); }}
       />
@@ -177,17 +242,25 @@ function GitHubConnection() {
         open={confirmDownload}
         onOpenChange={setConfirmDownload}
         title="Baixar Código-Fonte"
-        description="AVISO DE SEGURANÇA: Você está baixando o código-fonte completo (.ZIP). Certifique-se de que este computador é seguro. Prosseguir?"
+        description="Você está baixando o código-fonte completo (.ZIP). Certifique-se de que este computador é seguro. Prosseguir?"
         confirmLabel="Baixar"
-        cancelLabel="Cancelar"
         variant="warning"
         onConfirm={() => { setConfirmDownload(false); handleDownloadZip(); }}
+      />
+      <ConfirmDialog
+        open={confirmSQL}
+        onOpenChange={setConfirmSQL}
+        title="Baixar Script SQL"
+        description="Este script contém os comandos para criar todas as tabelas (schema) do sistema Rollerport em um novo banco de dados. Deseja baixar o arquivo .sql?"
+        confirmLabel="Baixar SQL"
+        variant="default"
+        onConfirm={() => { setConfirmSQL(false); handleDownloadSQLSchema(); }}
       />
     </Card>
   );
 }
 
-function EnvironmentSettings() {
+function EnvironmentSettings({ targetType }: { targetType: TargetDBType }) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [confirmEnvBackup, setConfirmEnvBackup] = useState(false);
   
@@ -227,7 +300,7 @@ function EnvironmentSettings() {
     <Button 
       variant="ghost" 
       size="icon" 
-      className="h-6 w-6 ml-2 text-slate-400 hover:text-primary hover:bg-white hover:ring-1 hover:ring-slate-100 shadow-none hover:shadow-sm transition-all"
+      className="h-6 w-6 ml-2 text-slate-400 hover:text-primary hover:bg-primary/10 shadow-none transition-all rounded-full"
       onClick={() => handleCopy(text, fieldId)}
     >
       {copiedField === fieldId ? <Check className="h-3 w-3 text-emerald-500" /> : <Clipboard className="h-3 w-3" />}
@@ -235,21 +308,21 @@ function EnvironmentSettings() {
   );
 
   return (
-    <Card className="border-primary/20 shadow-sm overflow-hidden ring-1 ring-black/5">
-      <CardHeader className="bg-slate-50/50 pb-4 border-b">
+    <Card className="border-primary/20 shadow-sm overflow-hidden bg-white/50">
+      <CardHeader className="bg-primary/5 pb-4 border-b">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Settings className="h-5 w-5 text-slate-500" />
-              Configurações de Ambiente Atuais
+            <CardTitle className="text-lg flex items-center gap-2 text-primary">
+              <CheckCircle2 className="h-5 w-5" />
+              Check-point Final: Ambiente de Origem (Lovable Cloud)
             </CardTitle>
-            <CardDescription>Visualização permanente das chaves de conexão do projeto.</CardDescription>
+            <CardDescription>Credenciais de origem de onde os dados serão extraídos para a migração.</CardDescription>
           </div>
           <div className="flex items-center gap-3">
             <Button 
               variant="outline" 
               size="sm" 
-              className="text-[10px] h-7 font-bold uppercase tracking-wider bg-white"
+              className="text-[10px] h-7 font-bold uppercase tracking-wider bg-white border-primary/20 text-primary hover:bg-primary/5"
               onClick={() => setConfirmEnvBackup(true)}
             >
               GERAR ARQUIVO .env
@@ -258,50 +331,89 @@ function EnvironmentSettings() {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-b">
-          <div className="p-4 space-y-2">
-            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Database Identificador</Label>
-            <div className={`text-xs font-black px-2 py-1 rounded inline-block border ${dbColor}`}>
-              {dbLabel}
+        {targetType === 'supabase' ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-b border-primary/10">
+              <div className="p-4 space-y-2">
+                <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Database ID (Lovable Cloud)</Label>
+                <div className={`text-xs font-black px-2 py-1 rounded inline-block border ${dbColor}`}>
+                  {dbLabel}
+                </div>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Project ID</Label>
+                  <CopyButton text={projectId} fieldId="Project ID" />
+                </div>
+                <p className="text-sm font-mono truncate bg-slate-100/50 p-1 rounded border border-slate-200 font-bold">{projectId}</p>
+              </div>
+              <div className="p-4 space-y-2 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Project URL</Label>
+                  <CopyButton text={supabaseUrl} fieldId="Project URL" />
+                </div>
+                <p className="text-sm font-mono truncate bg-slate-100/50 p-1 rounded border border-slate-200 font-bold">{supabaseUrl}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x border-primary/10">
+              <div className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Publishable (Anon) Key</Label>
+                  <CopyButton text={supabaseAnonKey} fieldId="Publishable Key" />
+                </div>
+                <div className="text-[11px] font-mono break-all bg-slate-100/50 p-2 rounded border border-slate-200 leading-tight font-bold">
+                  {supabaseAnonKey}
+                </div>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Conferência Anon Key</Label>
+                  <CopyButton text={supabaseAnonKey} fieldId="Anon Key" />
+                </div>
+                <div className="text-[11px] font-mono break-all bg-slate-100/50 p-2 rounded border border-slate-200 leading-tight font-bold">
+                  {supabaseAnonKey}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col">
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x border-b border-primary/10">
+              <div className="p-4 space-y-2">
+                <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Database ID (Lovable Cloud)</Label>
+                <div className="text-xs font-black text-primary px-2 py-1 rounded bg-primary/5 border border-primary/20 inline-block uppercase whitespace-nowrap">
+                  Banco Lovable Cloud (PostgreSQL)
+                </div>
+              </div>
+              <div className="p-4 space-y-2">
+                <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Host / IP de Origem (Lovable)</Label>
+                <p className="text-xs font-mono truncate bg-slate-100/50 p-1.5 rounded border border-slate-200 font-bold overflow-hidden select-all">
+                  lovable-gen-postgres-server
+                </p>
+              </div>
+              <div className="p-4 space-y-2">
+                <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Porta de Origem</Label>
+                <p className="text-xs font-mono bg-slate-100/50 p-1.5 rounded border border-slate-200 font-bold w-full">
+                  5432
+                </p>
+              </div>
+              <div className="p-4 space-y-2">
+                <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Usuário de Origem</Label>
+                <p className="text-xs font-mono truncate bg-slate-100/50 p-1.5 rounded border border-slate-200 font-bold">
+                  postgres_lovable
+                </p>
+              </div>
+            </div>
+            <div className="p-4 bg-primary/5">
+              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Nome do Banco de Dados Lovable</Label>
+              <p className="text-sm font-black text-primary tracking-tight">
+                lovable_system_db_production
+              </p>
             </div>
           </div>
-          <div className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Project ID</Label>
-              <CopyButton text={projectId} fieldId="Project ID" />
-            </div>
-            <p className="text-sm font-mono truncate bg-slate-50 p-1 rounded border border-slate-100 font-bold">{projectId}</p>
-          </div>
-          <div className="p-4 space-y-2 lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Project URL</Label>
-              <CopyButton text={supabaseUrl} fieldId="Project URL" />
-            </div>
-            <p className="text-sm font-mono truncate bg-slate-50 p-1 rounded border border-slate-100 font-bold">{supabaseUrl}</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
-          <div className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Publishable (Anon) Key</Label>
-              <CopyButton text={supabaseAnonKey} fieldId="Publishable Key" />
-            </div>
-            <div className="text-[11px] font-mono break-all bg-slate-50 p-2 rounded border border-slate-100 leading-tight font-bold">
-              {supabaseAnonKey}
-            </div>
-          </div>
-          <div className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Conferência Anon Key</Label>
-              <CopyButton text={supabaseAnonKey} fieldId="Anon Key" />
-            </div>
-            <div className="text-[11px] font-mono break-all bg-slate-50 p-2 rounded border border-slate-100 leading-tight font-bold">
-              {supabaseAnonKey}
-            </div>
-          </div>
-        </div>
-        <div className="p-4 bg-slate-50/30">
-          <p className="text-[10px] text-muted-foreground italic flex items-center gap-1.5 font-medium">
+        )}
+        <div className="p-4 bg-primary/5">
+          <p className="text-[10px] text-primary/70 italic flex items-center gap-1.5 font-medium">
             <AlertCircle className="h-3 w-3" />
             Valores monitorados diretamente do arquivo de sistema. Utilize os botões laterais para cópia rápida.
           </p>
@@ -333,6 +445,15 @@ export default function GestaoDadosPage() {
   const [targetType, setTargetType] = useState<TargetDBType>('supabase');
   const [targetUrl, setTargetUrl] = useState("");
   const [targetKey, setTargetKey] = useState("");
+  
+  // Generic DB Fields
+  const [targetHost, setTargetHost] = useState("");
+  const [targetPort, setTargetPort] = useState("");
+  const [targetUser, setTargetUser] = useState("");
+  const [targetPass, setTargetPass] = useState("");
+  const [targetDbName, setTargetDbName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const [isSimulation, setIsSimulation] = useState(false);
 
   // Confirm dialog states
@@ -555,49 +676,49 @@ export default function GestaoDadosPage() {
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Migrador Universal</h1>
-          <p className="text-muted-foreground">Abstração de dados e migração para múltiplos motores de banco.</p>
+          <h1 className="text-3xl font-black tracking-tight text-primary">Gestão de Dados do Sistema</h1>
+          <p className="text-muted-foreground font-medium">Infraestrutura, migrações e backups de segurança.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setConfirmVoltar(true)}>Voltar</Button>
+          <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/5 font-bold" onClick={() => setConfirmVoltar(true)}>SAIR DA GESTÃO</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* EXPORT CARD */}
-        <Card className="border-primary/20 shadow-sm border-t-4 border-t-blue-500">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5 text-blue-500" />
-              1. Abstração & Backup
+        <Card className="border-primary/30 shadow-md border-t-4 border-t-primary overflow-hidden">
+          <CardHeader className="bg-primary/5">
+            <CardTitle className="flex items-center gap-2 text-primary uppercase text-sm tracking-widest font-black">
+              <Download className="h-5 w-5" />
+              1. Backup Universal
             </CardTitle>
-            <CardDescription>Extrai dados em JSON genérico, removendo dependências Supabase.</CardDescription>
+            <CardDescription className="text-[11px] font-medium italic">Extração de dados brutos em JSON para redundância.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <Button 
-              className="w-full bg-blue-600 hover:bg-blue-700" 
+              className="w-full bg-primary text-white font-bold shadow-sm hover:bg-slate-100 hover:text-primary border border-transparent hover:border-primary/20 transition-colors" 
               onClick={() => setConfirmExport(true)} 
               disabled={exporting || migrating}
             >
               {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              Exportar Schema Abstrato
+              EXPORTAR DADOS (JSON)
             </Button>
           </CardContent>
         </Card>
 
         {/* BRIDGE/SQL MIGRATOR CARD */}
-        <Card className="col-span-1 lg:col-span-2 border-primary/20 shadow-sm border-t-4 border-t-purple-500">
-          <CardHeader>
+        <Card className="col-span-1 lg:col-span-2 border-primary/30 shadow-md border-t-4 border-t-secondary overflow-hidden">
+          <CardHeader className="bg-secondary/5">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2">
-                  <Share2 className="h-5 w-5 text-purple-500" />
-                  2. Motor de Injeção Universal
+                <CardTitle className="flex items-center gap-2 text-secondary uppercase text-sm tracking-widest font-black">
+                  <Share2 className="h-5 w-5" />
+                  2. Motor de Injeção & Migração
                 </CardTitle>
-                <CardDescription>Migração direta ou geração de comandos SQL por dialeto.</CardDescription>
+                <CardDescription className="text-[11px] font-medium italic">Migração direta entre Supabase ou geração de scripts SQL.</CardDescription>
               </div>
-              <div className="flex items-center gap-2 bg-purple-50 p-2 rounded-lg border border-purple-100">
-                <Label htmlFor="sim-mode" className="text-xs font-semibold text-purple-700">MODO SIMULAÇÃO</Label>
+              <div className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg border border-secondary/20">
+                <Label htmlFor="sim-mode" className="text-[10px] font-black text-secondary tracking-tighter uppercase">MODO SIMULAÇÃO</Label>
                 <Switch 
                   id="sim-mode" 
                   checked={isSimulation} 
@@ -606,59 +727,141 @@ export default function GestaoDadosPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Motor de Destino</Label>
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground">Motor de Destino</Label>
                 <Select value={targetType} onValueChange={(v: TargetDBType) => setTargetType(v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-secondary/20 focus:ring-secondary/20">
                     <SelectValue placeholder="Selecione o destino" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="supabase">Supabase (Via API/SDK)</SelectItem>
-                    <SelectItem value="postgres">PostgreSQL Padrão (Dump SQL)</SelectItem>
-                    <SelectItem value="mysql">MySQL / Hostinger (Dump SQL)</SelectItem>
+                    <SelectItem value="supabase">Supabase Engine (Cloud)</SelectItem>
+                    <SelectItem value="postgres">PostgreSQL (Migração Local)</SelectItem>
+                    <SelectItem value="mysql">MySQL / MariaDB (Hostinger)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {targetType === 'supabase' && (
+              {targetType === 'supabase' ? (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="targetUrl">Target Supabase URL</Label>
+                    <Label htmlFor="targetUrl" className="text-[10px] font-bold uppercase text-muted-foreground">Target Supabase URL</Label>
                     <Input 
                       id="targetUrl" 
                       placeholder="https://xxx.supabase.co" 
                       value={targetUrl} 
                       onChange={e => setTargetUrl(e.target.value)} 
+                      className="border-secondary/20 focus:ring-secondary/20 font-mono text-xs"
                     />
                   </div>
-                  <div className="space-y-2 md:col-start-2">
-                    <Label htmlFor="targetKey">Target Supabase Key (service_role)</Label>
-                    <Input 
-                      id="targetKey" 
-                      type="password" 
-                      placeholder="Key" 
-                      value={targetKey} 
-                      onChange={e => setTargetKey(e.target.value)} 
-                    />
+                  <div className="space-y-2">
+                    <Label htmlFor="targetKey" className="text-[10px] font-bold uppercase text-muted-foreground">Target Supabase Key (service_role)</Label>
+                    <div className="relative">
+                      <Input 
+                        id="targetKey" 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="service_role_key" 
+                        value={targetKey} 
+                        onChange={e => setTargetKey(e.target.value)} 
+                        className="border-secondary/20 focus:ring-secondary/20 font-mono text-xs pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-muted-foreground"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
                 </>
+              ) : (
+                <div className="md:col-span-2 space-y-4 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label htmlFor="targetHost" className="text-[10px] font-bold uppercase text-muted-foreground">Host / IP do Servidor</Label>
+                      <Input 
+                        id="targetHost" 
+                        placeholder="ex: mysql.hostinger.com ou 192.168.1.1" 
+                        value={targetHost} 
+                        onChange={e => setTargetHost(e.target.value)} 
+                        className="border-secondary/20 focus:ring-secondary/20 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="targetPort" className="text-[10px] font-bold uppercase text-muted-foreground">Porta</Label>
+                      <Input 
+                        id="targetPort" 
+                        placeholder={targetType === 'mysql' ? '3306' : '5432'} 
+                        value={targetPort} 
+                        onChange={e => setTargetPort(e.target.value)} 
+                        className="border-secondary/20 focus:ring-secondary/20 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="targetUser" className="text-[10px] font-bold uppercase text-muted-foreground">Usuário do Banco</Label>
+                      <Input 
+                        id="targetUser" 
+                        placeholder="root" 
+                        value={targetUser} 
+                        onChange={e => setTargetUser(e.target.value)} 
+                        className="border-secondary/20 focus:ring-secondary/20 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="targetPass" className="text-[10px] font-bold uppercase text-muted-foreground">Senha do Banco</Label>
+                      <div className="relative">
+                        <Input 
+                          id="targetPass" 
+                          type={showPassword ? "text" : "password"} 
+                          placeholder="••••••••" 
+                          value={targetPass} 
+                          onChange={e => setTargetPass(e.target.value)} 
+                          className="border-secondary/20 focus:ring-secondary/20 font-mono text-xs pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-muted-foreground"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="targetDbName" className="text-[10px] font-bold uppercase text-muted-foreground">Nome do Banco de Dados (Database Name)</Label>
+                      <Input 
+                        id="targetDbName" 
+                        placeholder="rollerport_db" 
+                        value={targetDbName} 
+                        onChange={e => setTargetDbName(e.target.value)} 
+                        className="border-secondary/20 focus:ring-secondary/20 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
             <div className="pt-2 border-t flex gap-3">
               <Button 
                 variant={isSimulation ? "secondary" : "default"}
-                className={`flex-1 ${!isSimulation ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                className={`flex-1 font-black transition-colors ${!isSimulation ? 'bg-secondary text-white hover:bg-slate-100 hover:text-secondary border border-transparent hover:border-secondary/20' : ''}`}
                 onClick={() => setConfirmMigration(true)}
                 disabled={exporting || migrating}
               >
                 {migrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
                  isSimulation ? <PlayCircle className="mr-2 h-4 w-4" /> : 
                  targetType === 'supabase' ? <Share2 className="mr-2 h-4 w-4" /> : <FileCode className="mr-2 h-4 w-4" />}
-                {isSimulation ? "Simular Processo" : 
-                 targetType === 'supabase' ? "Iniciar Migração Direta" : "Gerar Script SQL"}
+                {isSimulation ? "SIMULAR PROCESSO" : 
+                 targetType === 'supabase' ? "INICIAR MIGRAÇÃO DIRETA" : "GERAR COMANDOS SQL"}
               </Button>
             </div>
           </CardContent>
@@ -669,7 +872,81 @@ export default function GestaoDadosPage() {
       <GitHubConnection />
 
       {/* NEW ENVIRONMENT SETTINGS SECTION */}
-      <EnvironmentSettings />
+      <div className="space-y-6">
+        <EnvironmentSettings targetType={targetType} />
+        
+        {/* DESTINATION ENVIRONMENT BLOCK */}
+        <Card className="border-secondary/30 shadow-md overflow-hidden bg-white/50 border-l-4 border-l-secondary">
+          <CardHeader className="bg-secondary/5 pb-4 border-b">
+            <div className="space-y-1">
+              <CardTitle className="text-lg flex items-center gap-2 text-secondary">
+                <CheckCircle2 className="h-5 w-5" />
+                Check-point Final: Ambiente de Destino (Configurado Acima)
+              </CardTitle>
+              <CardDescription>Resumo final das credenciais de destino para conferência antes da injeção.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {targetType === 'supabase' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x border-b border-secondary/10">
+                <div className="p-4 space-y-2">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Target Project URL</Label>
+                  <p className="text-sm font-mono truncate bg-slate-100/50 p-1 rounded border border-slate-200 font-bold min-h-[28px]">
+                    {targetUrl || <span className="text-slate-300 italic">Não preenchido</span>}
+                  </p>
+                </div>
+                <div className="p-4 space-y-2">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Target Service Role Key</Label>
+                  <div className="text-[11px] font-mono break-all bg-slate-100/50 p-2 rounded border border-slate-200 leading-tight font-bold min-h-[36px]">
+                    {targetKey ? (showPassword ? targetKey : "••••••••••••••••••••••••••••••••") : <span className="text-slate-300 italic">Não preenchido</span>}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x border-b border-secondary/10">
+                  <div className="p-4 space-y-2">
+                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Host / IP de Destino</Label>
+                    <p className="text-sm font-mono truncate bg-slate-100/50 p-1 rounded border border-slate-200 font-bold min-h-[28px]">
+                      {targetHost || <span className="text-slate-300 italic">Não preenchido</span>}
+                    </p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Porta de Destino</Label>
+                    <p className="text-sm font-mono truncate bg-slate-100/50 p-1 rounded border border-slate-200 font-bold min-h-[28px]">
+                      {targetPort || <span className="text-slate-300 italic">Padrão</span>}
+                    </p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Usuário de Destino</Label>
+                    <p className="text-sm font-mono truncate bg-slate-100/50 p-1 rounded border border-slate-200 font-bold min-h-[28px]">
+                      {targetUser || <span className="text-slate-300 italic">Não preenchido</span>}
+                    </p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Status de Configuração</Label>
+                    <p className={`text-xs font-black px-2 py-1 rounded inline-block border ${targetUrl || targetHost ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-slate-400 bg-slate-50 border-slate-200'}`}>
+                      {targetUrl || targetHost ? 'PRONTO PARA MIGRAÇÃO' : 'PENDENTE'}
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 space-y-2 bg-secondary/5">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Database Name</Label>
+                  <p className="text-sm font-black text-secondary tracking-tight">
+                    {targetDbName || <span className="text-slate-300 italic">Não identificado</span>}
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="p-4 bg-secondary/5">
+              <p className="text-[10px] text-secondary/70 italic flex items-center gap-1.5 font-medium">
+                <AlertCircle className="h-3 w-3" />
+                Estes valores são espelhados em tempo real dos campos de configuração do Motor de Injeção.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* TERMINAL LOG */}
       <Card className="bg-slate-950 text-slate-50 border-none shadow-2xl overflow-hidden ring-1 ring-white/10">
