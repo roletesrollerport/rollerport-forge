@@ -362,7 +362,7 @@ export default function OrcamentosPage() {
         if (!clienteId && itensRolete.length === 0 && itensProduto.length === 0) return;
         const orc: Orcamento = {
           id: editingOrc?.id || store.nextId('orc'),
-          numero: editingOrc?.numero || store.nextNumero('orc'),
+          numero: editingOrc?.numero || store.nextNumero(),
           clienteId,
           clienteNome: listaAtiva.find(c => c.id === clienteId)?.nome || 'Sem cliente',
           compradorNome: compradorSelecionado,
@@ -488,7 +488,7 @@ export default function OrcamentosPage() {
   const handleSave = () => {
     const orc: Orcamento = {
       id: editingOrc?.id || store.nextId('orc'),
-      numero: editingOrc?.numero || store.nextNumero('orc'),
+      numero: editingOrc?.numero || store.nextNumero(),
       clienteId,
       clienteNome: clienteSelecionado?.nome || 'Sem cliente',
       empresaEmitente,

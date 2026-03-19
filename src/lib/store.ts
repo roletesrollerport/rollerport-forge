@@ -331,27 +331,31 @@ export const store = {
     localStorage.setItem(key, String(n));
     return `${prefix}_${n}`;
   },
-  nextNumero: (prefix: string): string => {
+  nextNumero: (): string => {
     const year = new Date().getFullYear();
-    const key = `rp_num_${prefix}_${year}`;
-    const defaultStart = prefix === 'orc' ? 914 : 0;
+    const yearShort = String(year).slice(-2);
+    const key = `rp_num_global_${year}`;
     const stored = localStorage.getItem(key);
-    const n = (stored !== null ? parseInt(stored) : defaultStart) + 1;
+    // Standardize starting at 955 so the first new one is 956
+    const n = (stored !== null ? parseInt(stored) : 955) + 1;
     localStorage.setItem(key, String(n));
-    return `${String(n).padStart(4, '0')}/${year}`;
+    return `${String(n).padStart(4, '0')}/${yearShort}`;
   },
 
   /**
-   * One-time migration: renumber existing orçamentos sequentially starting at 915/YEAR
-   * and sync pedido numbers to match their orçamento numbers.
+   * One-time migration: renumber EVERYTHING starting at 956/26
+   * Syncs Orçamentos, Pedidos, and Ordens de Serviço.
    */
-  migrateNumeracao: () => {
-    const migrationKey = 'rp_migration_numeracao_915';
-    if (localStorage.getItem(migrationKey)) return; // already done
+  migrateNumeracao956: () => {
+    const migrationKey = 'rp_migration_numeracao_956_v3';
+    if (localStorage.getItem(migrationKey)) return;
 
     const year = new Date().getFullYear();
+    const yearShort = String(year).slice(-2);
+    
     const orcamentos: Orcamento[] = load('rp_orcamentos', []);
     const pedidos: Pedido[] = load('rp_pedidos', []);
+    const ordens: OrdemServico[] = load('rp_os', []);
 
     if (orcamentos.length === 0) {
       localStorage.setItem(migrationKey, '1');
@@ -359,34 +363,54 @@ export const store = {
     }
 
     // Sort by createdAt to preserve chronological order
-    const sorted = [...orcamentos].sort((a, b) =>
+    const sortedOrcs = [...orcamentos].sort((a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
-    let counter = 915;
-    const idToNewNumero: Record<string, string> = {};
+    let counter = 956;
+    const orcIdToNewNum: Record<string, string> = {};
 
-    sorted.forEach(orc => {
-      const newNumero = `${String(counter).padStart(4, '0')}/${year}`;
-      idToNewNumero[orc.id] = newNumero;
-      orc.numero = newNumero;
+    sortedOrcs.forEach(orc => {
+      const newNum = `${String(counter).padStart(4, '0')}/${yearShort}`;
+      orcIdToNewNum[orc.id] = newNum;
+      orc.numero = newNum;
       counter++;
     });
 
-    // Sync pedidos to match their orçamento numbers
-    pedidos.forEach(p => {
-      const newNum = idToNewNumero[p.orcamentoId];
+    // Map Pedidos to new numbers and cache vendedor
+    const pedIdToNewNum: Record<string, string> = {};
+    const pedIdToVendedor: Record<string, string> = {};
+    const updatedPedidos = pedidos.map(p => {
+      const newNum = orcIdToNewNum[p.orcamentoId];
+      const orc = sortedOrcs.find(o => o.id === p.orcamentoId);
+      const vendor = p.vendedor || orc?.vendedor || '';
       if (newNum) {
         p.numero = newNum;
         p.orcamentoNumero = newNum;
+        pedIdToNewNum[p.id] = newNum;
       }
+      if (vendor) pedIdToVendedor[p.id] = vendor;
+      return p;
     });
 
-    save('rp_orcamentos', sorted);
-    save('rp_pedidos', pedidos);
+    // Map OS to new numbers and sync vendedor
+    const updatedOrdens = ordens.map(os => {
+      const newNum = pedIdToNewNum[os.pedidoId];
+      const vendor = pedIdToVendedor[os.pedidoId];
+      if (newNum) {
+        os.numero = newNum;
+        os.pedidoNumero = newNum;
+      }
+      if (vendor) os.vendedor = vendor;
+      return os;
+    });
 
-    // Update counter so next new orçamento continues from where we left off
-    const numKey = `rp_num_orc_${year}`;
+    save('rp_orcamentos', sortedOrcs);
+    save('rp_pedidos', updatedPedidos);
+    save('rp_os', updatedOrdens);
+
+    // Update the new global counter
+    const numKey = `rp_num_global_${year}`;
     localStorage.setItem(numKey, String(counter - 1));
 
     localStorage.setItem(migrationKey, '1');
@@ -394,4 +418,4 @@ export const store = {
 };
 
 // Run one-time migration on module load
-store.migrateNumeracao();
+store.migrateNumeracao956();

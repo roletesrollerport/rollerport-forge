@@ -245,6 +245,7 @@ export interface OrdemServico {
   diasPropostos: number;
   status: StatusOS;
   itens: ItemOS[];
+  vendedor?: string;
   createdAt: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;

@@ -497,21 +497,21 @@ export default function ProducaoPage() {
                 </table>
 
                 {/* Materiais inline */}
-                <div className="border rounded p-2 mt-1">
-                  <span className="font-bold text-[9px] block mb-1">MATERIAIS UTILIZADOS (ITEM {item.item})</span>
-                  <div className="grid grid-cols-8 gap-0.5 text-[9px]">
+                <div className="border rounded p-1.5 mt-1">
+                  <span className="font-bold text-[8px] block mb-0.5">MATERIAIS UTILIZADOS (ITEM {item.item})</span>
+                  <div className="grid grid-cols-8 gap-0.5 text-[8px]">
                     {printMateriaisRow1.map(({ key, label }) => (
-                      <div key={key} className="border rounded p-1 min-h-[28px]">
-                        <span className="font-semibold block">{label}:</span>
-                        <span>{mat[key] || '...'}</span>
+                      <div key={key} className="border rounded px-1 py-0.5 min-h-[22px] flex flex-col justify-center">
+                        <span className="font-semibold block leading-tight">{label}:</span>
+                        <span className="truncate">{mat[key] || '...'}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-8 gap-0.5 text-[9px] mt-0.5">
+                  <div className="grid grid-cols-8 gap-0.5 text-[8px] mt-0.5">
                     {printMateriaisRow2.map(({ key, label }) => (
-                      <div key={key} className="border rounded p-1 min-h-[28px]">
-                        <span className="font-semibold block">{label}:</span>
-                        <span>{mat[key] || '...'}</span>
+                      <div key={key} className="border rounded px-1 py-0.5 min-h-[22px] flex flex-col justify-center">
+                        <span className="font-semibold block leading-tight">{label}:</span>
+                        <span className="truncate">{mat[key] || '...'}</span>
                       </div>
                     ))}
                   </div>
@@ -582,24 +582,25 @@ export default function ProducaoPage() {
     <div className="space-y-6">
       <div><h1 className="page-header">Produção</h1><p className="page-subtitle">Ordens de serviço e acompanhamento</p></div>
 
-      <div className="border rounded-lg p-4 bg-card">
+      <div className="border rounded-lg p-4 bg-card mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar por nº O.S., nº pedido, nº orçamento, empresa, comprador, CNPJ, telefone, email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border overflow-x-auto">
+      <div className="bg-card rounded-xl border overflow-x-auto shadow-sm">
         <table className="w-full text-sm">
           <thead><tr className="border-b bg-muted/50">
-            <th className="text-left p-3 font-medium">O.S.</th>
-            <th className="text-left p-3 font-medium">Empresa</th>
-            <th className="text-left p-3 font-medium hidden md:table-cell">Pedido</th>
-            <th className="text-left p-3 font-medium hidden md:table-cell">Emissão</th>
-            <th className="text-left p-3 font-medium hidden lg:table-cell">Entrega</th>
-            <th className="text-left p-3 font-medium min-w-[150px]">Status</th>
-            <th className="text-left p-3 font-medium hidden md:table-cell">Dias</th>
-            <th className="p-3 w-56"></th>
+            <th className="text-left p-3 px-6 font-medium w-[120px]">O.S.</th>
+            <th className="text-left p-3 font-medium w-[100px]">Usuário</th>
+            <th className="text-left p-3 font-medium w-[200px]">Empresa</th>
+            <th className="text-left p-3 font-medium hidden md:table-cell w-[100px]">Pedido</th>
+            <th className="text-left p-3 font-medium hidden md:table-cell w-[90px]">Emissão</th>
+            <th className="text-left p-3 font-medium hidden lg:table-cell w-[90px]">Entrega</th>
+            <th className="text-left p-3 font-medium w-[550px]">Status</th>
+            <th className="text-left p-3 font-medium hidden md:table-cell w-[100px]">Dias</th>
+            <th className="p-3 px-6 w-44 text-right">Ações</th>
           </tr></thead>
           <tbody>
             {filteredOrdens.map(os => {
@@ -608,32 +609,65 @@ export default function ProducaoPage() {
               const lastStatusChange = os.statusHistory?.length ? os.statusHistory[os.statusHistory.length - 1] : null;
               const daysInStatus = lastStatusChange ? daysSince(lastStatusChange.date) : days;
               return (
-                <tr key={os.id} onClick={() => openView(os)} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer">
-                  <td className="p-3 font-mono font-medium">{os.numero}</td>
-                  <td className="p-3">{os.empresa}</td>
-                  <td className="p-3 hidden md:table-cell font-mono">{os.pedidoNumero}</td>
-                  <td className="p-3 hidden md:table-cell">{os.emissao}</td>
-                  <td className="p-3 hidden lg:table-cell">{os.entrega}</td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Progress value={pct} className="h-2 flex-1" />
-                      <span className={`text-xs font-medium whitespace-nowrap ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>{os.status.replace('_', ' ')}</span>
+                <tr key={os.id} onClick={() => openView(os)} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer whitespace-nowrap">
+                  <td className="p-3 px-6 font-mono font-medium text-[11px] w-[120px]">{os.numero}</td>
+                  <td className="p-3 text-[10px] text-muted-foreground truncate w-[100px]" title={os.vendedor || '-'}>{os.vendedor || '-'}</td>
+                  <td className="p-3 font-medium text-xs w-[200px] truncate">{os.empresa ? os.empresa.split(' ')[0] : '-'}</td>
+                  <td className="p-3 hidden md:table-cell font-mono text-[10px] w-[100px]">{os.pedidoNumero}</td>
+                  <td className="p-3 hidden md:table-cell text-[10px] w-[90px]">
+                    {os.emissao ? (
+                      (() => {
+                        const [y, m, d] = os.emissao.split('-');
+                        return `${d}/${m}/${y.slice(-2)}`;
+                      })()
+                    ) : '-'}
+                  </td>
+                  <td className="p-3 hidden lg:table-cell text-[10px] w-[90px]">{os.entrega}</td>
+                  <td className="p-3 w-[550px]">
+                    <div className="space-y-1">
+                      {(() => {
+                        const totalEtapas = os.itens.length * etapas.length;
+                        const concluídas = os.itens.reduce((acc, item) => {
+                          return acc + etapas.filter(e => (item as any)[e]).length;
+                        }, 0);
+                        const percent = totalEtapas > 0 ? (concluídas / totalEtapas) * 100 : 0;
+                        
+                        // Get names of completed stages (unique)
+                        const completedNames = Array.from(new Set(
+                          os.itens.flatMap(item => etapas.filter(e => (item as any)[e]))
+                        )).map(e => e.toUpperCase()).join(', ');
+
+                        return (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-24"><Progress value={percent} className="h-1.5" /></div>
+                              <span className={`text-[10px] font-bold ${os.status === 'CONCLUIDA' ? 'text-success' : os.status === 'EM_ANDAMENTO' ? 'text-secondary' : 'text-muted-foreground'}`}>
+                                {os.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <div className="flex flex-col text-[10px] text-muted-foreground leading-tight whitespace-nowrap overflow-hidden">
+                              <span className="font-semibold">{concluídas}/{totalEtapas} etapas concluídas</span>
+                              {completedNames && <span className="truncate" title={completedNames}>{completedNames}</span>}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </td>
-                  <td className="p-3 hidden md:table-cell">
-                    <div className="flex flex-col text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Total: {days}d</span>
-                      <span className="text-[10px]">No status: {daysInStatus}d</span>
+                  <td className="p-3 hidden md:table-cell w-[100px]">
+                    <div className="flex flex-col text-[10px] text-muted-foreground leading-tight">
+                      <span className="flex items-center gap-1 font-medium"><Clock className="h-2.5 w-2.5" /> Total: {days}d</span>
+                      <span className="opacity-70 text-[9px]">Status: {daysInStatus}d</span>
                     </div>
                   </td>
-                  <td className="p-3">
-                    <div className="flex gap-1 justify-end">
-                      <button onClick={(e) => { e.stopPropagation(); openEdit(os); }} className="p-1.5 rounded hover:bg-muted" title="Editar"><Edit className="h-4 w-4" /></button>
-                      <button onClick={(e) => { e.stopPropagation(); openPrint(os); }} className="p-1.5 rounded hover:bg-muted" title="Imprimir"><Printer className="h-4 w-4" /></button>
-                      {os.status === 'ABERTA' && <button onClick={(e) => { e.stopPropagation(); updateStatus(os.id, 'EM_ANDAMENTO'); }} className="p-1.5 rounded hover:bg-muted text-primary" title="Aprovar"><CheckCircle className="h-4 w-4" /></button>}
-                      {os.status === 'EM_ANDAMENTO' && <button onClick={(e) => { e.stopPropagation(); updateStatus(os.id, 'CONCLUIDA'); }} className="p-1.5 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-4 w-4" /></button>}
-                      <button onClick={(e) => { e.stopPropagation(); cancelarOS(os); }} className="p-1.5 rounded hover:bg-muted text-warning" title="Cancelar"><XCircle className="h-4 w-4" /></button>
-                      <button onClick={(e) => { e.stopPropagation(); deleteOS(os.id); }} className="p-1.5 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                  <td className="p-3 px-6 w-44" onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-0.5 justify-end">
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(os); }} className="p-1 rounded hover:bg-muted" title="Editar"><Edit className="h-3.5 w-3.5" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); openPrint(os); }} className="p-1 rounded hover:bg-muted" title="Imprimir"><Printer className="h-3.5 w-3.5" /></button>
+                      {os.status === 'ABERTA' && <button onClick={(e) => { e.stopPropagation(); updateStatus(os.id, 'EM_ANDAMENTO'); }} className="p-1 rounded hover:bg-muted text-primary" title="Aprovar"><CheckCircle className="h-3.5 w-3.5" /></button>}
+                      {os.status === 'EM_ANDAMENTO' && <button onClick={(e) => { e.stopPropagation(); updateStatus(os.id, 'CONCLUIDA'); }} className="p-1 rounded hover:bg-muted text-success" title="Concluir"><CheckCircle className="h-3.5 w-3.5" /></button>}
+                      <button onClick={(e) => { e.stopPropagation(); cancelarOS(os); }} className="p-1 rounded hover:bg-muted text-orange-500" title="Cancelar"><XCircle className="h-3.5 w-3.5" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); deleteOS(os.id); }} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </td>
                 </tr>

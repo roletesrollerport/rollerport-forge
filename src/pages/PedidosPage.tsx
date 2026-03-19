@@ -717,8 +717,12 @@ export default function PedidosPage() {
     const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
     if (!orc) return;
     const os = {
-      id: store.nextId('os'), numero: store.nextNumero('os'), pedidoId: pedido.id,
-      empresa: pedido.clienteNome, pedidoNumero: pedido.numero,
+      id: store.nextId('os'), 
+      numero: pedido.numero, // Mantém o mesmo número do pedido/orçamento
+      pedidoId: pedido.id,
+      empresa: pedido.clienteNome, 
+      pedidoNumero: pedido.numero,
+      vendedor: orc?.vendedor || pedido.vendedor,
       emissao: new Date().toISOString().split('T')[0], entrega: pedido.dataEntrega,
       entradaProducao: '', diasPropostos: 12, status: 'ABERTA' as const,
       itens: (orc.itensRolete || []).map((item, i) => ({
