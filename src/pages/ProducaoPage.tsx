@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
-import type { OrdemServico, StatusOS, ItemOS } from '@/lib/types';
+import type { OrdemServico, StatusOS, ItemOS, MateriaisItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search, Clock } from 'lucide-react';
+import { Eye, Edit, Trash2, Printer, CheckCircle, XCircle, ArrowLeft, Search, Clock, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -24,6 +24,31 @@ type View = 'list' | 'view' | 'edit' | 'print';
 
 const statusProgress: Record<string, number> = { 'ABERTA': 33, 'EM_ANDAMENTO': 66, 'CONCLUIDA': 100 };
 
+const emptyMateriais: MateriaisItem = {
+  tubo: '', eixo: '', caneca: '', rolamento: '', aneisBorracha: '', labirintoRetentor: '',
+  anelElastico: '', revestimentoSpiraflex: '', revestimentoAneis: '', buchaNylon: '', tinta: '',
+  flangesEngrenagens: '', encaixeFaco: '', parafusos: '', porcas: '', arruelas: '',
+};
+
+const materiaisFields: { key: keyof MateriaisItem; label: string }[] = [
+  { key: 'tubo', label: 'TUBO' },
+  { key: 'eixo', label: 'EIXO' },
+  { key: 'caneca', label: 'CANECA' },
+  { key: 'rolamento', label: 'ROLAMENTO' },
+  { key: 'aneisBorracha', label: 'ANÉIS DE BORRACHA' },
+  { key: 'labirintoRetentor', label: 'LABIRINTO / RETENTOR' },
+  { key: 'anelElastico', label: 'ANEL ELÁSTICO' },
+  { key: 'revestimentoSpiraflex', label: 'REVESTIMENTO SPIRAFLEX' },
+  { key: 'revestimentoAneis', label: 'REVESTIMENTO ANEIS' },
+  { key: 'buchaNylon', label: 'BUCHA NYLON' },
+  { key: 'tinta', label: 'TINTA' },
+  { key: 'flangesEngrenagens', label: 'FLANGES / ENGRENAGENS' },
+  { key: 'encaixeFaco', label: 'ENCAIXE FAÇO' },
+  { key: 'parafusos', label: 'PARAFUSOS' },
+  { key: 'porcas', label: 'PORCAS' },
+  { key: 'arruelas', label: 'ARRUELAS' },
+];
+
 export default function ProducaoPage() {
   const navigate = useNavigate();
   const { id: urlId } = useParams();
@@ -36,12 +61,14 @@ export default function ProducaoPage() {
   const [cancelTarget, setCancelTarget] = useState<OrdemServico | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Local materiais state for editing (per item index)
+  const [materiaisLocal, setMateriaisLocal] = useState<Record<number, MateriaisItem>>({});
   const { usuarios: dbUsuarios } = useUsuarios();
   const loggedUserId = localStorage.getItem('rp_logged_user');
   const currentUser = dbUsuarios.find(u => u.id === loggedUserId);
 
   const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
-  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : false;
+  const isFullAccess = currentUser ? fullAccessRoles.includes(currentUser.nivel) : true;
 
   const clientes = store.getClientes();
   const orcamentos = store.getOrcamentos();
@@ -56,6 +83,12 @@ export default function ProducaoPage() {
         if (os) {
           setCurrent(os);
           setView('view');
+          // Initialize local materiais from saved data
+          const mLocal: Record<number, MateriaisItem> = {};
+          os.itens.forEach((item, idx) => {
+            mLocal[idx] = { ...emptyMateriais, ...(item.materiais || {}) };
+          });
+          setMateriaisLocal(mLocal);
         }
       }
     };
@@ -118,14 +151,77 @@ export default function ProducaoPage() {
 
   type IndexableItemOS = ItemOS & { [key: string]: string | number | boolean };
 
+  // Toggle etapa checkbox and save immediately (works from view and edit)
+  const toggleEtapaAndSave = (itemIdx: number, etapa: string) => {
+    if (!current) return;
+    const updatedItens = current.itens.map((item, idx) => {
+      if (idx !== itemIdx) return item;
+      return { ...item, [etapa]: !(item as IndexableItemOS)[etapa] };
+    });
+    // Calculate status based on etapas
+    const etapaKeys = ['corte', 'torno', 'fresa', 'solda', 'pintura', 'montagem'];
+    const allCompleted = updatedItens.every(item => 
+      etapaKeys.every(e => (item as IndexableItemOS)[e])
+    );
+    const anyStarted = updatedItens.some(item => 
+      etapaKeys.some(e => (item as IndexableItemOS)[e])
+    );
+    
+    let newStatus: StatusOS = current.status;
+    if (allCompleted) {
+      newStatus = 'CONCLUIDA';
+    } else if (anyStarted && current.status === 'ABERTA') {
+      newStatus = 'EM_ANDAMENTO';
+    }
+
+    const updatedOS: OrdemServico = { ...current, itens: updatedItens, status: newStatus };
+    if (newStatus !== current.status) {
+      updatedOS.statusHistory = [...(current.statusHistory || []), { status: newStatus, date: new Date().toISOString() }];
+    }
+    
+    const updatedOrdens = ordens.map(o => o.id === current.id ? updatedOS : o);
+    saveOrdens(updatedOrdens);
+    setCurrent(updatedOS);
+    toast.success('Etapa atualizada!');
+  };
+
   const toggleEtapa = (idx: number, etapa: string) => {
     const items = [...editItems];
     const item = items[idx] as IndexableItemOS;
     items[idx] = { ...item, [etapa]: !item[etapa] };
     setEditItems(items);
   };
+
   const updateItemField = (idx: number, field: string, value: string | number) => {
     const items = [...editItems]; items[idx] = { ...items[idx], [field]: value }; setEditItems(items);
+  };
+
+  // Materiais handlers
+  const updateMaterialField = (itemIdx: number, key: keyof MateriaisItem, value: string) => {
+    setMateriaisLocal(prev => ({
+      ...prev,
+      [itemIdx]: { ...(prev[itemIdx] || { ...emptyMateriais }), [key]: value },
+    }));
+  };
+
+  const saveMateriais = (itemIdx: number) => {
+    if (!current) return;
+    const mat = materiaisLocal[itemIdx] || { ...emptyMateriais };
+    const updatedItens = current.itens.map((item, idx) => 
+      idx === itemIdx ? { ...item, materiais: mat } : item
+    );
+    const updatedOS = { ...current, itens: updatedItens };
+    const updatedOrdens = ordens.map(o => o.id === current.id ? updatedOS : o);
+    saveOrdens(updatedOrdens);
+    setCurrent(updatedOS);
+    toast.success(`Materiais do Item ${current.itens[itemIdx].item} salvos!`);
+  };
+
+  const clearMaterialField = (itemIdx: number, key: keyof MateriaisItem) => {
+    setMateriaisLocal(prev => ({
+      ...prev,
+      [itemIdx]: { ...(prev[itemIdx] || { ...emptyMateriais }), [key]: '' },
+    }));
   };
 
   // Comprehensive search
@@ -157,9 +253,7 @@ export default function ProducaoPage() {
     .filter(o => {
       if (!search) return true;
       const s = search.toLowerCase();
-      // Search by OS number, pedido number
       if (o.numero.includes(search) || o.pedidoNumero.includes(search)) return true;
-      // Search by orcamento number
       const pedido = store.getPedidos().find(p => p.id === o.pedidoId);
       if (pedido?.orcamentoNumero?.includes(search)) return true;
       return clienteMatchesSearch(o.empresa, search);
@@ -204,7 +298,38 @@ export default function ProducaoPage() {
     </div>
   );
 
-  const EtapasSection = ({ items, editable }: { items: ItemOS[], editable?: boolean }) => (
+  // Etapas section for VIEW mode — directly toggleable and saving
+  const EtapasSectionView = ({ items }: { items: ItemOS[] }) => (
+    <div className="mt-4 border-t pt-3">
+      <h3 className="font-bold text-xs mb-2">ETAPAS DE PRODUÇÃO</h3>
+      <div className="space-y-2">
+        {items.map((item, itemIdx) => {
+          const checkedCount = etapas.filter(e => (item as IndexableItemOS)[e]).length;
+          return (
+            <div key={itemIdx} className="flex items-center gap-4 border rounded p-2 bg-muted/20">
+              <span className="text-xs font-semibold min-w-[60px]">Item {item.item}</span>
+              {etapas.map(etapa => (
+                <label key={etapa} className="flex items-center gap-1.5 text-xs cursor-pointer select-none group">
+                  <input type="checkbox"
+                    checked={(item as IndexableItemOS)[etapa] as boolean || false}
+                    onChange={() => toggleEtapaAndSave(itemIdx, etapa)}
+                    className="h-4 w-4 rounded border-primary text-primary accent-primary cursor-pointer"
+                  />
+                  <span className={`font-medium uppercase ${(item as IndexableItemOS)[etapa] ? 'text-green-600' : ''}`}>{etapa}</span>
+                </label>
+              ))}
+              <span className="ml-auto text-[10px] text-muted-foreground font-medium">
+                {checkedCount}/{etapas.length}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Etapas section for EDIT mode
+  const EtapasSectionEdit = ({ items }: { items: ItemOS[] }) => (
     <div className="mt-4 border-t pt-3">
       <h3 className="font-bold text-xs mb-2">ETAPAS DE PRODUÇÃO</h3>
       <div className="space-y-2">
@@ -212,12 +337,11 @@ export default function ProducaoPage() {
           <div key={itemIdx} className="flex items-center gap-4 border rounded p-2 bg-muted/20">
             <span className="text-xs font-semibold min-w-[60px]">Item {item.item}</span>
             {etapas.map(etapa => (
-              <label key={etapa} className="flex items-center gap-1.5 text-xs">
+              <label key={etapa} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
                 <input type="checkbox"
                   checked={(item as IndexableItemOS)[etapa] as boolean || false}
-                  onChange={() => editable && toggleEtapa(itemIdx, etapa)}
-                  readOnly={!editable}
-                  className="h-4 w-4 rounded border-primary text-primary accent-primary"
+                  onChange={() => toggleEtapa(itemIdx, etapa)}
+                  className="h-4 w-4 rounded border-primary text-primary accent-primary cursor-pointer"
                 />
                 <span className="font-medium uppercase">{etapa}</span>
               </label>
@@ -228,46 +352,91 @@ export default function ProducaoPage() {
     </div>
   );
 
-  const MateriaisSection = ({ editable }: { editable?: boolean }) => {
-    const materiais = [
-      ['TUBO', 'EIXO', 'CANECA'],
-      ['ROLAMENTO', 'ANÉIS DE BORRACHA', 'LABIRINTO / RETENTOR'],
-      ['ANEL ELÁSTICO', 'REVESTIMENTO SPIRAFLEX', 'REVESTIMENTO ANEIS'],
-      ['BUCHA NYLON', 'TINTA', 'FLANGES / ENGRENAGENS'],
-      ['ENCAIXE FAÇO / PORCAS / PARAFUSOS / ARRUELAS', '', ''],
-    ];
-    return (
-      <div className="mt-6 border-t-2 pt-4">
-        <h3 className="font-bold text-sm mb-3">MATERIAIS UTILIZADOS</h3>
-        <div className="space-y-1">
-          {materiais.map((row, ri) => (
-            <div key={ri} className="grid grid-cols-3 gap-1">
-              {row.map((mat, ci) => (
-                <div key={ci} className={`border rounded p-2 min-h-[36px] ${!mat ? 'border-transparent' : ''}`}>
-                  {mat && (
-                    <>
-                      <span className="font-semibold text-[10px] block">{mat}</span>
-                      {editable ? (
-                        <Input className="h-6 text-[10px] mt-1 border-dashed" placeholder="..." />
-                      ) : (
-                        <div className="h-5 border-b border-dashed mt-1" />
+  // Materiais section - render function (NOT a component) to avoid losing input focus
+  const renderMateriais = (items: ItemOS[], editable?: boolean) => (
+    <div className="mt-6 border-t-2 pt-4">
+      <h3 className="font-bold text-sm mb-3">MATERIAIS UTILIZADOS</h3>
+      {items.map((item, itemIdx) => {
+        const mat = materiaisLocal[itemIdx] || item.materiais || { ...emptyMateriais };
+        return (
+          <div key={itemIdx} className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-xs text-muted-foreground">MATERIAIS - ITEM {item.item}</h4>
+              {editable && (
+                <div className="flex gap-1">
+                  <button 
+                    onClick={() => saveMateriais(itemIdx)}
+                    className="p-1.5 rounded hover:bg-green-50 text-green-600 border border-green-200" 
+                    title="Salvar materiais"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {materiaisFields.map(({ key, label }) => (
+                <div key={key} className="border rounded p-2.5 min-h-[70px]">
+                  <span className="font-semibold text-xs block mb-1">{label}</span>
+                  {editable ? (
+                    <div className="flex items-center gap-1.5">
+                      <input 
+                        className="h-9 text-sm border border-dashed rounded px-2 flex-1 w-full bg-background focus:outline-none focus:ring-2 focus:ring-ring" 
+                        placeholder="Informar..." 
+                        value={mat[key] || ''}
+                        onChange={e => updateMaterialField(itemIdx, key, e.target.value)}
+                      />
+                      {mat[key] && (
+                        <button
+                          onClick={() => clearMaterialField(itemIdx, key)}
+                          className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 shrink-0"
+                          title="Limpar campo"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       )}
-                    </>
+                    </div>
+                  ) : (
+                    <div className="text-sm mt-1 min-h-[28px] border-b border-dashed py-1">
+                      {(item.materiais && item.materiais[key]) || '...'}
+                    </div>
                   )}
                 </div>
               ))}
             </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+          </div>
+        );
+      })}
+    </div>
+  );
 
   // ========== PRINT VIEW ==========
   if (view === 'print' && current) {
     const pedido = store.getPedidos().find(p => p.id === current.pedidoId);
     const orcamento = pedido ? store.getOrcamentos().find(o => o.id === pedido.orcamentoId) : null;
     const vendedorNome = orcamento?.vendedor || 'Não informado';
+
+    // Print materiais fields for compact layout — 2 rows × 8 columns  
+    const printMateriaisRow1: { key: keyof MateriaisItem; label: string }[] = [
+      { key: 'tubo', label: 'TUBO' },
+      { key: 'eixo', label: 'EIXO' },
+      { key: 'caneca', label: 'CANECA' },
+      { key: 'rolamento', label: 'ROLAMENTO' },
+      { key: 'aneisBorracha', label: 'ANÉIS DE BORRACHA' },
+      { key: 'labirintoRetentor', label: 'LABIRINTO/RETENTOR' },
+      { key: 'anelElastico', label: 'ANEL ELÁSTICO' },
+      { key: 'revestimentoSpiraflex', label: 'REVEST. SPIRAFLEX' },
+    ];
+    const printMateriaisRow2: { key: keyof MateriaisItem; label: string }[] = [
+      { key: 'revestimentoAneis', label: 'REVEST. ANEIS' },
+      { key: 'buchaNylon', label: 'BUCHA NYLON' },
+      { key: 'tinta', label: 'TINTA' },
+      { key: 'flangesEngrenagens', label: 'FLANGES/ENGREN.' },
+      { key: 'encaixeFaco', label: 'ENCAIXE FAÇO' },
+      { key: 'parafusos', label: 'PARAFUSOS' },
+      { key: 'porcas', label: 'PORCAS' },
+      { key: 'arruelas', label: 'ARRUELAS' },
+    ];
 
     return (
       <div>
@@ -276,23 +445,80 @@ export default function ProducaoPage() {
           <Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" /> Imprimir / PDF</Button>
         </div>
         <div className="bg-card border rounded-lg p-6 max-w-6xl mx-auto print:border-0 print:shadow-none print:max-w-none print:p-2">
-          {/* Header: O.S. number top-left */}
+          {/* Header */}
           <div className="text-sm font-bold mb-1">O.S. Nº {current.numero}</div>
           <div className="grid grid-cols-4 gap-2 text-xs mb-2 border rounded p-2">
-            <div><span className="font-semibold">EMPRESA:</span> {current.empresa}</div>
-            <div><span className="font-semibold">VENDEDOR:</span> {vendedorNome}</div>
-            <div><span className="font-semibold">PEDIDO:</span> {current.pedidoNumero}</div>
-            <div><span className="font-semibold">EMISSÃO:</span> {current.emissao}</div>
-            <div><span className="font-semibold">ENTREGA:</span> {current.entrega}</div>
+            <div><span className="font-semibold">EMPRESA:</span><br />{current.empresa}</div>
+            <div><span className="font-semibold">VENDEDOR:</span><br />{vendedorNome}</div>
+            <div><span className="font-semibold">PEDIDO:</span><br />{current.pedidoNumero}</div>
+            <div><span className="font-semibold">EMISSÃO:</span><br />{current.emissao}</div>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-            <div><span className="font-semibold">DIAS PROPOSTOS:</span> {current.diasPropostos}</div>
-            <div><span className="font-semibold">STATUS:</span> {current.status.replace('_', ' ')}</div>
+          <div className="grid grid-cols-3 gap-2 text-xs mb-4 border rounded p-2">
+            <div><span className="font-semibold">ENTREGA:</span><br />{current.entrega}</div>
+            <div><span className="font-semibold">DIAS PROPOSTOS:</span><br />{current.diasPropostos}</div>
+            <div><span className="font-semibold">STATUS:</span><br />{current.status.replace('_', ' ')}</div>
           </div>
 
-          <OSTable items={current.itens} />
-          <EtapasSection items={current.itens} />
-          <MateriaisSection />
+          {/* Per-item: table + materials */}
+          {current.itens.map((item, itemIdx) => {
+            const mat = item.materiais || { ...emptyMateriais };
+            return (
+              <div key={itemIdx} className="mb-4">
+                <h3 className="font-bold text-xs mb-1 mt-2">DADOS DO ITEM {item.item}</h3>
+                <table className="w-full text-xs border-collapse border mb-1">
+                  <thead><tr className="border-b-2 bg-muted/50">
+                    <th className="p-1.5 text-left font-semibold border">ITEM</th>
+                    <th className="p-1.5 text-left font-semibold border">QTD</th>
+                    <th className="p-1.5 text-left font-semibold border">TIPO</th>
+                    <th className="p-1.5 text-left font-semibold border">Ø TUBO</th>
+                    <th className="p-1.5 text-left font-semibold border">PAREDE</th>
+                    <th className="p-1.5 text-left font-semibold border">COMP. TUBO</th>
+                    <th className="p-1.5 text-left font-semibold border">COMP. EIXO</th>
+                    <th className="p-1.5 text-left font-semibold border">Ø EIXO</th>
+                    <th className="p-1.5 text-left font-semibold border">TIPO ENCAIXE</th>
+                    <th className="p-1.5 text-left font-semibold border">MED. ENCAIXE</th>
+                    <th className="p-1.5 text-left font-semibold border">REVESTIMENTO</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="p-1.5 border text-center">{item.item}</td>
+                      <td className="p-1.5 border text-center">{item.quantidade}</td>
+                      <td className="p-1.5 border text-center font-medium">{item.tipo}</td>
+                      <td className="p-1.5 border text-center">{item.diametroTubo}</td>
+                      <td className="p-1.5 border text-center">{item.paredeTubo}</td>
+                      <td className="p-1.5 border text-center">{item.comprimentoTubo}</td>
+                      <td className="p-1.5 border text-center">{item.comprimentoEixo}</td>
+                      <td className="p-1.5 border text-center">{item.diametroEixo}</td>
+                      <td className="p-1.5 border text-center font-medium">{item.tipoEncaixe}</td>
+                      <td className="p-1.5 border text-center">{item.encaixeFresado || '-'}</td>
+                      <td className="p-1.5 border text-center">{item.revestimento || '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Materiais inline */}
+                <div className="border rounded p-2 mt-1">
+                  <span className="font-bold text-[9px] block mb-1">MATERIAIS UTILIZADOS (ITEM {item.item})</span>
+                  <div className="grid grid-cols-8 gap-0.5 text-[9px]">
+                    {printMateriaisRow1.map(({ key, label }) => (
+                      <div key={key} className="border rounded p-1 min-h-[28px]">
+                        <span className="font-semibold block">{label}:</span>
+                        <span>{mat[key] || '...'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-8 gap-0.5 text-[9px] mt-0.5">
+                    {printMateriaisRow2.map(({ key, label }) => (
+                      <div key={key} className="border rounded p-1 min-h-[28px]">
+                        <span className="font-semibold block">{label}:</span>
+                        <span>{mat[key] || '...'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
         <style>{`@media print { @page { size: landscape; margin: 0.3cm; } body { -webkit-print-color-adjust: exact; font-size: 9px; } .print\\:hidden { display: none !important; } }`}</style>
       </div>
@@ -323,8 +549,8 @@ export default function ProducaoPage() {
             <div><span className="text-muted-foreground">Status:</span> <strong>{current.status}</strong></div>
           </div>
           <OSTable items={current.itens} />
-          <EtapasSection items={current.itens} />
-          <MateriaisSection editable />
+          <EtapasSectionView items={current.itens} />
+          {renderMateriais(current.itens, true)}
         </div>
       </div>
     );
@@ -340,8 +566,8 @@ export default function ProducaoPage() {
         </div>
         <div className="bg-card border rounded-lg p-6">
           <OSTable items={editItems} editable />
-          <EtapasSection items={editItems} editable />
-          <MateriaisSection editable />
+          <EtapasSectionEdit items={editItems} />
+          {renderMateriais(editItems, true)}
           <div className="flex gap-2 mt-4">
             <Button onClick={saveEdit}>Salvar Alterações</Button>
             <Button variant="outline" onClick={handleBack}>Cancelar</Button>

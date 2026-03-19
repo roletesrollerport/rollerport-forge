@@ -189,6 +189,25 @@ export interface Pedido {
 // ======= PRODUÇÃO =======
 export type StatusOS = 'ABERTA' | 'EM_ANDAMENTO' | 'CONCLUIDA';
 
+export interface MateriaisItem {
+  tubo: string;
+  eixo: string;
+  caneca: string;
+  rolamento: string;
+  aneisBorracha: string;
+  labirintoRetentor: string;
+  anelElastico: string;
+  revestimentoSpiraflex: string;
+  revestimentoAneis: string;
+  buchaNylon: string;
+  tinta: string;
+  flangesEngrenagens: string;
+  encaixeFaco: string;
+  parafusos: string;
+  porcas: string;
+  arruelas: string;
+}
+
 export interface ItemOS {
   item: number;
   quantidade: number;
@@ -211,6 +230,7 @@ export interface ItemOS {
   solda: boolean;
   pintura: boolean;
   montagem: boolean;
+  materiais?: MateriaisItem;
 }
 
 export interface OrdemServico {
