@@ -2,16 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { store } from '@/lib/store';
 import { useUsuarios } from '@/hooks/useUsuarios';
-import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamento } from '@/lib/types';
+import { useCustos } from '@/hooks/useCustos';
+import type { Pedido, StatusPedido, Orcamento, ItemOrcamento, ItemProdutoOrcamento, Tubo, Eixo, Conjunto, Revestimento, Encaixe } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Factory, Eye, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, History, Truck, FileText, Mail } from 'lucide-react';
+import { Factory, Eye, Trash2, Search, ShoppingCart, XCircle, Printer, ArrowLeft, Clock, Calendar, History, Truck, FileText, Mail, Settings2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { AcompanhamentoPedidosModal } from '@/components/AcompanhamentoPedidosModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import ImagePreviewModal from '@/components/ImagePreviewModal';
 import logo from '@/assets/logo.png';
 
 const daysSince = (dateStr: string): number => {
