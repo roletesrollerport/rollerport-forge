@@ -1,0 +1,11 @@
+{
+  "preco_aco_kg": 7.50,
+  "markup_padrao": 1.8,
+  "modelos_disponiveis": [
+    "gpt-4o",
+    "gpt-4o-mini",
+    "claude-3-5-sonnet-20240620",
+    "claude-3-opus-20240229"
+  ],
+  "modelo_padrao": "gpt-4o"
+}

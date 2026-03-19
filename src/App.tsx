@@ -37,7 +37,7 @@ import ProducaoPage from "./pages/ProducaoPage";
 import EstoquePage from "./pages/EstoquePage";
 import UsuariosPage from "./pages/UsuariosPage";
 import ChatPage from "./pages/ChatPage";
-import IAPage from "./pages/IAPage";
+
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import AgendaPage from "./pages/AgendaPage";
@@ -196,7 +196,7 @@ function AppContent() {
           <Route path="/producao/:id" element={<ProducaoPage />} />
           <Route path="/estoque" element={<EstoquePage />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/ia" element={<IAPage />} />
+
           <Route path="/usuarios" element={<UsuariosPage />} />
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/gestao-dados" element={<GestaoDadosPage />} />
