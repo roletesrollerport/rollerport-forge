@@ -392,3 +392,6 @@ export const store = {
     localStorage.setItem(migrationKey, '1');
   },
 };
+
+// Run one-time migration on module load
+store.migrateNumeracao();
