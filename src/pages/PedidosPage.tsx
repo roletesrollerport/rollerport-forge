@@ -540,8 +540,12 @@ export default function PedidosPage() {
   const gerarPedido = (orc: Orcamento) => {
     if (pedidos.find(p => p.orcamentoId === orc.id)) { toast.error('Este orçamento já tem um pedido!'); return; }
     const pedido: Pedido = {
-      id: store.nextId('ped'), numero: store.nextNumero('ped'), orcamentoId: orc.id,
-      orcamentoNumero: orc.numero, clienteNome: orc.clienteNome,
+      id: store.nextId('ped'),
+      // Mantém o mesmo número do orçamento ao virar pedido
+      numero: orc.numero,
+      orcamentoId: orc.id,
+      orcamentoNumero: orc.numero,
+      clienteNome: orc.clienteNome,
       dataEntrega: orc.previsaoEntrega || orc.dataEntrega, status: 'PENDENTE',
       valorTotal: orc.valorTotal, createdAt: new Date().toISOString().split('T')[0],
       statusHistory: [{ status: 'PENDENTE', date: new Date().toISOString() }],
@@ -643,7 +647,7 @@ export default function PedidosPage() {
       return nameMatch(vendor, currentUser?.nome || '');
     })
     .filter(p =>
-      p.numero.includes(search) || (p.orcamentoNumero || '').includes(search) || clienteMatchesSearch(p.clienteNome, search)
+      p.numero.includes(search) || clienteMatchesSearch(p.clienteNome, search)
     );
 
   // ========== PRINT VIEW ==========
@@ -773,7 +777,7 @@ export default function PedidosPage() {
       <div className="border rounded-lg p-4 bg-card">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por nº pedido, nº orçamento, empresa, comprador, CNPJ, telefone, email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder="Buscar por nº pedido, empresa, comprador, CNPJ, telefone, email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
         </div>
       </div>
 
@@ -821,7 +825,6 @@ export default function PedidosPage() {
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap">Nº Pedido</th>
-                <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap hidden md:table-cell">Nº Orçamento</th>
                 <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap hidden lg:table-cell">Usuário</th>
                 <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap">Cliente/Revenda</th>
                 <th className="text-left px-2 py-2 sm:px-3 font-medium whitespace-nowrap">Data</th>
@@ -839,19 +842,14 @@ export default function PedidosPage() {
                 const usuario = p.vendedor || orc?.vendedor || '—';
                 return (
                   <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-2 py-2 sm:px-3 font-mono font-semibold whitespace-nowrap">{p.numero}</td>
-                    <td className="px-2 py-2 sm:px-3 hidden md:table-cell font-mono text-[10px] text-primary whitespace-nowrap">
-                      {p.orcamentoNumero ? (
-                        <button
-                          type="button"
-                          className="underline-offset-2 hover:underline"
-                          onClick={() => navigate(`/orcamentos?q=${encodeURIComponent(p.orcamentoNumero || '')}&mode=edit`)}
-                        >
-                          {p.orcamentoNumero}
-                        </button>
-                      ) : (
-                        '-'
-                      )}
+                    <td className="px-2 py-2 sm:px-3 font-mono font-semibold whitespace-nowrap">
+                      <button
+                        type="button"
+                        className="underline-offset-2 hover:underline"
+                        onClick={() => navigate(`/orcamentos?q=${encodeURIComponent(p.numero)}&mode=edit&from=pedidos`)}
+                      >
+                        {p.numero}
+                      </button>
                     </td>
                     <td className="px-2 py-2 sm:px-3 hidden lg:table-cell text-[10px] text-muted-foreground truncate max-w-[120px]">
                       {usuario}
@@ -911,7 +909,7 @@ export default function PedidosPage() {
                 </tr>
                 );
               })}
-              {filteredPedidos.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
+              {filteredPedidos.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhum pedido.</td></tr>}
             </tbody>
           </table>
         </div>

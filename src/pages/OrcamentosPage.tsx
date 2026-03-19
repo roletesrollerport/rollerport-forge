@@ -213,6 +213,7 @@ export default function OrcamentosPage() {
 
   const [showRoleteForm, setShowRoleteForm] = useState(false);
   const [roleteItem, setRoleteItem] = useState<ItemOrcamento>(emptyItem());
+  const [editingRoleteId, setEditingRoleteId] = useState<string | null>(null);
   const [codigoRolete, setCodigoRolete] = useState('');
 
   // Cadastro rápido cliente (completo igual à tela de clientes)
@@ -422,10 +423,19 @@ export default function OrcamentosPage() {
   useEffect(() => {
     const mode = searchParams.get('mode');
     const q = searchParams.get('q');
+    const from = searchParams.get('from');
     if (mode === 'edit' && q && view === 'list' && orcamentos.length) {
       const found = orcamentos.find(o => o.numero === q);
       if (found) {
         openEdit(found);
+        // Se veio da tela de pedidos, já abre o primeiro item de rolete para edição
+        if (from === 'pedidos' && (found.itensRolete?.length || 0) > 0) {
+          const first = found.itensRolete[0];
+          setRoleteItem(first);
+          setCodigoRolete(first.codigoProduto || '');
+          setEditingRoleteId(first.id);
+          setShowRoleteForm(true);
+        }
       }
     }
   }, [orcamentos, searchParams, view]);
@@ -498,9 +508,31 @@ export default function OrcamentosPage() {
     }
     store.saveOrcamentos(updated);
     setOrcamentos(updated);
-    setView('list');
+
+    // Sincronizar automaticamente pedidos vinculados a este orçamento
+    const pedidos = store.getPedidos();
+    const updatedPedidos = pedidos.map((p) =>
+      p.orcamentoId === orc.id
+        ? {
+            ...p,
+            numero: orc.numero,
+            clienteNome: orc.clienteNome,
+            dataEntrega: orc.previsaoEntrega || orc.dataEntrega,
+            valorTotal: orc.valorTotal,
+          }
+        : p
+    );
+    if (updatedPedidos.some((p, i) => p !== pedidos[i])) {
+      store.savePedidos(updatedPedidos);
+    }
+
+    const from = searchParams.get('from');
     resetForm();
+    setView('list');
     toast.success(`Orçamento ${orc.numero} salvo!`);
+    if (from === 'pedidos') {
+      navigate('/pedidos');
+    }
   };
 
   const deleteOrcamento = (id: string) => {
@@ -533,8 +565,10 @@ export default function OrcamentosPage() {
     const pedidos = store.getPedidos();
     const pedido = {
       id: store.nextId('ped'),
-      numero: store.nextNumero('ped'),
+      // Usa sempre o mesmo número do orçamento em todo o fluxo
+      numero: orc.numero,
       orcamentoId: orc.id,
+      orcamentoNumero: orc.numero,
       clienteNome: orc.clienteNome,
       dataEntrega: orc.previsaoEntrega || orc.dataEntrega,
       status: 'PENDENTE' as const,
@@ -585,8 +619,38 @@ export default function OrcamentosPage() {
 
   // Insert rolete into orçamento
   const insertRolete = () => {
-    const calculated = calcItem({ ...roleteItem, id: store.nextId('item'), codigoProduto: codigoRolete }, tubos, eixos, conjuntos, revestimentos, encaixes);
+    const baseItem = { ...roleteItem, codigoProduto: codigoRolete };
+    const calculated = calcItem(
+      { ...baseItem, id: store.nextId('item') },
+      tubos,
+      eixos,
+      conjuntos,
+      revestimentos,
+      encaixes
+    );
+
     setItensRolete([...itensRolete, calculated]);
+    setShowRoleteForm(false);
+    setRoleteItem(emptyItem());
+    setCodigoRolete('');
+    setEditingRoleteId(null);
+  };
+
+  const saveRoleteEdit = () => {
+    if (!editingRoleteId) return;
+    const baseItem = { ...roleteItem, codigoProduto: codigoRolete };
+    const calculated = calcItem(
+      { ...baseItem, id: editingRoleteId },
+      tubos,
+      eixos,
+      conjuntos,
+      revestimentos,
+      encaixes
+    );
+
+    setItensRolete(prev =>
+      prev.map(it => (it.id === editingRoleteId ? calculated : it))
+    );
     // Salvar rolete como produto na lista de produtos
     const novoProduto: Produto = {
       id: store.nextId('prod'),
@@ -611,6 +675,7 @@ export default function OrcamentosPage() {
     setShowRoleteForm(false);
     setRoleteItem(emptyItem());
     setCodigoRolete('');
+    setEditingRoleteId(null);
   };
 
   const updateRoleteField = (partial: Partial<ItemOrcamento>) => {
@@ -1434,7 +1499,17 @@ export default function OrcamentosPage() {
           <Button variant="outline" onClick={() => { setShowProdutoSearch(true); setShowRoleteForm(false); }} className="gap-2">
             <Package className="h-4 w-4" /> Inserir Produto
           </Button>
-          <Button variant="outline" onClick={() => { setShowRoleteForm(true); setShowProdutoSearch(false); }} className="gap-2 text-primary border-primary">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowRoleteForm(true);
+              setShowProdutoSearch(false);
+              setRoleteItem(emptyItem());
+              setCodigoRolete('');
+              setEditingRoleteId(null);
+            }}
+            className="gap-2 text-primary border-primary"
+          >
             <Settings2 className="h-4 w-4" /> Inserir Rolete
           </Button>
         </div>
@@ -1656,10 +1731,27 @@ export default function OrcamentosPage() {
               <div><span className="text-xs text-primary">Preço Unit. Final</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
               <div><span className="text-xs text-primary">Total Item</span><br /><strong>{fmt(roleteItem.valorTotal)}</strong></div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button onClick={insertRolete} className="gap-2">✓ Inserir no Orçamento</Button>
-              <Button variant="outline" onClick={() => setShowRoleteForm(false)}>Cancelar</Button>
-            </div>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={insertRolete} className="gap-2">
+                  ✓ Inserir no Orçamento
+                </Button>
+                {editingRoleteId && (
+                  <Button onClick={saveRoleteEdit} className="gap-2" variant="secondary">
+                    ✓ Salvar edição
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowRoleteForm(false);
+                    setEditingRoleteId(null);
+                    setRoleteItem(emptyItem());
+                    setCodigoRolete('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
             <ImagePreviewModal
               open={!!previewImage}
               onOpenChange={(open) => { if (!open) setPreviewImage(null); }}
@@ -1705,14 +1797,27 @@ export default function OrcamentosPage() {
                       <td className="p-2 text-right font-bold text-primary">{fmt(item.valorTotal)}</td>
                       <td className="p-2 text-center">
                         <div className="flex justify-center gap-1">
-                          <button onClick={() => {
-                            if ('isProd' in item && item.isProd) {
-                              const prod = produtos.find(p => p.id === (item as any).produtoId);
-                              if (prod) { setSelectedProduto(prod); setProdutoQtd(item.quantidade); setProdutoDesconto(0); }
-                            } else {
-                              setRoleteItem(item as any); setCodigoRolete((item as any).codigoProduto || ''); setShowRoleteForm(true);
-                            }
-                          }} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Ver"><Eye className="h-4 w-4" /></button>
+                          <button
+                            onClick={() => {
+                              if ('isProd' in item && item.isProd) {
+                                const prod = produtos.find(p => p.id === (item as any).produtoId);
+                                if (prod) {
+                                  setSelectedProduto(prod);
+                                  setProdutoQtd(item.quantidade);
+                                  setProdutoDesconto(0);
+                                }
+                              } else {
+                                setRoleteItem(item as any);
+                                setCodigoRolete((item as any).codigoProduto || '');
+                                setEditingRoleteId(item.id);
+                                setShowRoleteForm(true);
+                              }
+                            }}
+                            className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                            title="Ver"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
                           
                           <button onClick={() => {
                             if ('isProd' in item && item.isProd) {
