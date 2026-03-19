@@ -213,8 +213,6 @@ export interface ItemOS {
   montagem: boolean;
 }
 
-export type MateriaisUtilizadosOS = Record<string, { valor: string }>;
-
 export interface OrdemServico {
   id: string;
   numero: string;
@@ -227,11 +225,6 @@ export interface OrdemServico {
   diasPropostos: number;
   status: StatusOS;
   itens: ItemOS[];
-  /**
-   * Materiais utilizados (ex.: TUBO, EIXO, CANECA...).
-   * A chave do registro é o texto do rótulo exibido no layout.
-   */
-  materiaisUtilizados?: MateriaisUtilizadosOS;
   createdAt: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;
