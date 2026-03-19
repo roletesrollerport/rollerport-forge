@@ -16,6 +16,52 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import ImagePreviewModal from '@/components/ImagePreviewModal';
 import logo from '@/assets/logo.png';
 
+const emptyItem = (): ItemOrcamento => ({
+  id: '', tipoRolete: '' as any, quantidade: '' as any, diametroTubo: '' as any, paredeTubo: '' as any, comprimentoTubo: '' as any,
+  comprimentoEixo: '' as any, diametroEixo: '' as any, tipoEncaixe: '', medidaFresado: '', conjunto: '',
+  tipoRevestimento: '', especificacaoRevestimento: '', quantidadeAneis: '' as any, custo: 0,
+  multiplicador: 1.8, desconto: '' as any, valorPorPeca: 0, valorTotal: 0, ncm: '8431.39.00',
+  aliqPIS: 0, aliqCOFINS: 0, aliqICMS: 0, aliqIPI: 0, valorPIS: 0, valorCOFINS: 0, valorICMS: 0, valorIPI: 0
+});
+
+function calcItem(item: ItemOrcamento, tubos: Tubo[], eixos: Eixo[], conjuntos: Conjunto[], revestimentos: Revestimento[], encaixes: Encaixe[]): ItemOrcamento {
+  const tubo = tubos.find(t => t.diametro === item.diametroTubo && t.parede === item.paredeTubo);
+  const eixo = eixos.find(e => e.diametro === String(item.diametroEixo));
+  const conj = conjuntos.find(c => c.codigo === item.conjunto);
+  const rev = revestimentos.find(r => r.tipo === item.especificacaoRevestimento);
+  const enc = encaixes.find(e => e.tipo === item.tipoEncaixe);
+  let custoTubo = 0;
+  if (tubo && item.comprimentoTubo > 0 && item.comprimentoTubo < 6000) {
+    const QT = Math.max(1, Math.floor(6000 / item.comprimentoTubo));
+    custoTubo = tubo.precoBarra6000mm / QT;
+  }
+  let custoEixo = 0;
+  if (eixo && item.comprimentoEixo > 0 && item.comprimentoEixo < 6000) {
+    const QE = Math.max(1, Math.floor(6000 / item.comprimentoEixo));
+    custoEixo = eixo.precoBarra6000mm / QE;
+  }
+  const custoConj = conj ? conj.valor : 0;
+  const custoEnc = enc ? enc.preco : 0;
+  let custoRev = 0;
+  if (rev) {
+    const isSpiraflex = rev.tipo.toUpperCase().includes('SPIRAFLEX');
+    if (isSpiraflex) { custoRev = rev.valorMetroOuPeca * (item.comprimentoEixo / 1000); }
+    else { custoRev = rev.valorMetroOuPeca * (item.quantidadeAneis || 1); }
+  }
+  const custo = custoTubo + custoEixo + custoConj + custoEnc + custoRev;
+  const multiplicador = item.multiplicador || 1.8;
+  const desconto = item.desconto || 0;
+  const valorPorPeca = custo * multiplicador * (1 - desconto / 100);
+  const valorTotal = valorPorPeca * item.quantidade;
+  const aliqPIS = item.aliqPIS || 0; const aliqCOFINS = item.aliqCOFINS || 0;
+  const aliqICMS = item.aliqICMS || 0; const aliqIPI = item.aliqIPI || 0;
+  return { ...item, custo: +custo.toFixed(2), valorPorPeca: +valorPorPeca.toFixed(2), valorTotal: +valorTotal.toFixed(2),
+    aliqPIS, aliqCOFINS, aliqICMS, aliqIPI,
+    valorPIS: +(valorTotal * aliqPIS / 100).toFixed(2), valorCOFINS: +(valorTotal * aliqCOFINS / 100).toFixed(2),
+    valorICMS: +(valorTotal * aliqICMS / 100).toFixed(2), valorIPI: +(valorTotal * aliqIPI / 100).toFixed(2),
+  };
+}
+
 const daysSince = (dateStr: string): number => {
   if (!dateStr) return 0;
   const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr.split('/').reverse().join('-'));
@@ -43,62 +89,91 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
   const orc = orcamentos.find(o => o.id === pedido.orcamentoId);
   const [editOrc, setEditOrc] = useState<Orcamento | null>(orc ? { ...orc, itensRolete: [...(orc.itensRolete || [])], itensProduto: [...(orc.itensProduto || [])] } : null);
 
-  type DeleteItemTarget =
-    | { kind: 'rolete'; idx: number }
-    | { kind: 'produto'; idx: number };
+  const costData = useCustos();
+  const { tubos, eixos, conjuntos, revestimentos, encaixes } = costData;
 
+  // Rolete editor state
+  const [editingItemIdx, setEditingItemIdx] = useState<number | null>(null);
+  const [editingItemKind, setEditingItemKind] = useState<'rolete' | 'produto' | null>(null);
+  const [roleteItem, setRoleteItem] = useState<ItemOrcamento>(emptyItem());
+  const [codigoRolete, setCodigoRolete] = useState('');
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+
+  type DeleteItemTarget = { kind: 'rolete'; idx: number } | { kind: 'produto'; idx: number };
   const [deleteItemOpen, setDeleteItemOpen] = useState(false);
   const [deleteItemTarget, setDeleteItemTarget] = useState<DeleteItemTarget | null>(null);
 
-  const saveOrcChanges = () => {
+  const diametrosTubo = [...new Set(tubos.map(t => t.diametro))].sort((a, b) => a - b);
+  const paredesTubo = (diam: number) => [...new Set(tubos.filter(t => t.diametro === diam).map(t => t.parede))].sort((a, b) => a - b);
+  const diametrosEixo = eixos.map(e => e.diametro);
+
+  const updateRoleteField = (partial: Partial<ItemOrcamento>) => {
+    setRoleteItem(prev => calcItem({ ...prev, ...partial }, tubos, eixos, conjuntos, revestimentos, encaixes));
+  };
+
+  const openRoleteEditor = (idx: number) => {
     if (!editOrc) return;
-    const itensR = editOrc.itensRolete.map(ir => ({ ...ir, valorTotal: ir.valorPorPeca * ir.quantidade }));
-    const itensP = editOrc.itensProduto.map(ip => ({ ...ip, valorTotal: ip.valorUnitario * ip.quantidade }));
+    const item = editOrc.itensRolete[idx];
+    if (!item) return;
+    setRoleteItem(calcItem({ ...item }, tubos, eixos, conjuntos, revestimentos, encaixes));
+    setCodigoRolete((item as any).codigoProduto || '');
+    setEditingItemIdx(idx);
+    setEditingItemKind('rolete');
+  };
+
+  const saveRoleteEdit = () => {
+    if (editingItemIdx === null || !editOrc) return;
+    const calculated = calcItem({ ...roleteItem, codigoProduto: codigoRolete } as any, tubos, eixos, conjuntos, revestimentos, encaixes);
+    const updatedItens = [...editOrc.itensRolete];
+    updatedItens[editingItemIdx] = { ...calculated, id: editOrc.itensRolete[editingItemIdx].id };
+    
+    const itensR = updatedItens.map(ir => ({ ...ir, valorTotal: ir.valorPorPeca * ir.quantidade }));
+    const itensP = (editOrc.itensProduto || []).map(ip => ({ ...ip, valorTotal: ip.valorUnitario * ip.quantidade }));
     const valorTotal = itensR.reduce((s, i) => s + i.valorTotal, 0) + itensP.reduce((s, i) => s + i.valorTotal, 0);
+    
     const updatedOrc = { ...editOrc, itensRolete: itensR, itensProduto: itensP, valorTotal };
+    setEditOrc(updatedOrc);
+    
+    // Save to store
     const updatedOrcs = orcamentos.map(o => o.id === updatedOrc.id ? updatedOrc : o);
     store.saveOrcamentos(updatedOrcs); setOrcamentos(updatedOrcs);
     const updatedPedido = { ...pedido, valorTotal };
     const updatedPedidos = pedidos.map(p => p.id === updatedPedido.id ? updatedPedido : p);
     store.savePedidos(updatedPedidos); setPedidos(updatedPedidos); setCurrentPedido(updatedPedido);
-    toast.success('Pedido atualizado!');
+    
+    setEditingItemIdx(null);
+    setEditingItemKind(null);
+    setRoleteItem(emptyItem());
+    setCodigoRolete('');
+    toast.success('Item atualizado e salvo no pedido!');
   };
 
-  const updateRoleteItem = (idx: number, field: string, value: any) => {
-    setEditOrc(prev => {
-      if (!prev) return prev;
-      const items = [...prev.itensRolete];
-      items[idx] = { ...items[idx], [field]: value };
-      return { ...prev, itensRolete: items };
-    });
-  };
-  const updateProdutoItem = (idx: number, field: string, value: any) => {
-    setEditOrc(prev => {
-      if (!prev) return prev;
-      const items = [...prev.itensProduto];
-      items[idx] = { ...items[idx], [field]: value };
-      return { ...prev, itensProduto: items };
-    });
+  const cancelEdit = () => {
+    setEditingItemIdx(null);
+    setEditingItemKind(null);
+    setRoleteItem(emptyItem());
+    setCodigoRolete('');
   };
 
-  const requestDeleteItem = (target: DeleteItemTarget) => {
-    setDeleteItemTarget(target);
-    setDeleteItemOpen(true);
-  };
-
+  const requestDeleteItem = (target: DeleteItemTarget) => { setDeleteItemTarget(target); setDeleteItemOpen(true); };
   const confirmDeleteItem = () => {
-    if (!deleteItemTarget) return;
-
-    setEditOrc(prev => {
-      if (!prev) return prev;
-      if (deleteItemTarget.kind === 'rolete') {
-        return { ...prev, itensRolete: prev.itensRolete.filter((_, i) => i !== deleteItemTarget.idx) };
-      }
-      return { ...prev, itensProduto: prev.itensProduto.filter((_, i) => i !== deleteItemTarget.idx) };
-    });
-
-    setDeleteItemOpen(false);
-    setDeleteItemTarget(null);
+    if (!deleteItemTarget || !editOrc) return;
+    let updatedOrc: Orcamento;
+    if (deleteItemTarget.kind === 'rolete') {
+      updatedOrc = { ...editOrc, itensRolete: editOrc.itensRolete.filter((_, i) => i !== deleteItemTarget.idx) };
+    } else {
+      updatedOrc = { ...editOrc, itensProduto: editOrc.itensProduto.filter((_, i) => i !== deleteItemTarget.idx) };
+    }
+    const valorTotal = updatedOrc.itensRolete.reduce((s, i) => s + i.valorTotal, 0) + updatedOrc.itensProduto.reduce((s, i) => s + i.valorTotal, 0);
+    updatedOrc = { ...updatedOrc, valorTotal };
+    setEditOrc(updatedOrc);
+    const updatedOrcs = orcamentos.map(o => o.id === updatedOrc.id ? updatedOrc : o);
+    store.saveOrcamentos(updatedOrcs); setOrcamentos(updatedOrcs);
+    const updatedPedido = { ...pedido, valorTotal };
+    const updatedPedidos = pedidos.map(p => p.id === updatedPedido.id ? updatedPedido : p);
+    store.savePedidos(updatedPedidos); setPedidos(updatedPedidos); setCurrentPedido(updatedPedido);
+    setDeleteItemOpen(false); setDeleteItemTarget(null);
+    if (editingItemIdx === deleteItemTarget.idx && editingItemKind === deleteItemTarget.kind) cancelEdit();
   };
 
   const combinedItems = editOrc
@@ -108,235 +183,276 @@ function PedidoEditView({ pedido, orcamentos, pedidos, setOrcamentos, setPedidos
       ]
     : [];
 
-  const getDescricaoTecnica = (row: (typeof combinedItems)[number]) => {
-    if (row.kind === 'rolete') {
-      const it = row.item;
-      return [
-        `Rolete ${it.tipoRolete}`,
-        `ø${it.diametroTubo}x${it.paredeTubo} (Tubo ${it.comprimentoTubo}mm)`,
-        `Eixo ø${it.diametroEixo}mm`,
-        `Encaixe ${it.tipoEncaixe || '-'}`,
-        `Fresa ${it.medidaFresado || '-'}`,
-        `Revest. ${it.especificacaoRevestimento || '-'}`,
-      ].join(' • ');
-    }
-
-    const it = row.item;
-    const extra = it.descricao || it.medidas || '';
-    return extra ? `${it.produtoNome} — ${extra}` : it.produtoNome;
-  };
-
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Button variant="outline" onClick={() => setView('list')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
         <Button variant="outline" onClick={() => setView('print')} className="gap-2"><Printer className="h-4 w-4" /> Imprimir</Button>
-        <Button onClick={saveOrcChanges} className="gap-2">Salvar Alterações</Button>
       </div>
+
+      {/* ===== Informações do Pedido (Header) ===== */}
       <div className="bg-card border rounded-lg p-6">
-        <h2 className="text-lg font-bold mb-4">Pedido {pedido.numero} — Edição Completa</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm mb-6">
-          <div className="flex flex-col gap-1 break-words">
-            <span className="text-muted-foreground text-[11px] font-medium">Número do Pedido</span>
-            <strong className="text-sm">{pedido.numero}</strong>
-          </div>
-          <div className="flex flex-col gap-1 break-words">
+        <h2 className="text-lg font-bold mb-4">Pedido {pedido.numero}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+          <div className="flex flex-col gap-1">
             <span className="text-muted-foreground text-[11px] font-medium">Cliente</span>
             <strong className="text-sm break-words">{pedido.clienteNome}</strong>
           </div>
-          <div className="flex flex-col gap-1 break-words">
-            <span className="text-muted-foreground text-[11px] font-medium">Vendedor/Usuário</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-medium">Vendedor</span>
             <strong className="text-sm break-words">{orc?.vendedor || pedido.vendedor || '-'}</strong>
           </div>
-          <div className="flex flex-col gap-1 break-words">
-            <span className="text-muted-foreground text-[11px] font-medium">Número do Orçamento</span>
-            <strong className="text-sm">{pedido.orcamentoNumero || orc?.numero || '-'}</strong>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-medium">Condição de Pagamento</span>
+            <strong className="text-sm break-words">{orc?.condicaoPagamento || '-'}</strong>
           </div>
-          <div className="flex flex-col gap-1 break-words">
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-medium">Tipo de Frete</span>
+            <strong className="text-sm">{orc?.tipoFrete || '-'}</strong>
+          </div>
+          <div className="flex flex-col gap-1">
             <span className="text-muted-foreground text-[11px] font-medium">Data</span>
             <strong className="text-sm">{pedido.createdAt}</strong>
           </div>
-          <div className="flex flex-col gap-1 break-words">
-            <span className="text-muted-foreground text-[11px] font-medium">Prazo de Entrega (do Vendedor)</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-medium">Previsão de Entrega</span>
             <strong className="text-sm break-words">{orc?.previsaoEntrega || pedido.dataEntrega || '-'}</strong>
           </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-medium">Valor Total</span>
+            <strong className="text-sm text-primary">{fmt(pedido.valorTotal)}</strong>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-[11px] font-medium">Status</span>
+            <strong className="text-sm">{pedido.status.replace('_', ' ')}</strong>
+          </div>
         </div>
-        {editOrc && (
-          <>
-            <div className="mb-6">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="p-2 text-left whitespace-nowrap">Item</th>
-                      <th className="p-2 text-left whitespace-nowrap">Descrição Rolete</th>
-                      <th className="p-2 text-left whitespace-nowrap">Medida (mm)</th>
-                      <th className="p-2 text-left whitespace-nowrap">Diâmetro/Eixo</th>
-                      <th className="p-2 text-left whitespace-nowrap">Parede/Tubo</th>
-                      <th className="p-2 text-left whitespace-nowrap">Revestimento</th>
-                      <th className="p-2 text-center whitespace-nowrap">Quantidade</th>
-                      <th className="p-2 text-center whitespace-nowrap">Valor Unitário</th>
-                      <th className="p-2 text-center whitespace-nowrap">Total Item</th>
-                      <th className="p-2 text-center whitespace-nowrap">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combinedItems.length > 0 ? (
-                      combinedItems.map((row, i) => {
-                        const total =
-                          row.kind === 'rolete'
-                            ? (row.item.valorPorPeca || 0) * (row.item.quantidade || 0)
-                            : (row.item.valorUnitario || 0) * (row.item.quantidade || 0);
-
-                        const valorUnit =
-                          row.kind === 'rolete' ? (row.item.valorPorPeca || 0) : (row.item.valorUnitario || 0);
-
-                        const descricaoRolete =
-                          row.kind === 'rolete'
-                            ? `Rolete ${row.item.tipoRolete || '-'}` 
-                            : row.item.produtoNome || '-';
-
-                        const medidaMm =
-                          row.kind === 'rolete'
-                            ? `${row.item.comprimentoTubo || 0} / ${row.item.comprimentoEixo || 0}`
-                            : row.item.medidas || row.item.descricao || '-';
-
-                        const diametroEixo =
-                          row.kind === 'rolete'
-                            ? `ø${row.item.diametroEixo || '-'}`
-                            : '-';
-
-                        const paredeTubo =
-                          row.kind === 'rolete'
-                            ? `${row.item.paredeTubo || '-'}`
-                            : '-';
-
-                        const revestimento =
-                          row.kind === 'rolete'
-                            ? row.item.especificacaoRevestimento || '-'
-                            : row.item.descricao || '-';
-
-                        return (
-                          <tr key={`${row.kind}-${i}`} className="border-b">
-                            <td className="p-2 text-center font-mono">{i + 1}</td>
-                            <td className="p-2 align-top break-words min-w-[140px]">
-                              <div className="text-[11px] text-foreground font-medium">
-                                {descricaoRolete}
-                              </div>
-                            </td>
-                            <td className="p-2 align-top break-words min-w-[140px]">
-                              <div className="text-[11px] text-muted-foreground">
-                                {medidaMm}
-                              </div>
-                            </td>
-                            <td className="p-2 align-top">
-                              <div className="text-[11px] text-muted-foreground">
-                                {diametroEixo}
-                              </div>
-                            </td>
-                            <td className="p-2 align-top">
-                              <div className="text-[11px] text-muted-foreground">
-                                {paredeTubo}
-                              </div>
-                            </td>
-                            <td className="p-2 align-top break-words min-w-[160px]">
-                              <div className="text-[11px] text-muted-foreground">
-                                {revestimento}
-                              </div>
-                            </td>
-                            <td className="p-2 text-center">
-                              <Input
-                                type="number"
-                                className="h-7 w-20 text-xs mx-auto"
-                                value={row.item.quantidade}
-                                onChange={e =>
-                                  row.kind === 'rolete'
-                                    ? updateRoleteItem(row.idx, 'quantidade', +e.target.value)
-                                    : updateProdutoItem(row.idx, 'quantidade', +e.target.value)
-                                }
-                              />
-                            </td>
-                            <td className="p-2 text-center text-xs text-muted-foreground">
-                              <div className="font-mono">{fmt(Number(valorUnit || 0))}</div>
-                            </td>
-                            <td className="p-2 text-center font-semibold text-primary">
-                              {fmt(Number(total || 0))}
-                            </td>
-                            <td className="p-2 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    window.dispatchEvent(new CustomEvent('rp-open-pedido-tracking', { detail: { pedidoId: pedido.id } }));
-                                  }}
-                                  className="p-1 rounded hover:bg-muted text-primary"
-                                  title="Acompanhar Pedido"
-                                >
-                                  <History className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Cancelamento de item pode ser tratado como exclusão lógica futura
-                                    toast.warning('Em breve: cancelamento individual de item.');
-                                  }}
-                                  className="p-1 rounded hover:bg-muted text-warning"
-                                  title="Cancelar Item"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => requestDeleteItem({ kind: row.kind, idx: row.idx })}
-                                  className="p-1 rounded hover:bg-muted text-destructive"
-                                  title="Excluir Item"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    toast.info('Use a ação "Gerar O.S." na lista de pedidos para este pedido.');
-                                  }}
-                                  className="p-1 rounded hover:bg-muted text-primary"
-                                  title="Gerar O.S."
-                                >
-                                  <Factory className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="p-6 text-center text-muted-foreground">
-                          Nenhum item para exibir.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <ConfirmDialog
-              open={deleteItemOpen}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setDeleteItemOpen(false);
-                  setDeleteItemTarget(null);
-                }
-              }}
-              title="Excluir registro"
-              description="Tem certeza que deseja excluir este registro?"
-              confirmLabel="Confirmar"
-              cancelLabel="Cancelar"
-              onConfirm={confirmDeleteItem}
-            />
-          </>
+        {orc?.observacao && (
+          <div className="mt-4 pt-3 border-t">
+            <span className="text-muted-foreground text-[11px] font-medium">Observação</span>
+            <p className="text-sm mt-1">{orc.observacao}</p>
+          </div>
         )}
       </div>
+
+      {/* ===== Lista de Itens ===== */}
+      <div className="bg-card border rounded-lg p-6">
+        <h3 className="font-semibold mb-4">Itens do Pedido ({combinedItems.length})</h3>
+        <p className="text-xs text-muted-foreground mb-3">Clique em um item para editar suas especificações técnicas.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="p-2 text-left whitespace-nowrap">Item</th>
+                <th className="p-2 text-left whitespace-nowrap">Descrição</th>
+                <th className="p-2 text-center whitespace-nowrap">Qtd</th>
+                <th className="p-2 text-right whitespace-nowrap">Valor Unit.</th>
+                <th className="p-2 text-right whitespace-nowrap">Total</th>
+                <th className="p-2 text-center whitespace-nowrap">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {combinedItems.length > 0 ? (
+                combinedItems.map((row, i) => {
+                  const isRolete = row.kind === 'rolete';
+                  const valorUnit = isRolete ? (row.item.valorPorPeca || 0) : (row.item.valorUnitario || 0);
+                  const total = valorUnit * (row.item.quantidade || 0);
+                  const descricao = isRolete
+                    ? `Rolete ${row.item.tipoRolete} ø${row.item.diametroTubo}x${row.item.paredeTubo} T:${row.item.comprimentoTubo}mm E:ø${row.item.diametroEixo} ${row.item.comprimentoEixo}mm — Enc: ${row.item.tipoEncaixe || '-'} — Rev: ${row.item.especificacaoRevestimento || '-'}`
+                    : row.item.produtoNome || '-';
+                  const isEditing = editingItemIdx === row.idx && editingItemKind === row.kind;
+                  
+                  return (
+                    <tr key={`${row.kind}-${i}`} className={`border-b cursor-pointer transition-colors ${isEditing ? 'bg-primary/10 ring-1 ring-primary' : 'hover:bg-muted/30'}`}
+                      onClick={() => { if (isRolete) openRoleteEditor(row.idx); }}>
+                      <td className="p-2 text-center font-mono">{i + 1}</td>
+                      <td className="p-2 align-top min-w-[200px]">
+                        <div className="text-[11px] text-foreground font-medium">{descricao}</div>
+                      </td>
+                      <td className="p-2 text-center font-bold">{row.item.quantidade}</td>
+                      <td className="p-2 text-right font-mono">{fmt(Number(valorUnit || 0))}</td>
+                      <td className="p-2 text-right font-semibold text-primary">{fmt(Number(total || 0))}</td>
+                      <td className="p-2 text-center" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1">
+                          {isRolete && (
+                            <button onClick={() => openRoleteEditor(row.idx)} className="p-1 rounded hover:bg-muted text-primary" title="Editar Item">
+                              <Edit className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button onClick={() => requestDeleteItem({ kind: row.kind, idx: row.idx })} className="p-1 rounded hover:bg-muted text-destructive" title="Excluir Item">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Nenhum item para exibir.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ===== Rolete Editor Form ===== */}
+      {editingItemKind === 'rolete' && editingItemIdx !== null && (
+        <div className="border-2 border-primary/30 rounded-lg p-4 bg-card">
+          <h3 className="font-semibold flex items-center gap-2 mb-3">
+            <Settings2 className="h-4 w-4" /> Editar Item – Rolete (Item {editingItemIdx + 1})
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div>
+              <label className="text-xs text-primary font-medium">Tipo de Rolete</label>
+              <select value={roleteItem.tipoRolete} onChange={e => updateRoleteField({ tipoRolete: e.target.value as any })}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Selecione...</option>
+                {['RC', 'RR', 'RG', 'RI', 'RRA'].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Diâmetro do Tubo</label>
+              <select value={roleteItem.diametroTubo || ''} onChange={e => updateRoleteField({ diametroTubo: +e.target.value })}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Selecione...</option>
+                {diametrosTubo.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Parede do Tubo</label>
+              <select value={roleteItem.paredeTubo || ''} onChange={e => updateRoleteField({ paredeTubo: +e.target.value })}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Selecione...</option>
+                {paredesTubo(roleteItem.diametroTubo).map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Comp. Tubo (mm)</label>
+              <div className="relative">
+                <Input type="number" step="0.01" value={roleteItem.comprimentoTubo || ''} onChange={e => updateRoleteField({ comprimentoTubo: e.target.value ? parseFloat(e.target.value) : '' as any })} className="pr-10" />
+                {roleteItem.comprimentoTubo ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{roleteItem.comprimentoTubo} mm</span> : null}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Diâmetro do Eixo</label>
+              <select value={roleteItem.diametroEixo || ''} onChange={e => updateRoleteField({ diametroEixo: +e.target.value })}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Selecione...</option>
+                {diametrosEixo.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Comp. Eixo (mm)</label>
+              <div className="relative">
+                <Input type="number" step="0.01" value={roleteItem.comprimentoEixo || ''} onChange={e => updateRoleteField({ comprimentoEixo: e.target.value ? parseFloat(e.target.value) : '' as any })} className="pr-10" />
+                {roleteItem.comprimentoEixo ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{roleteItem.comprimentoEixo} mm</span> : null}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Tipo do Encaixe</label>
+              <div className="flex items-center gap-2">
+                <select value={roleteItem.tipoEncaixe} onChange={e => updateRoleteField({ tipoEncaixe: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  {encaixes.map(e => <option key={e.id} value={e.tipo}>{e.tipo}</option>)}
+                </select>
+                {(() => { const img = encaixes.find(e => e.tipo === roleteItem.tipoEncaixe)?.imagem; return img ? <img src={img} alt="Encaixe" className="h-9 w-9 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-primary transition-all shrink-0" onClick={() => setPreviewImage({ src: img, title: `Encaixe – ${roleteItem.tipoEncaixe}` })} /> : null; })()}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Conjunto/Kits</label>
+              <div className="flex items-center gap-2">
+                <select value={roleteItem.conjunto} onChange={e => updateRoleteField({ conjunto: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                  <option value="">Selecione...</option>
+                  {conjuntos.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
+                </select>
+                {(() => { const img = conjuntos.find(c => c.codigo === roleteItem.conjunto)?.imagem; return img ? <img src={img} alt="Conjunto" className="h-9 w-9 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-primary transition-all shrink-0" onClick={() => setPreviewImage({ src: img, title: `Conjunto – ${roleteItem.conjunto}` })} /> : null; })()}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Revest. Spiraflex</label>
+              <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('SPIRAFLEX') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'SPIRAFLEX' : '', quantidadeAneis: 0 })}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Sem Spiraflex</option>
+                {revestimentos.filter(r => r.tipo.toUpperCase().includes('SPIRAFLEX')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Revest. Borracha</label>
+              <select value={revestimentos.find(r => r.tipo.toUpperCase().includes('ABI') && r.tipo === roleteItem.especificacaoRevestimento) ? roleteItem.especificacaoRevestimento : ''}
+                onChange={e => updateRoleteField({ especificacaoRevestimento: e.target.value, tipoRevestimento: e.target.value ? 'ANEIS' : '', quantidadeAneis: e.target.value ? (roleteItem.quantidadeAneis || 1) : 0 })}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                <option value="">Sem Anéis</option>
+                {revestimentos.filter(r => r.tipo.toUpperCase().includes('ABI')).map(r => <option key={r.id} value={r.tipo}>{r.tipo}</option>)}
+              </select>
+            </div>
+            {roleteItem.especificacaoRevestimento && revestimentos.find(r => r.tipo === roleteItem.especificacaoRevestimento && r.tipo.toUpperCase().includes('ABI')) && (
+              <div>
+                <label className="text-xs text-primary font-medium">Qtd. Anéis</label>
+                <Input type="number" min={1} value={roleteItem.quantidadeAneis} onChange={e => updateRoleteField({ quantidadeAneis: +e.target.value })} />
+              </div>
+            )}
+            <div>
+              <label className="text-xs text-primary font-medium">Adicional</label>
+              <Input value={(roleteItem as any).adicional || ''} onChange={e => updateRoleteField({ adicional: e.target.value } as any)} placeholder="Informações adicionais" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mt-3 text-sm">
+            <div>
+              <label className="text-xs text-primary font-medium">Código do Produto</label>
+              <Input placeholder="Ex: RC-102-250" value={codigoRolete} onChange={e => setCodigoRolete(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Código do Cliente</label>
+              <Input placeholder="Código do cliente" value={(roleteItem as any).codigoExterno || ''} onChange={e => updateRoleteField({ codigoExterno: e.target.value } as any)} />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Quantidade</label>
+              <Input type="number" value={roleteItem.quantidade || ''} onChange={e => updateRoleteField({ quantidade: e.target.value ? +e.target.value : '' as any })} />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Multiplicador {roleteItem.multiplicador}%</label>
+              <Input type="number" step="0.1" value={roleteItem.multiplicador || ''} onChange={e => updateRoleteField({ multiplicador: e.target.value ? +e.target.value : '' as any })} />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">NCM</label>
+              <Input placeholder="NCM" value={roleteItem.ncm || '8431.39.00'} onChange={e => updateRoleteField({ ncm: e.target.value } as any)} />
+            </div>
+            <div>
+              <label className="text-xs text-primary font-medium">Desconto (%)</label>
+              <Input type="number" value={roleteItem.desconto || ''} onChange={e => updateRoleteField({ desconto: e.target.value ? +e.target.value : '' as any })} />
+            </div>
+          </div>
+          <div className="bg-muted/30 rounded p-3 mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div><span className="text-xs text-primary">Preço Unit. Final</span><br /><strong>{fmt(roleteItem.valorPorPeca)}</strong></div>
+            <div><span className="text-xs text-primary">Total Item</span><br /><strong>{fmt(roleteItem.valorTotal)}</strong></div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button onClick={saveRoleteEdit} className="gap-2 bg-yellow-500 hover:bg-yellow-600 text-white">
+              ✓ Salvar edição
+            </Button>
+            <Button variant="outline" onClick={cancelEdit}>Cancelar</Button>
+          </div>
+          <ImagePreviewModal
+            open={!!previewImage}
+            onOpenChange={(open) => { if (!open) setPreviewImage(null); }}
+            imageSrc={previewImage?.src || ''}
+            title={previewImage?.title}
+          />
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteItemOpen}
+        onOpenChange={(open) => { if (!open) { setDeleteItemOpen(false); setDeleteItemTarget(null); } }}
+        title="Excluir registro"
+        description="Tem certeza que deseja excluir este registro?"
+        confirmLabel="Confirmar"
+        cancelLabel="Cancelar"
+        onConfirm={confirmDeleteItem}
+      />
     </div>
   );
 }
