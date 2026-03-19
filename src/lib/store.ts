@@ -334,10 +334,64 @@ export const store = {
   nextNumero: (prefix: string): string => {
     const year = new Date().getFullYear();
     const key = `rp_num_${prefix}_${year}`;
-    const defaultStart = prefix === 'orc' ? 825 : 0;
+    const defaultStart = prefix === 'orc' ? 914 : 0;
     const stored = localStorage.getItem(key);
     const n = (stored !== null ? parseInt(stored) : defaultStart) + 1;
     localStorage.setItem(key, String(n));
     return `${String(n).padStart(4, '0')}/${year}`;
   },
+
+  /**
+   * One-time migration: renumber existing orçamentos sequentially starting at 915/YEAR
+   * and sync pedido numbers to match their orçamento numbers.
+   */
+  migrateNumeracao: () => {
+    const migrationKey = 'rp_migration_numeracao_915';
+    if (localStorage.getItem(migrationKey)) return; // already done
+
+    const year = new Date().getFullYear();
+    const orcamentos: Orcamento[] = load('rp_orcamentos', []);
+    const pedidos: Pedido[] = load('rp_pedidos', []);
+
+    if (orcamentos.length === 0) {
+      localStorage.setItem(migrationKey, '1');
+      return;
+    }
+
+    // Sort by createdAt to preserve chronological order
+    const sorted = [...orcamentos].sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    let counter = 915;
+    const idToNewNumero: Record<string, string> = {};
+
+    sorted.forEach(orc => {
+      const newNumero = `${String(counter).padStart(4, '0')}/${year}`;
+      idToNewNumero[orc.id] = newNumero;
+      orc.numero = newNumero;
+      counter++;
+    });
+
+    // Sync pedidos to match their orçamento numbers
+    pedidos.forEach(p => {
+      const newNum = idToNewNumero[p.orcamentoId];
+      if (newNum) {
+        p.numero = newNum;
+        p.orcamentoNumero = newNum;
+      }
+    });
+
+    save('rp_orcamentos', sorted);
+    save('rp_pedidos', pedidos);
+
+    // Update counter so next new orçamento continues from where we left off
+    const numKey = `rp_num_orc_${year}`;
+    localStorage.setItem(numKey, String(counter - 1));
+
+    localStorage.setItem(migrationKey, '1');
+  },
 };
+
+// Run one-time migration on module load
+store.migrateNumeracao();
