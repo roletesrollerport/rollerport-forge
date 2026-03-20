@@ -269,7 +269,7 @@ export interface ItemEstoque {
 export type NivelAcesso = 'master' | 'admin' | 'SEO' | 'Administrador' | 'administrador' | 'adm/dono' | 'Vendas' | 'Estoque' | 'Produção';
 export type Genero = 'M' | 'F';
 
-export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'ia' | 'usuarios' | 'agenda' | 'gestao-dados';
+export type PermissaoModulo = 'inicio' | 'custos' | 'clientes' | 'produtos' | 'orcamentos' | 'pedidos' | 'producao' | 'estoque' | 'chat' | 'usuarios' | 'agenda' | 'gestao-dados';
 
 export interface PermissoesUsuario {
   ver: PermissaoModulo[];

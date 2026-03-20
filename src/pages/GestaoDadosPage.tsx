@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
   senha text NOT NULL,
   nivel text NOT NULL DEFAULT 'vendedor',
   ativo boolean NOT NULL DEFAULT true,
-  permissoes jsonb DEFAULT '{"ver":["inicio","custos","clientes","produtos","orcamentos","pedidos","producao","estoque","chat","ia","usuarios"],"editar":["inicio","custos","clientes","produtos","orcamentos","pedidos","producao","estoque","chat","ia","usuarios"]}'::jsonb,
+  permissoes jsonb DEFAULT '{"ver":["inicio","custos","clientes","produtos","orcamentos","pedidos","producao","estoque","chat","usuarios"],"editar":["inicio","custos","clientes","produtos","orcamentos","pedidos","producao","estoque","chat","usuarios"]}'::jsonb,
   created_at timestamp with time zone NOT NULL DEFAULT now()
 );
 

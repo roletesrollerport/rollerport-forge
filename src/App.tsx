@@ -42,7 +42,6 @@ import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import AgendaPage from "./pages/AgendaPage";
 import GestaoDadosPage from "./pages/GestaoDadosPage";
-import IAPage from "./pages/IAPage";
 import { useUsuarios, type UsuarioDB } from "./hooks/useUsuarios";
 import { useDataSync } from "./hooks/useDataSync";
 
@@ -201,7 +200,6 @@ function AppContent() {
           <Route path="/usuarios" element={<UsuariosPage />} />
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/gestao-dados" element={<GestaoDadosPage />} />
-          <Route path="/ia" element={<IAPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>

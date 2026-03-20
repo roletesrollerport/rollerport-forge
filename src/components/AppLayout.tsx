@@ -4,7 +4,7 @@ import {
   Home, DollarSign, Users, Package, FileText,
   ShoppingCart, Factory, Warehouse, UserCog, Menu, X, ChevronRight,
   Bell, MessageSquare, Bot, LogOut, User, Eye, Trash2, MessageCircle, RefreshCw, Database,
-  Calendar, Cpu
+  Calendar
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,7 +45,6 @@ const navItems: { to: string; label: string; icon: any; modulo: PermissaoModulo 
   { to: '/usuarios', label: 'Usuários', icon: UserCog, modulo: 'usuarios' },
   { to: '/agenda', label: 'CRM Rollerport', icon: Calendar, modulo: 'agenda' },
   { to: '/gestao-dados', label: 'Gestão de Dados', icon: Database, modulo: 'gestao-dados' },
-  { to: '/ia', label: 'IA Técnica', icon: Cpu, modulo: 'gestao-dados' },
 ];
 
 export default function AppLayout({ children, currentUser, onLogout }: { children: React.ReactNode; currentUser: Usuario; onLogout: () => void }) {
@@ -167,7 +166,7 @@ export default function AppLayout({ children, currentUser, onLogout }: { childre
   const fullAccessRoles = ['master', 'SEO', 'admin', 'Admin', 'Administrador', 'administrador', 'adm/dono'];
   const isFullAccess = fullAccessRoles.includes(currentUser.nivel);
   
-  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','ia','usuarios', 'agenda', 'gestao-dados'];
+  const allModulos: PermissaoModulo[] = ['inicio','custos','clientes','produtos','orcamentos','pedidos','producao','estoque','chat','usuarios', 'agenda', 'gestao-dados'];
   const userPerms = currentUser.permissoes?.ver || allModulos;
 
   const visibleNavItems = isFullAccess

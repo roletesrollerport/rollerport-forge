@@ -29,7 +29,6 @@ const TODOS_MODULOS: { value: PermissaoModulo; label: string }[] = [
   { value: 'producao', label: 'Produção' },
   { value: 'estoque', label: 'Estoque' },
   { value: 'chat', label: 'Bate-Papo' },
-  { value: 'ia', label: 'IA' },
   { value: 'usuarios', label: 'Usuários' },
 ];
 
