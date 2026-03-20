@@ -50,6 +50,13 @@ export function AgendaDetailsSheet({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   if (!item) return null;
 
+  const safeDate = (v: string) => {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+  const dataInicio = safeDate(item.data_inicio);
+  const dataFim = safeDate(item.data_fim);
+
   const config = TYPE_CONFIG[item.tipo] || { color: 'text-amber-500', bg: 'bg-amber-50', icon: Calendar };
   const cliente = item.cliente_id ? store.getClientes().find(c => c.id === item.cliente_id) : null;
 
