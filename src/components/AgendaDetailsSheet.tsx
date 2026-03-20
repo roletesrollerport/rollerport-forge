@@ -64,7 +64,7 @@ export function AgendaDetailsSheet({
     if (!cliente?.whatsapp && !cliente?.telefone) return;
     const num = (cliente.whatsapp || cliente.telefone || "").replace(/\D/g, "");
     if (!num) return;
-    const text = encodeURIComponent(`Olá ${cliente.nome}, estou entrando em contato referente ao compromisso "${item.titulo}" agendado para ${format(new Date(item.data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}.`);
+    const text = encodeURIComponent(`Olá ${cliente.nome}, estou entrando em contato referente ao compromisso "${item.titulo}" agendado para ${format(dataInicio, "dd/MM 'às' HH:mm", { locale: ptBR })}.`);
     window.open(`https://wa.me/55${num}?text=${text}`, '_blank');
   };
 
