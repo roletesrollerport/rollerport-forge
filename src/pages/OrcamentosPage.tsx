@@ -440,6 +440,34 @@ export default function OrcamentosPage() {
     }
   }, [orcamentos, searchParams, view]);
 
+  // Pré-preencher formulário de rolete com dados vindos da IA
+  useEffect(() => {
+    const iaSerie = searchParams.get('ia_serie');
+    const iaLargura = searchParams.get('ia_largura');
+    const iaDimA = searchParams.get('ia_dimA');
+    const iaDimB = searchParams.get('ia_dimB');
+    const iaDimC = searchParams.get('ia_dimC');
+    const iaDimD = searchParams.get('ia_dimD');
+    const iaQtd = searchParams.get('ia_qtd');
+    if (!iaSerie || !iaDimA) return;
+    // Comprimento do tubo = B, comprimento do eixo = A, diâmetro do eixo = D
+    const dimA = parseInt(iaDimA) || 0;
+    const dimB = parseInt(iaDimB || '0') || 0;
+    const dimD = parseInt(iaDimD || '0') || 0;
+    const qty = parseInt(iaQtd || '1') || 1;
+    setRoleteItem(prev => calcItem({
+      ...prev,
+      quantidade: qty,
+      comprimentoTubo: dimB || dimA,
+      comprimentoEixo: dimA,
+      diametroEixo: dimD,
+    }, tubos, eixos, conjuntos, revestimentos, encaixes));
+    setShowRoleteForm(true);
+    setView('form');
+    toast.info(`Dados da IA carregados: Série ${iaSerie} — ${iaLargura}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   // Clonar orçamento com preços atualizados
   const cloneOrcamento = (orc: Orcamento) => {
     // Recalcular itens rolete com preços atuais
