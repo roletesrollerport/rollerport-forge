@@ -92,11 +92,11 @@ export function AgendaDetailsSheet({
           <SheetDescription className="flex flex-col gap-2 pt-2">
             <div className="flex items-center gap-2 text-foreground">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>{format(new Date(item.data_inicio), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+              <span>{format(dataInicio, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
             </div>
             <div className="flex items-center gap-2 text-foreground">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>{format(new Date(item.data_inicio), "HH:mm")} - {format(new Date(item.data_fim), "HH:mm")}</span>
+              <span>{format(dataInicio, "HH:mm")} - {format(dataFim, "HH:mm")}</span>
             </div>
           </SheetDescription>
         </SheetHeader>
