@@ -42,10 +42,17 @@ import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import AgendaPage from "./pages/AgendaPage";
 import GestaoDadosPage from "./pages/GestaoDadosPage";
-import { useUsuarios, type UsuarioDB } from "./hooks/useUsuarios";
+import { useUsuarios, type UsuarioDB, parseUsuario } from "./hooks/useUsuarios";
 import { useDataSync } from "./hooks/useDataSync";
 
 const queryClient = new QueryClient();
+
+function isFatalSessionValidationError(error: { context?: { status?: number } } | null, data: Record<string, unknown> | null): boolean {
+  const status = error?.context?.status;
+  if (status === 401 || status === 403) return true;
+  if (data && data.valid === false) return true;
+  return false;
+}
 
 function AppContent() {
   const [loggedUserId, setLoggedUserId] = useState<string | null>(() => localStorage.getItem('rp_logged_user'));
@@ -72,34 +79,79 @@ function AppContent() {
   }, [clearLocalSession]);
 
   useEffect(() => {
-    if (loggedUserId && sessionToken) {
-      // Validate session server-side
-      invokeEdgeFn('chat-api', { action: 'validate_session', sessionToken })
-        .then(({ data, error }) => {
-          if (error || !data?.valid || data?.user_id !== loggedUserId) {
-            clearLocalSession();
-            setChecking(false);
-            return;
-          }
-
-          getById(loggedUserId).then(user => {
-            if (user) {
-              setCurrentUser(user);
-            } else {
-              clearLocalSession();
-            }
-            setChecking(false);
-          }).catch(() => {
-            clearLocalSession();
-            setChecking(false);
-          });
-        }).catch(() => {
-          clearLocalSession();
-          setChecking(false);
-        });
-    } else {
+    if (!loggedUserId || !sessionToken) {
       setChecking(false);
+      return;
     }
+
+    let cancelled = false;
+
+    const run = async () => {
+      const maxAttempts = 3;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (cancelled) return;
+
+        const { data, error } = await invokeEdgeFn('chat-api', { action: 'validate_session', sessionToken });
+        if (cancelled) return;
+
+        const payload = data as { valid?: boolean; user_id?: string; user?: unknown } | null;
+        const ok = !error && payload?.valid === true && payload?.user_id === loggedUserId;
+
+        if (ok) {
+          if (cancelled) return;
+          if (payload?.user) {
+            setCurrentUser(parseUsuario(payload.user));
+          } else {
+            try {
+              const user = await getById(loggedUserId);
+              if (cancelled) return;
+              if (user) setCurrentUser(user);
+              else {
+                clearLocalSession();
+                setChecking(false);
+                return;
+              }
+            } catch {
+              if (cancelled) return;
+              clearLocalSession();
+              setChecking(false);
+              return;
+            }
+          }
+          if (!cancelled) setChecking(false);
+          return;
+        }
+
+        if (isFatalSessionValidationError(error, payload as Record<string, unknown> | null)) {
+          if (!cancelled) {
+            clearLocalSession();
+            setChecking(false);
+          }
+          return;
+        }
+
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+        }
+      }
+
+      // Rede / edge instável: ainda há token — tenta carregar perfil direto (evita voltar ao login no F5)
+      if (cancelled) return;
+      try {
+        const user = await getById(loggedUserId);
+        if (cancelled) return;
+        if (user) setCurrentUser(user);
+        else clearLocalSession();
+      } catch {
+        if (!cancelled) clearLocalSession();
+      }
+      if (!cancelled) setChecking(false);
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
   }, [loggedUserId, sessionToken, getById, clearLocalSession]);
 
   // Heartbeat: update last_seen every 60s while logged in (via edge function)

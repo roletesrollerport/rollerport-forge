@@ -20,7 +20,7 @@ export interface UsuarioDB {
   created_at: string;
 }
 
-function parseUsuario(row: any): UsuarioDB {
+export function parseUsuario(row: any): UsuarioDB {
   return {
     id: row.id,
     nome: row.nome || '',
@@ -188,14 +188,14 @@ export function useUsuarios() {
     }
   };
 
-  const getById = async (id: string): Promise<UsuarioDB | null> => {
+  const getById = useCallback(async (id: string): Promise<UsuarioDB | null> => {
     const { data } = await supabase
       .from('usuarios')
       .select('id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at')
       .eq('id', id)
       .maybeSingle();
     return data ? parseUsuario(data) : null;
-  };
+  }, []);
 
   const requestPasswordReset = async (loginStr: string) => {
     const { data, error } = await supabase.functions.invoke('password-recovery', {

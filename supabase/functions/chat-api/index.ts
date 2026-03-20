@@ -160,9 +160,21 @@ serve(async (req) => {
     }
 
     if (action === "validate_session") {
-      // Also update last_seen on session validation
+      const { data: profile } = await supabaseAdmin
+        .from("usuarios")
+        .select("id, nome, email, telefone, whatsapp, login, nivel, genero, ativo, foto, permissoes, created_at")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!profile) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       await supabaseAdmin.from("usuarios").update({ last_seen: new Date().toISOString() }).eq("id", userId);
-      return new Response(JSON.stringify({ user_id: userId, valid: true }), {
+      return new Response(JSON.stringify({ user_id: userId, valid: true, user: profile }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
