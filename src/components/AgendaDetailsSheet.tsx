@@ -50,6 +50,13 @@ export function AgendaDetailsSheet({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   if (!item) return null;
 
+  const safeDate = (v: string) => {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+  const dataInicio = safeDate(item.data_inicio);
+  const dataFim = safeDate(item.data_fim);
+
   const config = TYPE_CONFIG[item.tipo] || { color: 'text-amber-500', bg: 'bg-amber-50', icon: Calendar };
   const cliente = item.cliente_id ? store.getClientes().find(c => c.id === item.cliente_id) : null;
 
@@ -57,7 +64,7 @@ export function AgendaDetailsSheet({
     if (!cliente?.whatsapp && !cliente?.telefone) return;
     const num = (cliente.whatsapp || cliente.telefone || "").replace(/\D/g, "");
     if (!num) return;
-    const text = encodeURIComponent(`Olá ${cliente.nome}, estou entrando em contato referente ao compromisso "${item.titulo}" agendado para ${format(new Date(item.data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}.`);
+    const text = encodeURIComponent(`Olá ${cliente.nome}, estou entrando em contato referente ao compromisso "${item.titulo}" agendado para ${format(dataInicio, "dd/MM 'às' HH:mm", { locale: ptBR })}.`);
     window.open(`https://wa.me/55${num}?text=${text}`, '_blank');
   };
 
@@ -85,11 +92,11 @@ export function AgendaDetailsSheet({
           <SheetDescription className="flex flex-col gap-2 pt-2">
             <div className="flex items-center gap-2 text-foreground">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>{format(new Date(item.data_inicio), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+              <span>{format(dataInicio, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
             </div>
             <div className="flex items-center gap-2 text-foreground">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>{format(new Date(item.data_inicio), "HH:mm")} - {format(new Date(item.data_fim), "HH:mm")}</span>
+              <span>{format(dataInicio, "HH:mm")} - {format(dataFim, "HH:mm")}</span>
             </div>
           </SheetDescription>
         </SheetHeader>
